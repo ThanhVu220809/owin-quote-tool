@@ -1,0 +1,21 @@
+# Dependencies & build (mọi cấp — bao gồm owin-quote-tool/)
+node_modules/
+dist/
+dist-ssr/
+
+# Secrets — KHÔNG BAO GIỜ commit (BR-7 / rule 8)
+.env
+.env.*
+!.env.example
+
+# Local / editor
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
