@@ -2,11 +2,12 @@
  * GOOGLE DRIVE (appDataFolder) CLIENT — Owin Quote Tool.
  *
  * BR-9: `owin_db.json` trên Drive CHỈ chứa metadata/giá (nhẹ). Ảnh là FILE RIÊNG
- *       (img_<id>) — chỉ upload khi đổi. Hàm ở đây tách 2 loại rõ ràng.
- * BR-7: mọi call đi qua ensureToken() (refresh ngầm qua backend).
+ *       (img_<id>) — chỉ upload khi đổi.
+ * BR-7: mặc định mọi call đi qua ensureToken() (token owner, refresh ngầm qua backend).
  *
- * ⚠️ Toàn bộ module này cần token Google thật → chỉ chạy được sau khi human tạo OAuth +
- *    deploy Apps Script + bấm consent (TASK 5.1/5.2). Code đã sẵn sàng.
+ * MỖI HÀM nhận `token?` tuỳ chọn: nếu truyền vào (vd token 1-lần của TÀI KHOẢN KHÁC
+ * lấy qua GIS token flow) thì dùng token đó thay vì token owner — phục vụ tính năng
+ * đẩy/lấy kho sang tài khoản Google khác mà KHÔNG đụng refresh_token của owner.
  */
 
 import type { OwinDB } from '@/types/models';
@@ -17,14 +18,14 @@ const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 const DB_FILENAME = 'owin_db.json';
 const IMG_PREFIX = 'img_';
 
-async function authHeader(): Promise<Record<string, string>> {
-  const token = await ensureToken();
-  return { Authorization: 'Bearer ' + token };
+async function authHeader(token?: string): Promise<Record<string, string>> {
+  const t = token ?? (await ensureToken());
+  return { Authorization: 'Bearer ' + t };
 }
 
 /** Tìm file theo tên trong appDataFolder → trả fileId hoặc null. */
-export async function findFile(name: string): Promise<string | null> {
-  const headers = await authHeader();
+export async function findFile(name: string, token?: string): Promise<string | null> {
+  const headers = await authHeader(token);
   const q = encodeURIComponent(`name='${name}'`);
   const url = `${DRIVE_FILES}?spaces=appDataFolder&q=${q}&fields=files(id,name)`;
   const res = await fetch(url, { headers });
@@ -33,22 +34,20 @@ export async function findFile(name: string): Promise<string | null> {
 }
 
 /** Tải metadata DB (owin_db.json). null nếu chưa có. */
-export async function downloadDB(): Promise<OwinDB | null> {
-  const id = await findFile(DB_FILENAME);
+export async function downloadDB(token?: string): Promise<OwinDB | null> {
+  const id = await findFile(DB_FILENAME, token);
   if (!id) return null;
-  const headers = await authHeader();
+  const headers = await authHeader(token);
   const res = await fetch(`${DRIVE_FILES}/${id}?alt=media`, { headers });
   if (!res.ok) return null;
   return res.json();
 }
 
 /** Tạo/ghi đè owin_db.json (multipart: metadata + nội dung). */
-export async function uploadDB(db: OwinDB): Promise<void> {
-  const id = await findFile(DB_FILENAME);
-  const headers = await authHeader();
-  const metadata = id
-    ? {} // update: không cần parents
-    : { name: DB_FILENAME, parents: ['appDataFolder'] };
+export async function uploadDB(db: OwinDB, token?: string): Promise<void> {
+  const id = await findFile(DB_FILENAME, token);
+  const headers = await authHeader(token);
+  const metadata = id ? {} : { name: DB_FILENAME, parents: ['appDataFolder'] };
   const boundary = 'owin' + Date.now();
   const body =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
@@ -69,11 +68,11 @@ export async function uploadDB(db: OwinDB): Promise<void> {
   if (!res.ok) throw new Error('uploadDB thất bại: ' + res.status);
 }
 
-/** Upload 1 ảnh (file riêng, BR-9). Trả fileId. */
-export async function uploadImage(imageId: string, blob: Blob): Promise<void> {
+/** Upload 1 ảnh (file riêng, BR-9). */
+export async function uploadImage(imageId: string, blob: Blob, token?: string): Promise<void> {
   const name = IMG_PREFIX + imageId;
-  const existing = await findFile(name);
-  const headers = await authHeader();
+  const existing = await findFile(name, token);
+  const headers = await authHeader(token);
   const metadata = existing ? {} : { name, parents: ['appDataFolder'] };
   const form = new FormData();
   form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
@@ -88,10 +87,10 @@ export async function uploadImage(imageId: string, blob: Blob): Promise<void> {
 }
 
 /** Tải 1 ảnh về (Blob). null nếu không có. */
-export async function downloadImage(imageId: string): Promise<Blob | null> {
-  const id = await findFile(IMG_PREFIX + imageId);
+export async function downloadImage(imageId: string, token?: string): Promise<Blob | null> {
+  const id = await findFile(IMG_PREFIX + imageId, token);
   if (!id) return null;
-  const headers = await authHeader();
+  const headers = await authHeader(token);
   const res = await fetch(`${DRIVE_FILES}/${id}?alt=media`, { headers });
   if (!res.ok) return null;
   return res.blob();
