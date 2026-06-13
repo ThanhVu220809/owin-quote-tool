@@ -85,6 +85,39 @@ export function connectGoogle(): Promise<string> {
 }
 
 /**
+ * Token 1 lần cho tài khoản Google KHÁC. Không qua backend, không lấy refresh_token.
+ * Dùng cho thao tác thủ công: đẩy/lấy kho sang appDataFolder của tài khoản được chọn.
+ */
+export function requestOneTimeGoogleToken(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!CLIENT_ID) {
+      reject(new Error('Chưa cấu hình Google Client ID.'));
+      return;
+    }
+
+    const g = (window as unknown as { google?: GoogleAccounts }).google;
+    if (!g?.accounts?.oauth2?.initTokenClient) {
+      reject(new Error('Chưa nạp Google Identity Services (GIS)'));
+      return;
+    }
+
+    const tokenClient = g.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPE,
+      prompt: 'select_account consent',
+      callback: (response: { access_token?: string; error?: string }) => {
+        if (response.error || !response.access_token) {
+          reject(new Error('Người dùng huỷ hoặc lỗi cấp quyền'));
+          return;
+        }
+        resolve(response.access_token);
+      },
+    });
+    tokenClient.requestAccessToken({ prompt: 'select_account consent' });
+  });
+}
+
+/**
  * GỌI TRƯỚC MỌI THAO TÁC SYNC. Trả access_token còn sống, hoặc ném lỗi cần đăng nhập lại.
  * Token còn hạn → dùng luôn; hết hạn → backend refresh ngầm; refresh hỏng → NEED_RELOGIN.
  */
@@ -126,6 +159,12 @@ interface GoogleAccounts {
         prompt: string;
         callback: (response: { code?: string; error?: string }) => void;
       }) => { requestCode: () => void };
+      initTokenClient: (config: {
+        client_id: string;
+        scope: string;
+        prompt: string;
+        callback: (response: { access_token?: string; error?: string }) => void;
+      }) => { requestAccessToken: (overrideConfig?: { prompt?: string }) => void };
     };
   };
 }

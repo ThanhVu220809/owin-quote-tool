@@ -146,6 +146,7 @@ body {
   cursor: pointer;
   transition: filter 0.15s ease, opacity 0.15s ease;
 }
+.btn svg { flex: 0 0 auto; }
 .btn:active { filter: brightness(0.94); }
 .btn-primary { background: var(--ios-blue); color: #fff; }
 .btn-danger { background: var(--ios-red); color: #fff; }
@@ -192,7 +193,7 @@ body {
   font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
   background: var(--ios-gray5); color: var(--ios-label2);
 }
-.row-actions { display: flex; gap: 8px; }
+.row-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .icon-btn {
   border: none; background: var(--ios-gray6); border-radius: 8px; padding: 8px;
   cursor: pointer; color: var(--ios-label2); display: inline-flex;
@@ -254,7 +255,15 @@ body {
 
 /* Sync bar + conflict dialog */
 .sync-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; padding: 8px 0; }
+.sync-bar .btn { display: inline-flex; align-items: center; gap: 6px; white-space: normal; }
 .sync-bar code { background: var(--ios-gray6); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
 .conflict-dialog { width: 100%; margin-top: 8px; }
 .conflict-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ios-gray6); }
 .conflict-row:last-child { border-bottom: none; }
+
+@media (max-width: 640px) {
+  .sync-bar .btn { flex: 1 1 210px; justify-content: center; }
+  .conflict-row { align-items: stretch; flex-direction: column; }
+  .row-actions { justify-content: stretch; }
+  .row-actions .btn { flex: 1 1 160px; justify-content: center; }
+}

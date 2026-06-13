@@ -60,6 +60,7 @@ export function ProductsView() {
       {showForm && (
         <div style={{ marginBottom: 20 }}>
           <ProductForm
+            key={editing?.id ?? 'new'}
             editing={editing}
             suggestions={suggestions}
             onSave={saveProduct}

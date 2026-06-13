@@ -6,6 +6,7 @@ import {
   saveProduct as saveProductStore,
   deleteProduct as deleteProductStore,
 } from '@/features/products/productStore';
+import { PRODUCTS_CHANGED_EVENT } from '@/features/products/productEvents';
 
 /** Quản lý danh sách sản phẩm gốc (sống) từ IndexedDB. */
 export function useProducts() {
@@ -22,6 +23,14 @@ export function useProducts() {
       await refresh();
       setLoading(false);
     })();
+  }, [refresh]);
+
+  useEffect(() => {
+    const onProductsChanged = () => {
+      void refresh();
+    };
+    window.addEventListener(PRODUCTS_CHANGED_EVENT, onProductsChanged);
+    return () => window.removeEventListener(PRODUCTS_CHANGED_EVENT, onProductsChanged);
   }, [refresh]);
 
   const saveProduct = useCallback(

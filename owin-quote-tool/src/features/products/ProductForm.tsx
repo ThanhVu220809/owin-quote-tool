@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Product, Accessory, DVT } from '@/types/models';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -43,31 +43,28 @@ const emptyForm = {
   accessories: [] as Accessory[],
 };
 
-export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
-  const [form, setForm] = useState({ ...emptyForm });
-  const [saving, setSaving] = useState(false);
+function initialForm(editing: Product | null): typeof emptyForm {
+  if (!editing) return { ...emptyForm, accessories: [] };
+  return {
+    dvt: editing.dvt,
+    ten: editing.ten,
+    ma: editing.ma,
+    donGiaGoc: editing.donGiaGoc,
+    rongMacDinh: editing.rongMacDinh,
+    caoMacDinh: editing.caoMacDinh,
+    imageId: editing.imageId,
+    mau: editing.mau ?? '',
+    heNhom: editing.heNhom ?? '',
+    khungBao: editing.khungBao ?? '',
+    banCanh: editing.banCanh ?? '',
+    kinh: editing.kinh ?? '',
+    accessories: editing.accessories.map((a) => ({ ...a })),
+  };
+}
 
-  useEffect(() => {
-    if (editing) {
-      setForm({
-        dvt: editing.dvt,
-        ten: editing.ten,
-        ma: editing.ma,
-        donGiaGoc: editing.donGiaGoc,
-        rongMacDinh: editing.rongMacDinh,
-        caoMacDinh: editing.caoMacDinh,
-        imageId: editing.imageId,
-        mau: editing.mau ?? '',
-        heNhom: editing.heNhom ?? '',
-        khungBao: editing.khungBao ?? '',
-        banCanh: editing.banCanh ?? '',
-        kinh: editing.kinh ?? '',
-        accessories: editing.accessories.map((a) => ({ ...a })),
-      });
-    } else {
-      setForm({ ...emptyForm, accessories: [] });
-    }
-  }, [editing]);
+export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
+  const [form, setForm] = useState(() => initialForm(editing));
+  const [saving, setSaving] = useState(false);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));

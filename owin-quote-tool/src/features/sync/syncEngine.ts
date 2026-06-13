@@ -13,6 +13,7 @@ import { mergeEntities, type Conflict } from './merge';
 import { downloadDB, uploadDB } from './driveSync';
 import { isConfigured } from './googleAuth';
 import { clearQueue } from './syncQueue';
+import { notifyProductsChanged } from '@/features/products/productEvents';
 import localforage from 'localforage';
 
 const SCHEMA_VERSION = 1;
@@ -66,6 +67,7 @@ export async function syncNow(resolvedMerged?: Product[]): Promise<SyncStatus> {
 
     // Ghi kết quả về local + đẩy lên Drive (chỉ metadata — BR-9, ảnh đẩy riêng).
     await bulkPut(finalProducts);
+    notifyProductsChanged();
     const db: OwinDB = { schemaVersion: SCHEMA_VERSION, systems: [], products: finalProducts };
     await uploadDB(db);
     await saveBase(finalProducts);

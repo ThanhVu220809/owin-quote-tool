@@ -35,7 +35,8 @@ function byId<T extends SyncEntity>(arr: T[]): Map<string, T> {
 /** So sánh nội dung 2 entity, BỎ QUA updatedAt (chỉ quan tâm trạng thái thực). */
 function sameContent<T extends SyncEntity>(a: T, b: T): boolean {
   const strip = (e: T) => {
-    const { updatedAt: _u, ...rest } = e;
+    const rest: Partial<T> = { ...e };
+    delete rest.updatedAt;
     return JSON.stringify(rest, Object.keys(rest).sort());
   };
   return strip(a) === strip(b);

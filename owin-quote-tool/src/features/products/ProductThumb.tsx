@@ -20,16 +20,19 @@ export function ProductThumb({
   useEffect(() => {
     let revoked: string | null = null;
     let active = true;
-    if (imageId) {
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      if (!imageId) {
+        setUrl(null);
+        return;
+      }
       getImageUrl(imageId).then((u) => {
         if (active && u) {
           revoked = u;
           setUrl(u);
         }
       });
-    } else {
-      setUrl(null);
-    }
+    });
     return () => {
       active = false;
       if (revoked) URL.revokeObjectURL(revoked);
