@@ -15,7 +15,16 @@ import type { Format1Data, Format1Item, Format2Data, Format2Item } from '@/types
 import { ITEMS_LOOP } from '@/types/placeholders';
 import { formatSoVND } from '@/utils/format';
 import { formatHienThiKhoiLuong } from '@/utils/calc';
-import { tinhDong, khoiLuongDong, tinhTongBaoGia } from '@/features/quote/quoteCalc';
+import { tinhDong, khoiLuongDong, tinhTongBaoGia, tinhTongLamTron } from '@/features/quote/quoteCalc';
+
+/** Ngày/tháng/năm hiện tại cho phần đầu báo giá. */
+function ngayThangNam(d = new Date()) {
+  return {
+    ngay: String(d.getDate()),
+    thang: String(d.getMonth() + 1),
+    nam: String(d.getFullYear()),
+  };
+}
 
 /** Mô tả phụ kiện đang bật của 1 dòng → chuỗi nhiều dòng (\n). */
 function moTaPhuKien(line: QuoteLine): string {
@@ -80,14 +89,22 @@ export function buildFormat1Data(customer: Customer, lines: QuoteLine[], tamUng 
     }
   }
   const tong = tinhTongBaoGia(lines);
+  const lamTron = tinhTongLamTron(lines);
+  const conLai = lamTron - tamUng;
+  const d = ngayThangNam();
   return {
     ten_kh: customer.ten,
     dia_chi: customer.diaChi,
     sdt: customer.sdt,
     email: customer.email,
+    ngay: d.ngay,
+    thang: d.thang,
+    nam: d.nam,
     tong_tien: formatSoVND(tong),
+    lam_tron: formatSoVND(lamTron),
     tam_ung: formatSoVND(tamUng),
-    con_lai: formatSoVND(tong - tamUng),
+    con_lai: formatSoVND(conLai),
+    can_thanh_toan: formatSoVND(conLai),
     [ITEMS_LOOP]: items,
   };
 }
@@ -142,14 +159,22 @@ export function buildFormat2Data(
     }
   }
   const tong = tinhTongBaoGia(lines);
+  const lamTron = tinhTongLamTron(lines);
+  const conLai = lamTron - tamUng;
+  const d = ngayThangNam();
   return {
     ten_kh: customer.ten,
     dia_chi: customer.diaChi,
     sdt: customer.sdt,
     email: customer.email,
+    ngay: d.ngay,
+    thang: d.thang,
+    nam: d.nam,
     tong_tien: formatSoVND(tong),
+    lam_tron: formatSoVND(lamTron),
     tam_ung: formatSoVND(tamUng),
-    con_lai: formatSoVND(tong - tamUng),
+    con_lai: formatSoVND(conLai),
+    can_thanh_toan: formatSoVND(conLai),
     [ITEMS_LOOP]: items,
   };
 }

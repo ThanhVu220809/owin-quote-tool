@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Trash2, Package, FileDown } from 'lucide-react';
+import { Trash2, Package, FileDown, FileSpreadsheet, Printer } from 'lucide-react';
 import type { Customer, Product, QuoteLine, Accessory } from '@/types/models';
 import { useProducts } from '@/features/products/useProducts';
 import { ProductThumb } from '@/features/products/ProductThumb';
@@ -7,9 +7,11 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { Switch } from '@/components/Switch';
 import { formatVND } from '@/utils/format';
 import { getImageDataUrl } from '@/utils/imageStorage';
-import { tinhDong, tinhTongBaoGia, createLineFromProduct } from './quoteCalc';
+import { tinhDong, tinhTongBaoGia, tinhTongLamTron, createLineFromProduct } from './quoteCalc';
 import { QuotePreview } from './QuotePreview';
 import { exportFormat1, exportFormat2 } from '@/features/export/wordExport';
+import { exportExcel } from '@/features/export/excelExport';
+import { exportQuotePDF } from '@/features/export/pdfExport';
 
 const emptyCustomer: Customer = { ten: '', sdt: '', diaChi: '', email: '' };
 
@@ -45,8 +47,6 @@ export function QuoteView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines]);
 
-  const total = useMemo(() => tinhTongBaoGia(lines), [lines]);
-
   const addProduct = (p: Product) => setLines((ls) => [...ls, createLineFromProduct(p)]);
   const removeLine = (id: string) => setLines((ls) => ls.filter((l) => l.id !== id));
   const updateLine = (id: string, patch: Partial<QuoteLine>) =>
@@ -62,18 +62,25 @@ export function QuoteView() {
 
   const setCust = (k: keyof Customer, v: string) => setCustomer((c) => ({ ...c, [k]: v }));
 
-  const doExport = async (fmt: 1 | 2) => {
+  const total = useMemo(() => tinhTongBaoGia(lines), [lines]);
+  const totalLamTron = useMemo(() => tinhTongLamTron(lines), [lines]);
+
+  const runExport = async (fn: () => Promise<void> | void) => {
     setExportErr(null);
     setExporting(true);
     try {
-      if (fmt === 1) await exportFormat1(customer, lines, tamUng);
-      else await exportFormat2(customer, lines, imageMap, tamUng);
+      await fn();
     } catch (e) {
       setExportErr(e instanceof Error ? e.message : String(e));
     } finally {
       setExporting(false);
     }
   };
+
+  const doExport = (fmt: 1 | 2) =>
+    runExport(() => (fmt === 1 ? exportFormat1(customer, lines, tamUng) : exportFormat2(customer, lines, imageMap, tamUng)));
+  const doExcel = () => runExport(() => exportExcel(customer, lines, tamUng));
+  const doPDF = () => exportQuotePDF();
 
   return (
     <div>
@@ -162,6 +169,11 @@ export function QuoteView() {
                 <td>{formatVND(total)}</td>
                 <td></td>
               </tr>
+              <tr className="qt-total-row qt-total-sub">
+                <td className="l" colSpan={5}>LÀM TRÒN (xuống 100.000)</td>
+                <td>{formatVND(totalLamTron)}</td>
+                <td></td>
+              </tr>
             </tbody>
           </table>
         )}
@@ -178,12 +190,18 @@ export function QuoteView() {
       </div>
 
       {/* EXPORT */}
-      <div className="toolbar">
+      <div className="toolbar no-print">
         <button className="btn btn-primary" disabled={lines.length === 0 || exporting} onClick={() => doExport(1)}>
-          <FileDown size={18} style={{ verticalAlign: '-3px' }} /> Xuất Word — Báo giá (F1)
+          <FileDown size={18} style={{ verticalAlign: '-3px' }} /> Word — Báo giá (F1)
         </button>
         <button className="btn btn-ghost" disabled={lines.length === 0 || exporting} onClick={() => doExport(2)}>
-          <FileDown size={18} style={{ verticalAlign: '-3px' }} /> Xuất Word — Bảng giá (F2)
+          <FileDown size={18} style={{ verticalAlign: '-3px' }} /> Word — Bảng giá (F2)
+        </button>
+        <button className="btn btn-ghost" disabled={lines.length === 0 || exporting} onClick={doExcel}>
+          <FileSpreadsheet size={18} style={{ verticalAlign: '-3px' }} /> Xuất Excel
+        </button>
+        <button className="btn btn-ghost" disabled={lines.length === 0} onClick={doPDF}>
+          <Printer size={18} style={{ verticalAlign: '-3px' }} /> Xuất PDF
         </button>
         {exporting && <span className="muted">Đang xuất…</span>}
         {exportErr && <span style={{ color: 'var(--ios-red)' }}>{exportErr}</span>}

@@ -19,6 +19,7 @@ import ImageModule from 'docxtemplater-image-module-free';
 import type { Customer, QuoteLine } from '@/types/models';
 import { buildFormat1Data, buildFormat2Data } from './buildQuoteData';
 import { TEMPLATE_FILES } from '@/types/placeholders';
+import { downloadBlob } from '@/utils/download';
 
 import tplBaoGiaUrl from '@/assets/templates/Template_Bao_Gia.docx?url';
 import tplBangGiaUrl from '@/assets/templates/Template_Bang_Gia.docx?url';
@@ -41,18 +42,6 @@ async function fetchTemplate(url: string): Promise<ArrayBuffer> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Không tải được template: ${url}`);
   return res.arrayBuffer();
-}
-
-/** Tải Blob về máy với tên file. */
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Tính [w,h] giữ tỉ lệ, cạnh rộng ≤ maxW (px → docxtemplater dùng px). */

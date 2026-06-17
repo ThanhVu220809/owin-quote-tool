@@ -1,0 +1,24 @@
+/**
+ * XUẤT PDF — in trực tiếp khối preview A4 (window.print → "Save as PDF").
+ * App thuần client nên không dùng được LibreOffice/Word; in-to-PDF cho fidelity cao nhất,
+ * chữ chọn được, không cần dependency. CSS in nằm trong owin-theme.css (@media print).
+ *
+ * Quy ước: thêm class 'printing-quote' lên <body>; CSS chỉ hiện .preview-doc khi in.
+ */
+export function exportQuotePDF(): void {
+  const body = document.body;
+  body.classList.add('printing-quote');
+
+  const cleanup = () => {
+    body.classList.remove('printing-quote');
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+
+  // In (người dùng chọn "Save as PDF"). setTimeout đảm bảo class kịp áp dụng.
+  setTimeout(() => {
+    window.print();
+    // Dự phòng nếu trình duyệt không bắn afterprint.
+    setTimeout(cleanup, 1500);
+  }, 50);
+}

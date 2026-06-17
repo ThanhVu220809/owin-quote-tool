@@ -41,9 +41,25 @@ export function khoiLuongDong(line: QuoteLine): number {
   return tinhKhoiLuong(line.dvt, line.rong ?? 0, line.cao ?? 0, line.sl);
 }
 
-/** Tổng toàn bộ báo giá. */
+/** Tổng toàn bộ báo giá (CHƯA làm tròn — số gốc, dùng cho dòng "TỔNG TIỀN"). */
 export function tinhTongBaoGia(lines: QuoteLine[]): number {
   return lines.reduce((sum, l) => sum + tinhDong(l).tongDong, 0);
+}
+
+/**
+ * Làm tròn tiền XUỐNG bội số cho trước (BR-1b — quy tắc app mới).
+ * Floor để "LÀM TRÒN" không bao giờ làm tăng số phải trả.
+ * Port từ roundDownToNearestMultiple (web/src/lib/pricing/rounding.ts).
+ */
+export function lamTronXuong(value: number, multiple = 100000): number {
+  if (!Number.isFinite(value)) return 0;
+  const safe = Math.max(1, Math.abs(Math.round(multiple)));
+  return Math.floor(value / safe) * safe;
+}
+
+/** Tổng báo giá ĐÃ làm tròn xuống bội số 100.000 (dòng "LÀM TRÒN"). */
+export function tinhTongLamTron(lines: QuoteLine[]): number {
+  return lamTronXuong(tinhTongBaoGia(lines), 100000);
 }
 
 /**

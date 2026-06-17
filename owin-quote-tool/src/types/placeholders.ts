@@ -25,15 +25,20 @@ export const ITEMS_LOOP = 'items' as const;
 
 /* ───────────────────────── FORMAT 1 — Báo giá công trình ───────────────────────── */
 
-/** Placeholder cấp ngoài loop (khách hàng + tổng tiền). */
+/** Placeholder cấp ngoài loop (khách hàng + ngày + tổng tiền). */
 export const FORMAT1_TOP = [
   'ten_kh',   // tên khách hàng
   'dia_chi',  // địa chỉ
   'sdt',      // số điện thoại
   'email',    // email
-  'tong_tien', // tổng cộng
+  'ngay',     // ngày báo giá
+  'thang',    // tháng báo giá
+  'nam',      // năm báo giá
+  'tong_tien', // tổng cộng (CHƯA làm tròn)
+  'lam_tron',  // tổng đã làm tròn xuống 100.000 (BR-1b)
   'tam_ung',   // tạm ứng
-  'con_lai',   // còn lại
+  'con_lai',   // còn lại = lam_tron − tam_ung
+  'can_thanh_toan', // cần thanh toán (= con_lai, nhãn theo mẫu mới)
 ] as const;
 
 /** Placeholder mỗi phần tử TRONG {#items} của Format 1. */
@@ -60,9 +65,14 @@ export const FORMAT2_TOP = [
   'dia_chi',
   'sdt',
   'email',
+  'ngay',
+  'thang',
+  'nam',
   'tong_tien',
+  'lam_tron',
   'tam_ung',
   'con_lai',
+  'can_thanh_toan',
 ] as const;
 
 /** Placeholder mỗi phần tử TRONG {#items} của Format 2. */

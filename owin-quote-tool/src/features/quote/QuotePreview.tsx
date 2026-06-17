@@ -43,6 +43,7 @@ export function QuotePreview({ format, customer, lines, imageMap, tamUng }: Prop
         <div><b>Khách hàng:</b> {data.ten_kh || '—'}</div>
         <div><b>Địa chỉ:</b> {data.dia_chi || '—'}</div>
         <div><b>SĐT:</b> {data.sdt || '—'} &nbsp; <b>Email:</b> {data.email || '—'}</div>
+        <div className="doc-date">Ngày {data.ngay} tháng {data.thang} năm {data.nam}</div>
       </div>
 
       <table>
@@ -112,8 +113,9 @@ export function QuotePreview({ format, customer, lines, imageMap, tamUng }: Prop
 
       <div className="totals">
         <div><b>Tổng cộng:</b> {data.tong_tien}</div>
+        <div>Làm tròn: {data.lam_tron}</div>
         <div>Tạm ứng: {data.tam_ung}</div>
-        <div><b>Còn lại:</b> {data.con_lai}</div>
+        <div><b>Cần thanh toán:</b> {data.can_thanh_toan}</div>
       </div>
     </div>
   );

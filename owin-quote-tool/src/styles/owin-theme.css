@@ -1,0 +1,121 @@
+/*
+ * OWIN THEME — phủ lên ios.css để đổi sang phong cách UI mới (lấy từ web.zip globals.css).
+ * Giữ nguyên class hiện có; chỉ remap token màu/bo góc + tinh chỉnh header, bảng, preview A4, in PDF.
+ * Import SAU ios.css trong main.tsx.
+ */
+:root {
+  /* Bảng màu Apple/OWIN từ zip */
+  --owin-primary: #0f2a3d;      /* navy đậm */
+  --owin-gold: #c8a45d;         /* vàng đồng */
+  --owin-action: #0066cc;       /* xanh hành động */
+  --owin-action-hover: #0071e3;
+  --owin-ink: #1d1d1f;
+  --owin-ink-muted: #6e6e73;
+  --owin-bg: #f5f5f7;
+  --owin-border: #e5e5ea;
+
+  /* Remap token cũ (ios) → palette mới, để toàn bộ class hiện có đổi theo */
+  --ios-blue: var(--owin-action);
+  --ios-green: #1f8a5b;
+  --ios-red: #c2410c;
+  --ios-gray1: var(--owin-ink-muted);
+  --ios-gray5: var(--owin-border);
+  --ios-gray6: #eff0f2;
+  --ios-label: var(--owin-ink);
+  --ios-label2: #3c3c43;
+  --ios-bg: var(--owin-bg);
+  --ios-card: #ffffff;
+  --ios-radius: 20px;
+  --ios-radius-sm: 12px;
+  --ios-shadow: 0 1px 2px rgba(15, 42, 61, 0.05), 0 10px 30px rgba(15, 42, 61, 0.06);
+
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Header chữ tiêu đề kèm gạch chân vàng đồng */
+.app-title {
+  background: linear-gradient(90deg, var(--owin-primary), #1c4a66);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.app-subtitle { color: var(--owin-ink-muted); }
+
+/* Tabs điều hướng: active = navy + gạch vàng */
+.nav-tabs button.active {
+  color: var(--owin-primary);
+  box-shadow: var(--ios-shadow);
+  border-bottom: 2px solid var(--owin-gold);
+}
+
+/* Card viền mềm */
+.card { border: 1px solid var(--owin-border); }
+
+/* Nút chính = xanh hành động; ghost = nền sáng viền mềm */
+.btn-primary { background: var(--owin-action); }
+.btn-primary:hover { background: var(--owin-action-hover); }
+.btn-ghost {
+  background: #fff;
+  color: var(--owin-action);
+  border: 1px solid var(--owin-border);
+}
+.toolbar { flex-wrap: wrap; }
+
+/* Pick-card: hover nâng nhẹ */
+.pick-card { border: 1px solid var(--owin-border); transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.pick-card:hover { box-shadow: 0 8px 24px rgba(15, 42, 61, 0.12); transform: translateY(-2px); }
+
+/* Bảng tính: dòng tổng + dòng làm tròn */
+.qt-total-row td { color: var(--owin-primary); }
+.qt-total-sub td { font-weight: 600; font-size: 13px; color: var(--owin-ink-muted); border-top: none; }
+
+/* ───────────── Preview A4 (giống QuoteA4Table trong zip) ───────────── */
+.preview-doc {
+  border: 1px solid var(--owin-border);
+  border-radius: var(--ios-radius);
+  color: var(--owin-ink);
+}
+.preview-doc .doc-title {
+  color: var(--owin-primary);
+  letter-spacing: 0.02em;
+  border-bottom: 3px solid var(--owin-gold);
+  display: inline-block;
+  padding-bottom: 4px;
+}
+.preview-doc .doc-date { font-style: italic; color: var(--owin-ink-muted); margin-top: 6px; }
+.preview-doc th {
+  background: var(--owin-primary);
+  color: #fff;
+  font-weight: 600;
+  border-color: var(--owin-primary);
+}
+.preview-doc td { border-color: #cfd6db; }
+.preview-doc .pk-row td { background: #f3f6f8; }
+.preview-doc .totals { line-height: 1.8; }
+.preview-doc .totals b { color: var(--owin-primary); }
+
+/* ───────────── In PDF: chỉ hiện .preview-doc, khổ A4 ngang ───────────── */
+@page { size: A4 landscape; margin: 10mm; }
+
+@media print {
+  body.printing-quote { background: #fff; }
+  body.printing-quote .app-shell > *:not(:has(.preview-doc)),
+  body.printing-quote .no-print { display: none !important; }
+
+  /* Ẩn tất cả, chỉ hiện khối preview đang chọn */
+  body.printing-quote * { visibility: hidden; }
+  body.printing-quote .preview-doc,
+  body.printing-quote .preview-doc * { visibility: visible; }
+  body.printing-quote .preview-doc {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+  }
+  body.printing-quote .preview-doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

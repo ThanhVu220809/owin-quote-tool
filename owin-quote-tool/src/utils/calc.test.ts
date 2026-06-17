@@ -21,13 +21,13 @@ describe('TEST 1.1 — tinhKhoiLuong (BR-3)', () => {
   });
 });
 
-/* ──────── TEST 1.2 — Thành tiền FULL PRECISION khớp file mẫu TỪNG ĐỒNG (BR-1) ──────── */
-describe('TEST 1.2 — tinhThanhTien (BR-1) — khớp file mẫu Owin', () => {
-  it('S1: 1.196 × 1.796 × 1 × 2.000.000 = 4296032 (KHÔNG phải 4296000)', () => {
-    expect(tinhThanhTien('m²', 1.196, 1.796, 1, 2000000)).toBe(4296032);
+/* ──────── TEST 1.2 — Thành tiền (BR-1 quy tắc app mới: làm tròn KL 3 số lẻ rồi nhân) ──────── */
+describe('TEST 1.2 — tinhThanhTien (BR-1) — quy tắc app mới', () => {
+  it('S1: round3(1.196 × 1.796 × 1)=2.148 × 2.000.000 = 4296000', () => {
+    expect(tinhThanhTien('m²', 1.196, 1.796, 1, 2000000)).toBe(4296000);
   });
-  it('S2: 1.194 × 1.794 × 1 × 2.000.000 = 4284072', () => {
-    expect(tinhThanhTien('m²', 1.194, 1.794, 1, 2000000)).toBe(4284072);
+  it('S2: round3(1.194 × 1.794 × 1)=2.142 × 2.000.000 = 4284000', () => {
+    expect(tinhThanhTien('m²', 1.194, 1.794, 1, 2000000)).toBe(4284000);
   });
   it('Hệ Bộ S6: sl=1 × 2.000.000 = 2000000 (không dính rộng/cao)', () => {
     expect(tinhThanhTien('Bộ', 0, 0, 1, 2000000)).toBe(2000000);
@@ -37,15 +37,15 @@ describe('TEST 1.2 — tinhThanhTien (BR-1) — khớp file mẫu Owin', () => {
   });
 });
 
-/* ───────────────── BR-2 — Khối lượng hiển thị (3 số lẻ) tách số tính ───────────────── */
-describe('BR-2 — formatHienThiKhoiLuong tách số hiển thị khỏi số tính', () => {
-  it('2.148016 → 2.148 (chỉ để hiển thị)', () => {
+/* ───────── BR-2 — Khối lượng hiển thị (3 số lẻ) = đúng số đem nhân ở BR-1 ───────── */
+describe('BR-2 — formatHienThiKhoiLuong = số dùng để nhân (quy tắc app mới)', () => {
+  it('2.148016 → 2.148', () => {
     expect(formatHienThiKhoiLuong(2.148016)).toBe(2.148);
   });
-  it('số hiển thị KHÔNG được dùng để nhân (4296032 ≠ 2.148×2.000.000=4296000)', () => {
+  it('số hiển thị ĐƯỢC dùng để nhân: 2.148 × 2.000.000 = 4296000 = thành tiền', () => {
     const klHienThi = formatHienThiKhoiLuong(tinhKhoiLuong('m²', 1.196, 1.796, 1));
-    expect(Math.round(klHienThi * 2000000)).toBe(4296000); // sai nếu dùng số hiển thị
-    expect(tinhThanhTien('m²', 1.196, 1.796, 1, 2000000)).toBe(4296032); // đúng (full precision)
+    expect(Math.round(klHienThi * 2000000)).toBe(4296000);
+    expect(tinhThanhTien('m²', 1.196, 1.796, 1, 2000000)).toBe(4296000);
   });
 });
 

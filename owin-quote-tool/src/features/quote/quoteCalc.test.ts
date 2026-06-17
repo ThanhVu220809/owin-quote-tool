@@ -3,6 +3,8 @@ import type { Product, QuoteLine } from '@/types/models';
 import {
   tinhDong,
   tinhTongBaoGia,
+  tinhTongLamTron,
+  lamTronXuong,
   tinhTienPhuKienDong,
   createLineFromProduct,
 } from '@/features/quote/quoteCalc';
@@ -19,11 +21,11 @@ function lineS1(): QuoteLine {
 }
 
 describe('TEST 4.2 — engine real-time + tổng dòng (BR-1)', () => {
-  it('S1 1.196×1.796×1 @2.000.000 + PK 2×500.000 → cửa 4.296.032, PK 1.000.000, tổng 5.296.032', () => {
+  it('S1 1.196×1.796×1 @2.000.000 + PK 2×500.000 → cửa 4.296.000, PK 1.000.000, tổng 5.296.000', () => {
     const r = tinhDong(lineS1());
-    expect(r.tienChinh).toBe(4296032);
+    expect(r.tienChinh).toBe(4296000);
     expect(r.tienPhuKien).toBe(1000000); // chỉ tính PK enabled
-    expect(r.tongDong).toBe(5296032);
+    expect(r.tongDong).toBe(5296000);
   });
 
   it('phụ kiện tắt (enabled:false) KHÔNG được cộng', () => {
@@ -41,7 +43,18 @@ describe('TEST 4.2 — engine real-time + tổng dòng (BR-1)', () => {
   it('tổng báo giá nhiều dòng', () => {
     const l1 = lineS1();
     const l2 = { ...lineS1(), id: '9', accessories: [] };
-    expect(tinhTongBaoGia([l1, l2])).toBe(5296032 + 4296032);
+    expect(tinhTongBaoGia([l1, l2])).toBe(5296000 + 4296000);
+  });
+});
+
+describe('BR-1b — tổng làm tròn xuống bội số 100.000 (quy tắc app mới)', () => {
+  it('lamTronXuong floor về 100.000: 5.296.000 → 5.200.000', () => {
+    expect(lamTronXuong(5296000)).toBe(5200000);
+    expect(lamTronXuong(43375322)).toBe(43300000);
+    expect(lamTronXuong(0)).toBe(0);
+  });
+  it('tinhTongLamTron: 1 dòng S1 (tổng 5.296.000) → 5.200.000', () => {
+    expect(tinhTongLamTron([lineS1()])).toBe(5200000);
   });
 });
 

@@ -44,14 +44,15 @@ describe('TEST 4.5 — Xuất Word Format 1 (Báo giá)', () => {
     const xml = doc.getZip().file('word/document.xml')!.asText();
 
     expect(xml).toContain('Anh Tú');           // khách
-    expect(xml).toContain('4.296.032');         // tiền cửa (BR-1, KHÔNG phải 4.296.000)
-    expect(xml).not.toContain('4.296.000');
+    expect(xml).toContain('4.296.000');         // tiền cửa (BR-1 quy tắc mới: round3 KL rồi nhân)
+    expect(xml).not.toContain('4.296.032');
     expect(xml).toContain('1.000.000');         // phụ kiện 2×500.000
-    expect(xml).toContain('5.296.032');         // tổng = cửa + PK
+    expect(xml).toContain('5.296.000');         // tổng = cửa + PK (CHƯA làm tròn)
+    expect(xml).toContain('5.200.000');         // LÀM TRÒN xuống bội số 100.000
     expect(xml).toContain('Tay nắm Kinlong');   // dòng phụ kiện expand
     expect(xml).toContain('S1');
-    // tạm ứng 1.000.000 → còn lại 4.296.032
-    expect(xml).toContain('4.296.032');
+    // tạm ứng 1.000.000 → cần thanh toán = 5.200.000 − 1.000.000 = 4.200.000
+    expect(xml).toContain('4.200.000');
   });
 });
 
@@ -77,7 +78,7 @@ describe('TEST 4.5 — Xuất Word Format 2 (Bảng giá, có ảnh)', () => {
     const outZip = doc.getZip();
     const xml = outZip.file('word/document.xml')!.asText();
     expect(xml).toContain('Anh Tú');
-    expect(xml).toContain('4.296.032');
+    expect(xml).toContain('4.296.000');
     expect(xml).toContain('1.196 × 1.796 (m)'); // kích thước gộp Format 2
     // ảnh được nhúng → có file media trong zip
     const mediaFiles = Object.keys(outZip.files).filter((f) => f.startsWith('word/media/'));
