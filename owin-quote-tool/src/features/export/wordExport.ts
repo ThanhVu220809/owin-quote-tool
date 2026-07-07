@@ -16,10 +16,13 @@
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import ImageModule from 'docxtemplater-image-module-free';
-import type { Customer, QuoteLine } from '@/types/models';
+import type { CalculatedQuote, Customer, ProductRecord, QuoteLine } from '@/types/models';
 import { buildFormat1Data, buildFormat2Data } from './buildQuoteData';
 import { TEMPLATE_FILES } from '@/types/placeholders';
 import { downloadBlob } from '@/utils/download';
+import { formatSoVND } from '@/utils/format';
+import { getImageDataUrl } from '@/utils/imageStorage';
+import { buildCatalogueBlockRows } from '@/lib/catalogue/catalogueRows';
 
 import tplBaoGiaUrl from '@/assets/templates/Template_Bao_Gia.docx?url';
 import tplBangGiaUrl from '@/assets/templates/Template_Bang_Gia.docx?url';
@@ -42,6 +45,210 @@ async function fetchTemplate(url: string): Promise<ArrayBuffer> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Không tải được template: ${url}`);
   return res.arrayBuffer();
+}
+
+function dateParts(value?: string | Date | null) {
+  const date = value ? new Date(value) : new Date();
+  const safe = Number.isNaN(date.getTime()) ? new Date() : date;
+  return {
+    ngay: String(safe.getDate()),
+    thang: String(safe.getMonth() + 1),
+    nam: String(safe.getFullYear()),
+  };
+}
+
+function unitLabel(unit: string): string {
+  if (unit === 'BO') return 'Bộ';
+  if (unit === 'METER') return 'md';
+  return 'm²';
+}
+
+function formatDecimal(value: number | null | undefined): string {
+  if (!Number.isFinite(Number(value)) || Number(value) === 0) return '';
+  const n = Number(value);
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(3).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
+}
+
+function legacyImageId(path: string): string | null {
+  const prefix = 'legacy-images/';
+  return path.startsWith(prefix) ? path.slice(prefix.length) : null;
+}
+
+export function buildQuoteWordData(quote: CalculatedQuote) {
+  const items: Array<Record<string, string | number | boolean>> = [];
+  let stt = 0;
+
+  quote.items.forEach((item) => {
+    stt += 1;
+    item.dimensions.forEach((line, lineIndex) => {
+      const first = lineIndex === 0;
+      const specLines = first
+        ? (item.specs || []).filter((spec) => spec.value).map((spec) => `- ${spec.key}: ${spec.value}`)
+        : [];
+      items.push({
+        stt: first ? stt : '',
+        ma: first ? item.quoteItemCode || item.productCode : '',
+        mo_ta: [
+          first ? item.itemName : line.description || '',
+          first ? item.description || '' : '',
+          ...specLines,
+        ].filter(Boolean).join('\n'),
+        dvt: unitLabel(line.unit),
+        rong: line.unit === 'BO' ? '' : line.widthM ?? '',
+        cao: line.unit === 'BO' ? '' : line.heightM ?? '',
+        sl: line.quantity,
+        khoi_luong: line.unit === 'BO' ? line.quantity : formatDecimal(line.calculatedQty),
+        don_gia: formatSoVND(line.unitPriceVnd),
+        thanh_tien: formatSoVND(line.lineTotalVnd),
+        is_sp: true,
+        is_pk: false,
+      });
+    });
+
+    item.accessories
+      .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
+      .forEach((accessory) => {
+        items.push({
+          stt: '',
+          ma: '',
+          mo_ta: [accessory.name, accessory.note].filter(Boolean).join('\n'),
+          dvt: 'Bộ',
+          rong: '',
+          cao: '',
+          sl: formatDecimal(accessory.quantityPerSet),
+          khoi_luong: formatDecimal(accessory.totalSet),
+          don_gia: formatSoVND(accessory.unitPriceVnd),
+          thanh_tien: formatSoVND(accessory.lineTotalVnd),
+          is_sp: false,
+          is_pk: true,
+        });
+      });
+  });
+
+  const d = dateParts(quote.quoteDate);
+  return {
+    ten_kh: quote.customerName,
+    dia_chi: quote.customerAddress,
+    sdt: quote.customerPhone,
+    email: quote.customerEmail || '',
+    ngay: d.ngay,
+    thang: d.thang,
+    nam: d.nam,
+    tong_tien: formatSoVND(quote.summary.totalVnd),
+    lam_tron: formatSoVND(quote.summary.roundedTotalVnd),
+    tam_ung: formatSoVND(quote.summary.depositVnd),
+    con_lai: formatSoVND(quote.summary.balanceVnd),
+    can_thanh_toan: formatSoVND(quote.summary.balanceVnd),
+    items,
+  };
+}
+
+export async function exportQuoteWord(quote: CalculatedQuote, quoteCode: string): Promise<string> {
+  const content = await fetchTemplate(tplBaoGiaUrl);
+  const zip = new PizZip(content);
+  const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+  doc.render(buildQuoteWordData(quote));
+  const blob = doc.toBlob();
+  const fileName = `Bao_gia_${quoteCode}.docx`;
+  downloadBlob(blob, fileName);
+  return fileName;
+}
+
+export async function buildBangGiaWordData(products: ProductRecord[]) {
+  const rows = buildCatalogueBlockRows(products);
+  const items: Array<Record<string, string | number | boolean>> = [];
+  const imageValues: string[] = [];
+
+  for (const row of rows) {
+    let image = '';
+    const imageId = legacyImageId(row.imagePath);
+    if (row.rowType === 'product' && imageId) {
+      image = (await getImageDataUrl(imageId)) || '';
+      if (image) imageValues.push(image);
+    }
+
+    if (row.rowType === 'category') {
+      items.push({
+        stt: '',
+        ma: '',
+        mo_ta: row.categoryName,
+        kich_thuoc: '',
+        dvt: '',
+        sl: '',
+        khoi_luong: '',
+        don_gia: '',
+        thanh_tien: '',
+        image: '',
+        is_sp: false,
+        is_pk: true,
+      });
+      continue;
+    }
+
+    items.push({
+      stt: row.stt,
+      ma: row.productCode,
+      mo_ta: row.description,
+      kich_thuoc: [row.width, row.height].filter(Boolean).join(' × '),
+      dvt: row.unit,
+      sl: row.weight,
+      khoi_luong: row.weight,
+      don_gia: row.unitPriceVnd ? formatSoVND(row.unitPriceVnd) : '',
+      thanh_tien: row.amountVnd ? formatSoVND(row.amountVnd) : '',
+      image,
+      is_sp: row.rowType === 'product',
+      is_pk: row.rowType !== 'product',
+    });
+  }
+
+  const d = dateParts();
+  const total = rows.reduce((sum, row) => sum + (row.rowType === 'product' ? row.completedTotalVnd || 0 : 0), 0);
+  return {
+    data: {
+      ten_kh: 'HOÀNG ANH OWIN',
+      dia_chi: 'Tiên Điền - Nghi Xuân - Hà Tĩnh',
+      sdt: '0799040616',
+      email: '',
+      ngay: d.ngay,
+      thang: d.thang,
+      nam: d.nam,
+      tong_tien: formatSoVND(total),
+      lam_tron: formatSoVND(total),
+      tam_ung: '0',
+      con_lai: formatSoVND(total),
+      can_thanh_toan: formatSoVND(total),
+      items,
+    },
+    imageValues,
+  };
+}
+
+export async function exportBangGiaWord(products: ProductRecord[]): Promise<string> {
+  // TODO: Port the REFERENCE row-cloning DOCX renderer if exact vertical merges and
+  // reference placeholders are required in-browser. This browser-safe version uses
+  // TARGET's loop template so GitHub Pages builds stay static.
+  const content = await fetchTemplate(tplBangGiaUrl);
+  const { data, imageValues } = await buildBangGiaWordData(products);
+  const sizeMap = await buildSizeMap(imageValues);
+  const imageModule = new ImageModule({
+    centered: false,
+    fileType: 'docx',
+    getImage: (tagValue: string) => dataUrlToArrayBuffer(tagValue || TRANSPARENT_PNG),
+    getSize: (_img: ArrayBuffer, tagValue: string): [number, number] =>
+      tagValue ? sizeMap.get(tagValue) ?? [110, 80] : [1, 1],
+  });
+  const zip = new PizZip(content);
+  const doc = new Docxtemplater(zip, {
+    modules: [imageModule],
+    paragraphLoop: true,
+    linebreaks: true,
+  });
+  doc.render(data);
+  const blob = doc.toBlob();
+  const fileName = `Bang_gia_OWIN_${new Date().toISOString().slice(0, 10)}.docx`;
+  downloadBlob(blob, fileName);
+  return fileName;
 }
 
 /** Tính [w,h] giữ tỉ lệ, cạnh rộng ≤ maxW (px → docxtemplater dùng px). */

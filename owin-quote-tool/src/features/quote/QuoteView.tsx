@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Copy, Plus, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Copy, FileDown, Plus, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -16,6 +16,7 @@ import { generateSnapshot } from '@/lib/quote/quoteSnapshot';
 import { createCustomQuoteItem, createQuoteItemFromProduct } from '@/lib/quote/productToQuoteItem';
 import { rememberQuoteSuggestions } from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
+import { exportQuoteWord } from '@/features/export/wordExport';
 import { getAllQuotes, saveQuoteRecord } from './quoteStore';
 
 const QUOTE_SUGGESTION_TYPES = [
@@ -178,12 +179,16 @@ export function QuoteView() {
       ),
     );
 
-  const persistQuote = async (nextStatus: 'DRAFT' | 'SAVED' = 'SAVED') => {
+  const persistQuote = async (
+    nextStatus: 'DRAFT' | 'SAVED' | 'EXPORTED' = 'SAVED',
+    options: { code?: string; exportFileName?: string } = {},
+  ): Promise<QuoteRecord> => {
     setSaving(true);
     setMessage('');
     try {
       const existing = await getAllQuotes();
-      const code = quoteCode || generateQuoteCode(existing);
+      const existingRecord = quoteId ? existing.find((quote) => quote.id === quoteId) ?? null : null;
+      const code = options.code || quoteCode || generateQuoteCode(existing);
       const snapshot = generateSnapshot({ ...calculated, quoteCode: code }, code, new Date());
       const saved = await saveQuoteRecord({
         id: quoteId || undefined,
@@ -242,7 +247,18 @@ export function QuoteView() {
           })),
           sortOrder: index,
         })),
-        exports: [],
+        exports: options.exportFileName
+          ? [
+              ...(existingRecord?.exports ?? []),
+              {
+                id: crypto.randomUUID(),
+                type: 'docx',
+                fileName: options.exportFileName,
+                filePath: null,
+                createdAt: new Date().toISOString(),
+              },
+            ]
+          : existingRecord?.exports ?? [],
         folderPath: null,
         deletedAt: null,
       });
@@ -253,6 +269,21 @@ export function QuoteView() {
       await rememberQuoteSuggestions(quoteInput);
       await refreshSuggestions();
       await refreshHistory();
+      return saved;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const exportWord = async () => {
+    if (items.length === 0) return;
+    setSaving(true);
+    setMessage('');
+    try {
+      const existing = await getAllQuotes();
+      const code = quoteCode || generateQuoteCode(existing);
+      const fileName = await exportQuoteWord({ ...calculated, quoteCode: code }, code);
+      await persistQuote('EXPORTED', { code, exportFileName: fileName });
     } finally {
       setSaving(false);
     }
@@ -285,6 +316,9 @@ export function QuoteView() {
         <button className="btn btn-ghost" onClick={resetForm}>Báo giá mới</button>
         <button className="btn btn-primary" disabled={items.length === 0 || saving} onClick={() => void persistQuote('SAVED')}>
           <Save size={17} style={{ verticalAlign: '-3px' }} /> {saving ? 'Đang lưu…' : 'Lưu báo giá'}
+        </button>
+        <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportWord()}>
+          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Word
         </button>
       </div>
 

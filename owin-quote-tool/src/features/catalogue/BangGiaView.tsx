@@ -1,9 +1,10 @@
-import { Printer } from 'lucide-react';
-import { useMemo } from 'react';
+import { FileDown, Printer } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useProducts } from '@/features/products/useProducts';
 import { ProductThumb } from '@/features/products/ProductThumb';
 import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue/catalogueRows';
 import { formatVND } from '@/utils/format';
+import { exportBangGiaWord } from '@/features/export/wordExport';
 
 function legacyImageId(path: string): string | undefined {
   const prefix = 'legacy-images/';
@@ -27,6 +28,7 @@ function Money({ value }: { value: number | null }) {
 
 export function BangGiaView() {
   const { productRecords, loading } = useProducts();
+  const [exporting, setExporting] = useState(false);
   const rows = useMemo(() => buildCatalogueBlockRows(productRecords), [productRecords]);
   const blocks = useMemo(() => {
     const out: CatalogueBlockRow[][] = [];
@@ -48,6 +50,16 @@ export function BangGiaView() {
           <p className="app-subtitle">{loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
         </div>
         <div className="spacer" />
+        <button
+          className="btn btn-ghost"
+          disabled={productRecords.length === 0 || exporting}
+          onClick={() => {
+            setExporting(true);
+            exportBangGiaWord(productRecords).finally(() => setExporting(false));
+          }}
+        >
+          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Word'}
+        </button>
         <button className="btn btn-primary" onClick={() => window.print()}>
           <Printer size={17} style={{ verticalAlign: '-3px' }} /> In bảng giá
         </button>
