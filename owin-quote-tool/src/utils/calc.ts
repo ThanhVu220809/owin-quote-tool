@@ -11,7 +11,7 @@
  *          m²  : KL = rộng × cao × sl
  *          md  : KL = (rộng + cao) × sl
  *          Bộ  : KL = sl   (bỏ qua rộng/cao); thành tiền = sl × đơn giá.
- *  - BR-1b: TỔNG báo giá làm tròn XUỐNG bội số 100.000 (xem tinhTongLamTron ở quoteCalc).
+ *  - BR-1b: TỔNG báo giá làm tròn XUỐNG bội số 100.000 (quote-engine/totals).
  */
 
 import type { DVT } from '@/types/models';

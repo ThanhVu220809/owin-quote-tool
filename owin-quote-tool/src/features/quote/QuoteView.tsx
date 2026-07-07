@@ -16,7 +16,6 @@ import { generateSnapshot } from '@/lib/quote/quoteSnapshot';
 import { createCustomQuoteItem, createQuoteItemFromProduct } from '@/lib/quote/productToQuoteItem';
 import { rememberQuoteSuggestions } from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
-import { exportQuoteWord } from '@/features/export/wordExport';
 import { exportQuotePDF } from '@/features/export/pdfExport';
 import { ProductThumb } from '@/features/products/ProductThumb';
 import { getAllQuotes, saveQuoteRecord } from './quoteStore';
@@ -284,6 +283,7 @@ export function QuoteView() {
     try {
       const existing = await getAllQuotes();
       const code = quoteCode || generateQuoteCode(existing);
+      const { exportQuoteWord } = await import('@/features/export/wordExport');
       const fileName = await exportQuoteWord({ ...calculated, quoteCode: code }, code);
       await persistQuote('EXPORTED', { code, exportFileName: fileName });
     } finally {

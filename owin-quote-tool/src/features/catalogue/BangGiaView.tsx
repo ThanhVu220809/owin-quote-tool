@@ -4,7 +4,6 @@ import { useProducts } from '@/features/products/useProducts';
 import { ProductThumb } from '@/features/products/ProductThumb';
 import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue/catalogueRows';
 import { formatVND } from '@/utils/format';
-import { exportBangGiaWord } from '@/features/export/wordExport';
 
 function Lines({ text }: { text: string }) {
   if (!text) return null;
@@ -50,7 +49,9 @@ export function BangGiaView() {
           disabled={productRecords.length === 0 || exporting}
           onClick={() => {
             setExporting(true);
-            exportBangGiaWord(productRecords).finally(() => setExporting(false));
+            import('@/features/export/wordExport')
+              .then(({ exportBangGiaWord }) => exportBangGiaWord(productRecords))
+              .finally(() => setExporting(false));
           }}
         >
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Word'}
