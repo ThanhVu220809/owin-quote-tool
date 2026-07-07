@@ -95,6 +95,71 @@
 .preview-doc .totals { line-height: 1.8; }
 .preview-doc .totals b { color: var(--owin-primary); }
 
+/* ───────────── Bảng giá printable table ───────────── */
+.bang-gia-doc {
+  overflow-x: auto;
+  padding: 10px;
+  border-radius: 8px;
+}
+.bang-gia-table {
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12px;
+}
+.bang-gia-table th,
+.bang-gia-table td {
+  border: 1px solid #283846;
+  padding: 5px 6px;
+  vertical-align: middle;
+  white-space: pre-line;
+}
+.bang-gia-table thead th {
+  background: #0e2f44;
+  color: #fff;
+  text-align: center;
+}
+.bang-gia-table .logo-cell,
+.bang-gia-table .company-cell {
+  background: #fff;
+  color: #0e2f44;
+}
+.bang-gia-table .title-cell {
+  background: #4b6078;
+  color: #fff;
+  font-size: 15px;
+}
+.bang-gia-table .category-row td {
+  background: #d9e2f3;
+  font-weight: 700;
+  text-align: left;
+}
+.bang-gia-table .description-cell {
+  text-align: left;
+  line-height: 1.35;
+}
+.bang-gia-table .image-cell {
+  height: 120px;
+  padding: 3px;
+}
+.bang-gia-table .image-cell .ph {
+  max-height: 118px;
+  object-fit: contain;
+}
+.bang-gia-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.bang-gia-table .total-cell {
+  font-weight: 700;
+}
+.catalogue-item-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 /* ───────────── In PDF: chỉ hiện .preview-doc, khổ A4 ngang ───────────── */
 @page { size: A4 landscape; margin: 10mm; }
 
@@ -118,4 +183,24 @@
     padding: 0;
   }
   body.printing-quote .preview-doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .no-print { display: none !important; }
+  .app-shell:has(.bang-gia-doc) .nav-tabs,
+  .app-shell:has(.bang-gia-doc) .sync-bar {
+    display: none !important;
+  }
+  .bang-gia-doc {
+    border: none;
+    padding: 0;
+    overflow: visible;
+  }
+  .bang-gia-table {
+    min-width: 0;
+    font-size: 9pt;
+  }
+  .bang-gia-table th,
+  .bang-gia-table td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
