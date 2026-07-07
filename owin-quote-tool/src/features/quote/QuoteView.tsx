@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Copy, FileDown, Plus, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Copy, FileDown, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -17,6 +17,8 @@ import { createCustomQuoteItem, createQuoteItemFromProduct } from '@/lib/quote/p
 import { rememberQuoteSuggestions } from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
 import { exportQuoteWord } from '@/features/export/wordExport';
+import { exportQuotePDF } from '@/features/export/pdfExport';
+import { ProductThumb } from '@/features/products/ProductThumb';
 import { getAllQuotes, saveQuoteRecord } from './quoteStore';
 
 const QUOTE_SUGGESTION_TYPES = [
@@ -37,6 +39,11 @@ function unitLabel(unit: ProductUnit): string {
   if (unit === 'BO') return 'Bộ';
   if (unit === 'METER') return 'md';
   return 'm²';
+}
+
+function legacyImageId(path?: string | null): string | undefined {
+  const prefix = 'legacy-images/';
+  return path?.startsWith(prefix) ? path.slice(prefix.length) : undefined;
 }
 
 function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
@@ -320,6 +327,9 @@ export function QuoteView() {
         <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportWord()}>
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Word
         </button>
+        <button className="btn btn-ghost" disabled={items.length === 0} onClick={exportQuotePDF}>
+          <Printer size={17} style={{ verticalAlign: '-3px' }} /> In/PDF
+        </button>
       </div>
 
       <div className="two-col">
@@ -449,6 +459,8 @@ export function QuoteView() {
           ))
         )}
       </div>
+
+      <QuotePrintDocument quote={calculated} />
     </div>
   );
 }
@@ -483,6 +495,93 @@ function TotalLine({ label, value, strong }: { label: string; value: number; str
     <div className="switch-row">
       <span style={{ fontWeight: strong ? 700 : 500 }}>{label}</span>
       <span style={{ fontWeight: strong ? 800 : 600 }}>{formatVND(value)}</span>
+    </div>
+  );
+}
+
+function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote> }) {
+  const today = new Date(quote.quoteDate || new Date());
+  return (
+    <div className="preview-doc quote-print-doc">
+      <div className="doc-title">BÁO GIÁ CÔNG TRÌNH</div>
+      <div className="cust">
+        <div><b>Khách hàng:</b> {quote.customerName || '—'}</div>
+        <div><b>Địa chỉ:</b> {quote.customerAddress || '—'}</div>
+        <div><b>SĐT:</b> {quote.customerPhone || '—'} &nbsp; <b>Email:</b> {quote.customerEmail || '—'}</div>
+        <div className="doc-date">
+          Ngày {today.getDate()} tháng {today.getMonth() + 1} năm {today.getFullYear()}
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Mã SP</th>
+            <th>Hình ảnh</th>
+            <th>Mô tả chi tiết</th>
+            <th>DV</th>
+            <th>Rộng</th>
+            <th>Cao</th>
+            <th>SL</th>
+            <th>KL</th>
+            <th>Đơn giá</th>
+            <th>Thành tiền</th>
+          </tr>
+        </thead>
+        {quote.items.map((item, index) => {
+          const visibleAccessories = item.accessories.filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0);
+          const rowSpan = Math.max(1, item.dimensions.length + visibleAccessories.length);
+          return (
+            <tbody key={`${item.productCode}-${index}`} className="quote-item-block">
+              {item.dimensions.map((line, lineIndex) => (
+                <tr key={`d-${lineIndex}`}>
+                  {lineIndex === 0 && <td rowSpan={rowSpan}>{index + 1}</td>}
+                  {lineIndex === 0 && <td rowSpan={rowSpan}>{item.quoteItemCode || item.productCode}</td>}
+                  {lineIndex === 0 && (
+                    <td rowSpan={rowSpan} className="quote-image-cell">
+                      <ProductThumb imageId={legacyImageId(item.image || item.coverImagePath)} fill />
+                    </td>
+                  )}
+                  {lineIndex === 0 && (
+                    <td rowSpan={Math.max(1, item.dimensions.length)} className="description-cell">
+                      {[item.itemName, item.description, ...(item.specs || []).map((spec) => `- ${spec.key}: ${spec.value}`)]
+                        .filter(Boolean)
+                        .map((lineText, i) => <div key={i}>{lineText}</div>)}
+                    </td>
+                  )}
+                  <td>{unitLabel(line.unit)}</td>
+                  <td>{line.unit === 'BO' ? '—' : line.widthM ?? ''}</td>
+                  <td>{line.unit === 'BO' ? '—' : line.heightM ?? ''}</td>
+                  <td>{line.quantity}</td>
+                  <td>{line.calculatedQty}</td>
+                  <td className="num">{formatVND(line.unitPriceVnd)}</td>
+                  <td className="num">{formatVND(line.lineTotalVnd)}</td>
+                </tr>
+              ))}
+              {visibleAccessories.map((accessory, accIndex) => (
+                <tr key={`a-${accIndex}`} className="pk-row">
+                  <td className="description-cell">
+                    {[accessory.name, accessory.note].filter(Boolean).map((lineText, i) => <div key={i}>{lineText}</div>)}
+                  </td>
+                  <td>Bộ</td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td>{accessory.quantityPerSet}</td>
+                  <td>{accessory.totalSet}</td>
+                  <td className="num">{formatVND(accessory.unitPriceVnd)}</td>
+                  <td className="num">{formatVND(accessory.lineTotalVnd)}</td>
+                </tr>
+              ))}
+            </tbody>
+          );
+        })}
+      </table>
+      <div className="totals">
+        <div><b>Tổng cộng:</b> {formatVND(quote.summary.totalVnd)}</div>
+        <div>Làm tròn: {formatVND(quote.summary.roundedTotalVnd)}</div>
+        <div>Tạm ứng: {formatVND(quote.summary.depositVnd)}</div>
+        <div><b>Cần thanh toán:</b> {formatVND(quote.summary.balanceVnd)}</div>
+      </div>
     </div>
   );
 }

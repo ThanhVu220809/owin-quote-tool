@@ -94,6 +94,36 @@
 .preview-doc .pk-row td { background: #f3f6f8; }
 .preview-doc .totals { line-height: 1.8; }
 .preview-doc .totals b { color: var(--owin-primary); }
+.quote-print-doc {
+  margin-top: 18px;
+  border-radius: 8px;
+}
+.quote-print-doc table {
+  table-layout: fixed;
+  font-size: 11px;
+}
+.quote-print-doc th:nth-child(3),
+.quote-print-doc td.quote-image-cell {
+  width: 112px;
+}
+.quote-print-doc .quote-image-cell {
+  height: 96px;
+  padding: 3px;
+  text-align: center;
+  vertical-align: middle;
+}
+.quote-print-doc .quote-image-cell .ph {
+  max-height: 92px;
+  object-fit: contain;
+}
+.quote-print-doc .description-cell {
+  text-align: left;
+  line-height: 1.35;
+}
+.quote-item-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
 
 /* ───────────── Bảng giá printable table ───────────── */
 .bang-gia-doc {
@@ -183,6 +213,12 @@
     padding: 0;
   }
   body.printing-quote .preview-doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .quote-print-doc {
+    font-size: 9pt;
+  }
+  .quote-print-doc table {
+    font-size: 8.5pt;
+  }
 
   .no-print { display: none !important; }
   .app-shell:has(.bang-gia-doc) .nav-tabs,
