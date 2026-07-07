@@ -1,33 +1,33 @@
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import type { Product } from '@/types/models';
+import type { ProductRecord } from '@/types/models';
 import { useProducts } from './useProducts';
 import { ProductForm } from './ProductForm';
 import { ProductList } from './ProductList';
 
 /** Màn quản lý sản phẩm gốc (catalog). */
 export function ProductsView() {
-  const { products, loading, saveProduct, deleteProduct } = useProducts();
-  const [editing, setEditing] = useState<Product | null>(null);
+  const { productRecords, loading, saveProduct, deleteProduct } = useProducts();
+  const [editing, setEditing] = useState<ProductRecord | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   // Gợi ý auto-suggest rút từ các giá trị đã nhập trong catalog.
   const suggestions = useMemo(
     () => ({
-      mau: products.map((p) => p.mau ?? '').filter(Boolean),
-      heNhom: products.map((p) => p.heNhom ?? '').filter(Boolean),
-      khungBao: products.map((p) => p.khungBao ?? '').filter(Boolean),
-      banCanh: products.map((p) => p.banCanh ?? '').filter(Boolean),
-      kinh: products.map((p) => p.kinh ?? '').filter(Boolean),
+      category: productRecords.map((p) => p.category).filter(Boolean),
+      productName: productRecords.map((p) => p.name).filter(Boolean),
+      specKey: productRecords.flatMap((p) => p.specs.map((s) => s.key)).filter(Boolean),
+      specValue: productRecords.flatMap((p) => p.specs.map((s) => s.value)).filter(Boolean),
+      accessoryName: productRecords.flatMap((p) => p.accessories.map((a) => a.name)).filter(Boolean),
     }),
-    [products],
+    [productRecords],
   );
 
   const openNew = () => {
     setEditing(null);
     setShowForm(true);
   };
-  const openEdit = (p: Product) => {
+  const openEdit = (p: ProductRecord) => {
     setEditing(p);
     setShowForm(true);
   };
@@ -36,8 +36,8 @@ export function ProductsView() {
     setEditing(null);
   };
 
-  const handleDelete = async (p: Product) => {
-    if (confirm(`Xoá sản phẩm "${p.ten}" (${p.ma})?`)) {
+  const handleDelete = async (p: ProductRecord) => {
+    if (confirm(`Xoá sản phẩm "${p.name}" (${p.code})?`)) {
       await deleteProduct(p.id);
     }
   };
@@ -47,7 +47,7 @@ export function ProductsView() {
       <div className="toolbar">
         <div>
           <h1 className="app-title">Kho sản phẩm gốc</h1>
-          <p className="app-subtitle">{loading ? 'Đang tải…' : `${products.length} sản phẩm`}</p>
+          <p className="app-subtitle">{loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
         </div>
         <div className="spacer" />
         {!showForm && (
@@ -70,7 +70,7 @@ export function ProductsView() {
       )}
 
       <div className="card">
-        <ProductList products={products} onEdit={openEdit} onDelete={handleDelete} />
+        <ProductList products={productRecords} onEdit={openEdit} onDelete={handleDelete} />
       </div>
     </div>
   );

@@ -1,12 +1,23 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import type { Product } from '@/types/models';
+import type { ProductRecord } from '@/types/models';
 import { formatVND } from '@/utils/format';
 import { ProductThumb } from './ProductThumb';
 
 interface Props {
-  products: Product[];
-  onEdit: (p: Product) => void;
-  onDelete: (p: Product) => void;
+  products: ProductRecord[];
+  onEdit: (p: ProductRecord) => void;
+  onDelete: (p: ProductRecord) => void;
+}
+
+function unitLabel(unit: ProductRecord['unit']): string {
+  if (unit === 'BO') return 'Bộ';
+  if (unit === 'METER') return 'md';
+  return 'm²';
+}
+
+function legacyImageId(path: string | null): string | undefined {
+  const prefix = 'legacy-images/';
+  return path?.startsWith(prefix) ? path.slice(prefix.length) : undefined;
 }
 
 export function ProductList({ products, onEdit, onDelete }: Props) {
@@ -16,20 +27,21 @@ export function ProductList({ products, onEdit, onDelete }: Props) {
   return (
     <div>
       {products.map((p) => (
-        <div key={p.id} className="product-row" data-ma={p.ma}>
-          <ProductThumb imageId={p.imageId} />
+        <div key={p.id} className="product-row" data-ma={p.code}>
+          <ProductThumb imageId={legacyImageId(p.coverImagePath)} />
           <div className="product-meta">
-            <div className="product-name">{p.ten}</div>
+            <div className="product-name">{p.name}</div>
             <div className="product-sub">
-              {p.ma} · {formatVND(p.donGiaGoc)}/{p.dvt}
+              {p.code} · {p.category} · {formatVND(p.unitPriceVnd)}/{unitLabel(p.unit)}
+              {p.rawSizeText ? ` · ${p.rawSizeText}` : ''}
             </div>
           </div>
-          <span className="badge">{p.dvt}</span>
+          <span className="badge">{unitLabel(p.unit)}</span>
           <div className="row-actions">
-            <button className="icon-btn" onClick={() => onEdit(p)} aria-label={`Sửa ${p.ma}`}>
+            <button className="icon-btn" onClick={() => onEdit(p)} aria-label={`Sửa ${p.code}`}>
               <Pencil size={16} />
             </button>
-            <button className="icon-btn danger" onClick={() => onDelete(p)} aria-label={`Xoá ${p.ma}`}>
+            <button className="icon-btn danger" onClick={() => onDelete(p)} aria-label={`Xoá ${p.code}`}>
               <Trash2 size={16} />
             </button>
           </div>
