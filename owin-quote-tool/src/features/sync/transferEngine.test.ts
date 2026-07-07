@@ -54,7 +54,9 @@ describe('transferEngine - chuyển dữ liệu tài khoản Google khác', () =
     expect(status).toMatchObject({ state: 'done', mode: 'push-other', products: 1, images: 1 });
     expect(drive.uploadDB).toHaveBeenCalledWith(
       expect.objectContaining({
-        products: [expect.objectContaining({ id: saved.id, imageId: 'img-local' })],
+        schemaVersion: 2,
+        products: [expect.objectContaining({ id: saved.id, coverImagePath: 'legacy-images/img-local' })],
+        quotes: [],
       }),
       'other-token',
     );
@@ -92,7 +94,7 @@ describe('transferEngine - chuyển dữ liệu tài khoản Google khác', () =
     const status = await beginPullFromOtherAccount('other-token');
 
     expect(status).toMatchObject({ state: 'done', mode: 'pull-other', products: 1, images: 1 });
-    expect((await getAllProductsRaw()).find((p) => p.id === 'R1')?.ten).toBe('Cửa remote');
+    expect((await getAllProductsRaw()).find((p) => p.id === 'R1')?.name).toBe('Cửa remote');
     expect(await getImage('img-remote')).toBeInstanceOf(Blob);
     expect(drive.downloadImage).toHaveBeenCalledWith('img-remote', 'other-token');
   });

@@ -22,6 +22,15 @@ describe('seed dữ liệu mẫu', () => {
   it('seedIfEmpty nạp 5 sản phẩm mẫu, chỉ chạy 1 lần', async () => {
     await seedIfEmpty();
     expect((await getAllProducts()).length).toBe(5);
+    expect((await getAllProductsRaw())[0]).toEqual(
+      expect.objectContaining({
+        code: expect.any(String),
+        name: expect.any(String),
+        unit: expect.stringMatching(/^(BO|M2|METER)$/),
+        unitPriceVnd: expect.any(Number),
+        category: 'Khác',
+      }),
+    );
     // gọi lần 2 không nhân đôi
     await seedIfEmpty();
     expect((await getAllProducts()).length).toBe(5);
@@ -34,6 +43,7 @@ describe('TEST 3.3 — xoá tombstone + sửa giá đổi updatedAt (BR-8)', () 
       dvt: 'm²', ten: 'Test', ma: 's9', donGiaGoc: 1000, accessories: [],
     });
     expect(p.ma).toBe('S9');
+    expect((await getAllProductsRaw()).find((x) => x.id === p.id)?.code).toBe('S9');
   });
 
   it('xoá → biến mất khỏi getAllProducts nhưng còn deleted:true trong store', async () => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Cloud, CloudOff, Download, RefreshCw, Upload } from 'lucide-react';
-import type { Product } from '@/types/models';
+import type { ProductRecord } from '@/types/models';
 import { isConfigured, connectGoogle, requestOneTimeGoogleToken } from './googleAuth';
 import { syncNow, type SyncStatus } from './syncEngine';
 import { resolveConflict, type Conflict } from './merge';
@@ -22,9 +22,9 @@ export function SyncBar() {
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>('');
-  const [conflicts, setConflicts] = useState<Conflict<Product>[] | null>(null);
+  const [conflicts, setConflicts] = useState<Conflict<ProductRecord>[] | null>(null);
   const [conflictFlow, setConflictFlow] = useState<ConflictFlow | null>(null);
-  const [working, setWorking] = useState<Product[]>([]);
+  const [working, setWorking] = useState<ProductRecord[]>([]);
 
   const clearConflict = () => {
     setConflicts(null);
@@ -130,7 +130,7 @@ export function SyncBar() {
     }
   };
 
-  const chooseConflict = (c: Conflict<Product>, choice: 'local' | 'remote') => {
+  const chooseConflict = (c: Conflict<ProductRecord>, choice: 'local' | 'remote') => {
     const next = resolveConflict(working, c, choice);
     const flow = conflictFlow;
     setWorking(next);
@@ -191,7 +191,7 @@ export function SyncBar() {
               <div>
                 <b>{c.id}</b>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  Bạn: {c.local.ten} · {c.local.donGiaGoc}đ - {remoteLabel}: {c.remote.ten} · {c.remote.donGiaGoc}đ
+                  Bạn: {c.local.name} · {c.local.unitPriceVnd}đ - {remoteLabel}: {c.remote.name} · {c.remote.unitPriceVnd}đ
                 </div>
               </div>
               <div className="row-actions">

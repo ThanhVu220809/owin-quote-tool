@@ -1,27 +1,30 @@
-import type { OwinDB, Product } from '@/types/models';
-import { getAllProductsRaw, bulkPut } from '@/features/products/productStore';
+import type { OwinDB, ProductRecord, QuoteRecord } from '@/types/models';
+import { getAllProductsRaw, bulkPut, normalizeProductRecord } from '@/features/products/productStore';
+import { bulkPutQuotes, getAllQuotesRaw } from '@/features/quote/quoteStore';
 import { notifyProductsChanged } from '@/features/products/productEvents';
 import { getImage, saveImage } from '@/utils/imageStorage';
 import { downloadDB, downloadImage, uploadDB, uploadImage } from './driveSync';
 import { mergeEntities, type Conflict } from './merge';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export type TransferMode = 'push-other' | 'pull-other';
 
 export interface TransferConflictContext {
   mode: TransferMode;
   token: string;
-  local: Product[];
-  remote: Product[];
+  local: ProductRecord[];
+  remote: ProductRecord[];
+  localQuotes: QuoteRecord[];
+  remoteQuotes: QuoteRecord[];
 }
 
 export type TransferStatus =
   | {
       state: 'conflict';
       mode: TransferMode;
-      conflicts: Conflict<Product>[];
-      merged: Product[];
+      conflicts: Conflict<ProductRecord>[];
+      merged: ProductRecord[];
       context: TransferConflictContext;
     }
   | { state: 'empty-remote'; mode: 'pull-other' }
@@ -43,11 +46,11 @@ export async function beginPullFromOtherAccount(token: string): Promise<Transfer
 
 export async function finishTransfer(
   context: TransferConflictContext,
-  finalProducts: Product[],
+  finalProducts: ProductRecord[],
 ): Promise<TransferStatus> {
   if (context.mode === 'push-other') {
     const { count, errors } = await uploadLocalImages(finalProducts, context.local, context.token);
-    await uploadDB(buildDB(finalProducts), context.token);
+    await uploadDB(buildDB(finalProducts, context.localQuotes), context.token);
     return {
       state: 'done',
       mode: context.mode,
@@ -58,6 +61,7 @@ export async function finishTransfer(
   }
 
   await bulkPut(finalProducts);
+  await bulkPutQuotes(context.remoteQuotes);
   const { count, errors } = await downloadRemoteImages(finalProducts, context.remote, context.token);
   notifyProductsChanged();
   return {
@@ -71,15 +75,19 @@ export async function finishTransfer(
 
 async function beginTransfer(mode: TransferMode, token: string): Promise<TransferStatus> {
   const local = await getAllProductsRaw();
+  const localQuotes = await getAllQuotesRaw();
   const remoteDB = await downloadDB(token);
   if (mode === 'pull-other' && !remoteDB) return { state: 'empty-remote', mode };
 
-  const remote = remoteDB?.products ?? [];
+  const remote = (remoteDB?.products ?? []).map((product, index) =>
+    normalizeProductRecord(product, index + 1),
+  );
+  const remoteQuotes = remoteDB?.quotes ?? [];
   // Giao dịch giữa 2 tài khoản ĐỘC LẬP: KHÔNG dùng base của owner (vô nghĩa với tài
   // khoản kia, dễ nuốt thầm). base rỗng → mọi khác biệt cùng mã đều thành conflict cho
   // người chọn (đúng ý "gộp thông minh").
   const { merged, conflicts } = mergeEntities(local, remote, []);
-  const context: TransferConflictContext = { mode, token, local, remote };
+  const context: TransferConflictContext = { mode, token, local, remote, localQuotes, remoteQuotes };
 
   if (conflicts.length > 0) {
     return { state: 'conflict', mode, conflicts, merged, context };
@@ -87,24 +95,29 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
   return finishTransfer(context, merged);
 }
 
-function buildDB(products: Product[]): OwinDB {
-  return { schemaVersion: SCHEMA_VERSION, systems: [], products };
+function buildDB(products: ProductRecord[], quotes: QuoteRecord[]): OwinDB {
+  return { schemaVersion: SCHEMA_VERSION, systems: [], products, quotes };
 }
 
-function collectImageIdsFromSource(finalProducts: Product[], sourceProducts: Product[]): string[] {
+function imageSyncId(path: string): string {
+  const legacyPrefix = 'legacy-images/';
+  return path.startsWith(legacyPrefix) ? path.slice(legacyPrefix.length) : path;
+}
+
+function collectImageIdsFromSource(finalProducts: ProductRecord[], sourceProducts: ProductRecord[]): string[] {
   const finalById = new Map(finalProducts.map((product) => [product.id, product]));
   const ids = new Set<string>();
 
   for (const source of sourceProducts) {
     const final = finalById.get(source.id);
-    if (final === source && source.imageId) ids.add(source.imageId);
+    if (final === source && source.coverImagePath) ids.add(imageSyncId(source.coverImagePath));
   }
   return [...ids];
 }
 
 async function uploadLocalImages(
-  finalProducts: Product[],
-  localProducts: Product[],
+  finalProducts: ProductRecord[],
+  localProducts: ProductRecord[],
   token: string,
 ): Promise<{ count: number; errors: number }> {
   let count = 0;
@@ -123,8 +136,8 @@ async function uploadLocalImages(
 }
 
 async function downloadRemoteImages(
-  finalProducts: Product[],
-  remoteProducts: Product[],
+  finalProducts: ProductRecord[],
+  remoteProducts: ProductRecord[],
   token: string,
 ): Promise<{ count: number; errors: number }> {
   let count = 0;

@@ -1,84 +1,341 @@
 /**
- * NGUỒN CHÂN LÝ KIỂU DỮ LIỆU — Owin Quote Tool
- * Mọi nơi khác import type từ đây, không định nghĩa lại.
+ * NGUỒN CHÂN LÝ KIỂU DỮ LIỆU — Owin Quote Tool.
  *
- * Tham chiếu HẰNG SỐ NGHIỆP VỤ:
- *  - BR-3: 3 hệ ĐVT (m² / md / Bộ).
- *  - BR-6: override trên dòng báo giá KHÔNG đụng sản phẩm gốc.
- *  - BR-8: SyncEntity có id/updatedAt/deleted (tombstone, LWW per-entity).
- *  - BR-9: ảnh tách khỏi file sync — ở model ta chỉ giữ id ảnh (imageId), bytes nằm IndexedDB.
+ * ProductRecord / QuoteRecord mirror the browser-safe subset of the REFERENCE
+ * catalogue, quote, and history tables. Product / QuoteLine remain temporary
+ * compatibility views for the old TARGET screens until later phases replace them.
  */
 
-/** Hệ đơn vị tính. Ký tự đúng như file mẫu Owin. */
+/** Hệ đơn vị tính legacy trong TARGET cũ. */
 export type DVT = 'm²' | 'md' | 'Bộ';
 
-/** Mọi entity tham gia sync mang 3 trường này (BR-8). */
+/** Hệ đơn vị tính theo REFERENCE. */
+export type ProductUnit = 'BO' | 'M2' | 'METER';
+
+export type QuoteStatus = 'DRAFT' | 'SAVED' | 'EXPORTED';
+
+/** Mọi entity tham gia sync mang updatedAt để LWW per-entity. */
 export interface SyncEntity {
   id: string;
-  /** ISO timestamp lần sửa cuối — dùng cho LWW. */
   updatedAt: string;
-  /** Tombstone: true = đã xoá (không xoá cứng để sync không hồi sinh). */
+  /** Tombstone legacy vẫn giữ để sync không hồi sinh bản xoá. */
   deleted?: boolean;
+  /** Tombstone mới dùng được cho quote/product history. */
+  deletedAt?: string | null;
 }
 
-/** Phụ kiện gắn theo sản phẩm gốc hoặc theo dòng báo giá. */
+export interface ProductSpecRecord {
+  key: string;
+  value: string;
+  sortOrder?: number;
+}
+
+export interface ProductAccessoryRecord {
+  name: string;
+  quantityPerSet: number;
+  unitPriceVnd: number;
+  note: string | null;
+  sortOrder?: number;
+}
+
+/** Sản phẩm gốc trong IndexedDB/Drive, theo REFERENCE catalogue/price-table shape. */
+export interface ProductRecord extends SyncEntity {
+  numericId: number;
+  code: string;
+  name: string;
+  slug: string;
+  category: string;
+  unit: ProductUnit;
+  unitPriceVnd: number;
+  shortDesc: string | null;
+  coverImagePath: string | null;
+  gallery: string[];
+  rawSizeText: string | null;
+  rawPriceText: string | null;
+  specs: ProductSpecRecord[];
+  accessories: ProductAccessoryRecord[];
+  fixedAccessoryPackage: string | null;
+  extraAccessories: string;
+  isFeatured: boolean;
+  isPublic: boolean;
+  folderPath?: string | null;
+  createdAt: string;
+}
+
+/** Phụ kiện legacy cho UI TARGET cũ. */
 export interface Accessory {
   id: string;
   ten: string;
   donGia: number;
-  /** Số lượng phụ kiện (mặc định 1). */
   sl: number;
-  /** Có được chọn/bật cho dòng này không (Switch toggle ở UI). */
   enabled: boolean;
 }
 
-/** Sản phẩm gốc trong kho (catalog). */
+/** Sản phẩm legacy compatibility view. Không dùng shape này làm sync/source-of-truth. */
 export interface Product extends SyncEntity {
   dvt: DVT;
   ten: string;
-  /** Mã sản phẩm, luôn UPPERCASE. */
   ma: string;
-  /** Đơn giá gốc trên 1 đơn vị tính. */
   donGiaGoc: number;
-  /** Kích thước mặc định (tuỳ chọn) — pre-fill khi nạp vào báo giá. Ẩn khi dvt='Bộ'. */
   rongMacDinh?: number;
   caoMacDinh?: number;
-  /** Khoá ảnh trong IndexedDB (BR-9: bytes ảnh không nằm trong record sync). */
   imageId?: string;
-  /** 5 trường auto-suggest. */
   mau?: string;
   heNhom?: string;
   khungBao?: string;
   banCanh?: string;
   kinh?: string;
-  /** Phụ kiện mặc định kèm sản phẩm. */
   accessories: Accessory[];
 }
 
+export interface DimensionInput {
+  unit?: ProductUnit | null;
+  widthM?: number | null;
+  heightM?: number | null;
+  quantity: number;
+  unitPriceVnd?: number | null;
+  description?: string | null;
+}
+
+export interface AccessoryInput {
+  name: string;
+  quantityPerSet: number;
+  unitPriceVnd: number;
+  note?: string | null;
+  isEnabled?: boolean;
+}
+
+export type QuoteExtraAccessoryUnit = ProductUnit | 'Bộ' | 'm²' | 'md';
+
+export interface QuoteExtraAccessory {
+  id: string;
+  name: string;
+  unit: QuoteExtraAccessoryUnit;
+  quantity: number;
+  weight: number;
+  unitPrice: number;
+  amount: number;
+  sortOrder: number;
+}
+
+export interface QuoteItemInput {
+  sourceType?: 'PRODUCT' | 'CUSTOM';
+  productId?: string | null;
+  productCode: string;
+  quoteItemCode?: string;
+  itemName: string;
+  productType?: string | null;
+  category?: string | null;
+  groupName?: string | null;
+  coverImagePath?: string | null;
+  categoryImagePath?: string | null;
+  categoryImage?: string | null;
+  companyLogo?: string | null;
+  image?: string | null;
+  unit: ProductUnit;
+  description?: string | null;
+  unitPriceVnd: number;
+  specs?: ProductSpecRecord[];
+  dimensions: DimensionInput[];
+  accessories: AccessoryInput[];
+  fixedAccessoryPackage?: string | null;
+  extraAccessories?: string | null;
+  numericId?: number | null;
+}
+
+export interface QuoteInput {
+  customerId?: string | null;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string | null;
+  customerAddress: string;
+  quoteDate?: string | Date | null;
+  depositVnd?: number | null;
+  items: QuoteItemInput[];
+}
+
+export interface CalculatedDimension {
+  unit: ProductUnit;
+  widthM: number | null;
+  heightM: number | null;
+  quantity: number;
+  calculatedQty: number;
+  unitPriceVnd: number;
+  lineTotalVnd: number;
+  description?: string | null;
+}
+
+export interface CalculatedAccessory {
+  enabled: boolean;
+  isEnabled: boolean;
+  name: string;
+  quantityPerSet: number;
+  totalSet: number;
+  unitPriceVnd: number;
+  lineTotalVnd: number;
+  note?: string | null;
+}
+
+export interface CalculatedQuoteItem {
+  sourceType: 'PRODUCT' | 'CUSTOM';
+  productId?: string | null;
+  productCode: string;
+  quoteItemCode: string;
+  itemName: string;
+  productName?: string;
+  productType?: string | null;
+  category?: string | null;
+  groupName?: string | null;
+  coverImagePath?: string | null;
+  categoryImagePath?: string | null;
+  categoryImage?: string | null;
+  companyLogo?: string | null;
+  image?: string | null;
+  unit: ProductUnit;
+  description?: string | null;
+  unitPriceVnd: number;
+  specs?: ProductSpecRecord[];
+  dimensions: CalculatedDimension[];
+  accessories: CalculatedAccessory[];
+  fixedAccessoryPackage?: string | null;
+  extraAccessories?: string | null;
+  productSubtotalVnd: number;
+  accessorySubtotalVnd: number;
+  itemTotalVnd: number;
+  mainTotal?: number;
+  accessoryTotal?: number;
+  itemTotal?: number;
+  sortOrder: number;
+  numericId?: number | null;
+}
+
+export interface CalculatedQuote {
+  quoteCode?: string;
+  customerId?: string | null;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string | null;
+  customerAddress: string;
+  quoteDate?: string | Date | null;
+  depositVnd: number;
+  items: CalculatedQuoteItem[];
+  summary: {
+    subtotalProductVnd: number;
+    subtotalAccessoryVnd: number;
+    totalVnd: number;
+    roundedTotalVnd: number;
+    depositVnd: number;
+    balanceVnd: number;
+  };
+}
+
+export interface QuoteSnapshotData extends CalculatedQuote {
+  quoteCode: string;
+  createdAt: string;
+  company: {
+    name: string;
+    phone: string;
+    email: string;
+    address: string;
+    logo?: string;
+  };
+}
+
+export interface QuoteDimensionRecord {
+  unit: ProductUnit;
+  widthM: number;
+  heightM: number;
+  quantity: number;
+  calculatedQty: number;
+  unitPriceVnd: number;
+  lineTotalVnd: number;
+  description?: string | null;
+  sortOrder?: number;
+}
+
+export interface QuoteAccessoryRecord {
+  name: string;
+  quantityPerSet: number;
+  totalSet: number;
+  unitPriceVnd: number;
+  lineTotalVnd: number;
+  note: string | null;
+  sortOrder?: number;
+}
+
+export interface QuoteItemRecord {
+  id: string;
+  sourceType: 'PRODUCT' | 'CUSTOM';
+  productId: string | null;
+  productCode: string;
+  itemName: string;
+  category: string | null;
+  imagePath: string | null;
+  unit: ProductUnit;
+  description: string | null;
+  unitPriceVnd: number;
+  productSubtotalVnd: number;
+  accessorySubtotalVnd: number;
+  itemTotalVnd: number;
+  fixedAccessoryPackage: string | null;
+  extraAccessories: string | null;
+  snapshotJson?: string;
+  dimensions: QuoteDimensionRecord[];
+  accessories: QuoteAccessoryRecord[];
+  sortOrder?: number;
+}
+
+export interface QuoteExportRecord {
+  id: string;
+  type: 'docx' | 'xlsx' | 'pdf';
+  fileName: string;
+  filePath: string | null;
+  createdAt: string;
+}
+
+export interface QuoteRecord extends SyncEntity {
+  code: string;
+  customerId: string | null;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string | null;
+  customerAddress: string;
+  quoteDate: string | null;
+  depositVnd: number;
+  subtotalProductVnd: number;
+  subtotalAccessoryVnd: number;
+  totalVnd: number;
+  roundedTotalVnd: number;
+  balanceVnd: number;
+  status: QuoteStatus;
+  snapshot: QuoteSnapshotData;
+  snapshotJson?: string;
+  items: QuoteItemRecord[];
+  exports: QuoteExportRecord[];
+  folderPath: string | null;
+  deletedAt: string | null;
+  createdAt: string;
+}
+
 /**
- * Một dòng trên bảng báo giá. Snapshot dữ liệu từ Product khi chọn,
- * cho phép override mà KHÔNG đụng Product gốc (BR-6).
+ * Một dòng legacy trên bảng báo giá. Snapshot từ Product cũ, giữ cho UI hiện tại
+ * compile cho tới Phase 4.
  */
 export interface QuoteLine extends SyncEntity {
-  /** id sản phẩm gốc đã nạp vào (chỉ để truy vết, override không ghi ngược). */
   productId: string;
   dvt: DVT;
   ten: string;
   ma: string;
-  /** Kích thước nhập trên dòng. Với hệ Bộ thì rong/cao bỏ trống. */
   rong?: number;
   cao?: number;
   sl: number;
-  /** Đơn giá áp dụng cho dòng (đã có thể override khác donGiaGoc). */
   donGia: number;
-  /** Phụ kiện áp dụng cho dòng (bản copy, override độc lập). */
   accessories: Accessory[];
   imageId?: string;
-  /** Mô tả tự do (Hệ nhôm, kính... gộp nhiều dòng, dùng \n). */
   moTa?: string;
 }
 
-/** Thông tin khách hàng đầu báo giá. */
+/** Thông tin khách hàng đầu báo giá legacy. */
 export interface Customer {
   ten: string;
   sdt: string;
@@ -86,17 +343,24 @@ export interface Customer {
   email: string;
 }
 
-/** Một hệ sản phẩm (nhóm catalog), ví dụ "Hệ Xingfa Owin". */
+/** Một hệ sản phẩm legacy. */
 export interface ProductSystem extends SyncEntity {
   ten: string;
-  /** id các sản phẩm thuộc hệ (hoặc lọc theo trường khác — tuỳ UI). */
   productIds?: string[];
 }
 
-/** Toàn bộ DB local/sync (phần metadata, KHÔNG chứa bytes ảnh — BR-9). */
+export interface SuggestionRecord extends SyncEntity {
+  type: string;
+  value: string;
+  usedCount: number;
+  createdAt: string;
+}
+
+/** Toàn bộ DB local/sync metadata; bytes ảnh luôn nằm ở store/file riêng. */
 export interface OwinDB {
-  systems: ProductSystem[];
-  products: Product[];
-  /** version schema để migrate sau này. */
   schemaVersion: number;
+  systems: ProductSystem[];
+  products: ProductRecord[];
+  quotes?: QuoteRecord[];
+  suggestions?: SuggestionRecord[];
 }

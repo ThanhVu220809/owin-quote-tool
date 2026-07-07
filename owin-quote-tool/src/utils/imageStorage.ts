@@ -28,12 +28,28 @@ export const COMPRESS_OPTIONS = {
   useWebWorker: true,
 } as const;
 
-/** Kho ảnh riêng trong IndexedDB (tách khỏi metadata). */
-const imageStore = localforage.createInstance({
+/** Store ảnh legacy trước Phase 1. Chỉ dùng fallback để không mất dữ liệu cũ. */
+const legacyImageStore = localforage.createInstance({
   name: 'owin-quote-tool',
   storeName: 'images',
   driver: localforage.INDEXEDDB,
-  description: 'Ảnh sản phẩm đã nén (BR-9: tách khỏi file sync)',
+  description: 'Ảnh sản phẩm legacy trước schema ProductRecord',
+});
+
+/** Kho ảnh sản phẩm theo logical store Phase 1. */
+const productImageStore = localforage.createInstance({
+  name: 'owin-quote-tool',
+  storeName: 'product_images',
+  driver: localforage.INDEXEDDB,
+  description: 'Ảnh sản phẩm đã nén (ProductRecord cover/gallery path)',
+});
+
+/** Kho ảnh báo giá theo logical store Phase 1. */
+const quoteImageStore = localforage.createInstance({
+  name: 'owin-quote-tool',
+  storeName: 'quote_images',
+  driver: localforage.INDEXEDDB,
+  description: 'Ảnh riêng của dòng báo giá',
 });
 
 /** Lỗi nghiệp vụ ảnh — phân biệt với lỗi hệ thống để UI hiển thị thân thiện. */
@@ -86,7 +102,7 @@ export async function compressImage(
 /** Lưu blob ảnh vào IndexedDB theo id. */
 export async function saveImage(id: string, blob: Blob): Promise<void> {
   try {
-    await imageStore.setItem(id, blob);
+    await productImageStore.setItem(id, blob);
   } catch (err) {
     throw new ImageError(
       `Lưu ảnh "${id}" thất bại: ${err instanceof Error ? err.message : String(err)}`,
@@ -111,7 +127,7 @@ export async function compressAndStore(
 
 /** Đọc blob ảnh từ IndexedDB. null nếu không có. */
 export async function getImage(id: string): Promise<Blob | null> {
-  return imageStore.getItem<Blob>(id);
+  return (await productImageStore.getItem<Blob>(id)) ?? legacyImageStore.getItem<Blob>(id);
 }
 
 /** Tạo object URL để hiển thị <img>. Nhớ revoke sau khi dùng. */
@@ -134,17 +150,34 @@ export async function getImageDataUrl(id: string): Promise<string | null> {
 
 /** Xoá ảnh khỏi IndexedDB. */
 export async function deleteImage(id: string): Promise<void> {
-  await imageStore.removeItem(id);
+  await productImageStore.removeItem(id);
+  await legacyImageStore.removeItem(id);
 }
 
 /** Liệt kê mọi id ảnh đang lưu. */
 export async function listImageIds(): Promise<string[]> {
-  return imageStore.keys();
+  return [...new Set([...(await productImageStore.keys()), ...(await legacyImageStore.keys())])];
 }
 
 /** Số ảnh đang lưu (dùng cho test quota). */
 export async function countImages(): Promise<number> {
-  return imageStore.length();
+  return (await listImageIds()).length;
 }
 
-export { imageStore };
+/** Lưu ảnh riêng của quote item theo path quotes/<quoteId>/items/<itemCode>/cover.ext. */
+export async function saveQuoteImage(path: string, blob: Blob): Promise<void> {
+  await quoteImageStore.setItem(path, blob);
+}
+
+export async function getQuoteImage(path: string): Promise<Blob | null> {
+  return quoteImageStore.getItem<Blob>(path);
+}
+
+export async function deleteQuoteImage(path: string): Promise<void> {
+  await quoteImageStore.removeItem(path);
+}
+
+/** Backward-compatible export used by existing tests; points at the new product image store. */
+const imageStore = productImageStore;
+
+export { imageStore, productImageStore, quoteImageStore, legacyImageStore };
