@@ -9,8 +9,8 @@ import { formatVND, formatSoVND } from '@/utils/format';
 
 /* ───────────────── TEST 1.1 — Khối lượng theo 3 hệ ĐVT (BR-3) ───────────────── */
 describe('TEST 1.1 — tinhKhoiLuong (BR-3)', () => {
-  it('m²: 1.196 × 1.796 × 1 = 2.148016 (full precision)', () => {
-    expect(tinhKhoiLuong('m²', 1.196, 1.796, 1)).toBeCloseTo(2.148016, 10);
+  it('m²: 1.196 × 1.796 × 1 = 2.148016 → 2.148', () => {
+    expect(tinhKhoiLuong('m²', 1.196, 1.796, 1)).toBe(2.148);
   });
   it('md: (1.2 + 2.4) × 2 = 7.2', () => {
     expect(tinhKhoiLuong('md', 1.2, 2.4, 2)).toBeCloseTo(7.2, 10);

@@ -15,14 +15,19 @@
  */
 
 import type { DVT } from '@/types/models';
+import {
+  calculateDimensionQuantity,
+  roundMoneyToVnd,
+  roundQuantity3,
+} from '@/lib/quote-engine';
 
 /** Làm tròn 3 số lẻ (HALF_UP) — dùng cho KL trước khi nhân tiền & để hiển thị. */
 export function round3(n: number): number {
-  return Math.round(n * 1000) / 1000;
+  return roundQuantity3(n);
 }
 
 /**
- * Khối lượng FULL PRECISION theo hệ ĐVT (BR-3). KHÔNG làm tròn ở đây.
+ * Khối lượng theo hệ ĐVT (BR-3), làm tròn 3 số lẻ theo REFERENCE.
  * Với hệ 'Bộ', rong/cao bị bỏ qua hoàn toàn.
  */
 export function tinhKhoiLuong(
@@ -31,19 +36,12 @@ export function tinhKhoiLuong(
   cao: number,
   sl: number,
 ): number {
-  switch (dvt) {
-    case 'm²':
-      return rong * cao * sl;
-    case 'md':
-      return (rong + cao) * sl;
-    case 'Bộ':
-      return sl;
-    default: {
-      // Ép TS báo nếu thêm DVT mới mà quên xử lý.
-      const _exhaustive: never = dvt;
-      return _exhaustive;
-    }
-  }
+  return calculateDimensionQuantity({
+    unit: dvt,
+    widthM: rong,
+    heightM: cao,
+    quantity: sl,
+  });
 }
 
 /**
@@ -57,15 +55,15 @@ export function tinhThanhTien(
   sl: number,
   donGia: number,
 ): number {
-  const kl = round3(tinhKhoiLuong(dvt, rong, cao, sl));
-  return Math.round(kl * donGia);
+  const kl = tinhKhoiLuong(dvt, rong, cao, sl);
+  return roundMoneyToVnd(kl * donGia);
 }
 
 /**
  * Thành tiền của 1 phụ kiện = round(sl × đơn giá). Phụ kiện không dính rộng/cao.
  */
 export function tinhTienPhuKien(sl: number, donGia: number): number {
-  return Math.round(sl * donGia);
+  return roundMoneyToVnd(sl * donGia);
 }
 
 /**

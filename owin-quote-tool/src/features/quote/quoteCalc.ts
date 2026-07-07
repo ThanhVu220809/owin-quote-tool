@@ -9,6 +9,7 @@
 
 import type { Product, QuoteLine, Accessory } from '@/types/models';
 import { tinhThanhTien, tinhTienPhuKien, tinhKhoiLuong } from '@/utils/calc';
+import { roundDownToNearestMultiple } from '@/lib/quote-engine';
 
 export interface DongTinhTien {
   tienChinh: number;
@@ -52,9 +53,7 @@ export function tinhTongBaoGia(lines: QuoteLine[]): number {
  * Port từ roundDownToNearestMultiple (web/src/lib/pricing/rounding.ts).
  */
 export function lamTronXuong(value: number, multiple = 100000): number {
-  if (!Number.isFinite(value)) return 0;
-  const safe = Math.max(1, Math.abs(Math.round(multiple)));
-  return Math.floor(value / safe) * safe;
+  return roundDownToNearestMultiple(value, multiple);
 }
 
 /** Tổng báo giá ĐÃ làm tròn xuống bội số 100.000 (dòng "LÀM TRÒN"). */
