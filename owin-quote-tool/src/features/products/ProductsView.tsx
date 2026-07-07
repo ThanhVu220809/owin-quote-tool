@@ -2,25 +2,48 @@ import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { useProducts } from './useProducts';
+import { getProductRecord } from './productStore';
 import { ProductForm } from './ProductForm';
 import { ProductList } from './ProductList';
+import { rememberProductSuggestions } from '@/lib/suggestions';
+import { useSuggestions } from '@/lib/useSuggestions';
+
+const PRODUCT_SUGGESTION_TYPES = [
+  'category',
+  'product_name',
+  'spec_value',
+  'accessory_name',
+] as const;
 
 /** Màn quản lý sản phẩm gốc (catalog). */
 export function ProductsView() {
   const { productRecords, loading, saveProduct, deleteProduct } = useProducts();
+  const { suggestions: seededSuggestions, refreshSuggestions } = useSuggestions(PRODUCT_SUGGESTION_TYPES);
   const [editing, setEditing] = useState<ProductRecord | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   // Gợi ý auto-suggest rút từ các giá trị đã nhập trong catalog.
   const suggestions = useMemo(
     () => ({
-      category: productRecords.map((p) => p.category).filter(Boolean),
-      productName: productRecords.map((p) => p.name).filter(Boolean),
+      category: [
+        ...(seededSuggestions.category ?? []),
+        ...productRecords.map((p) => p.category).filter(Boolean),
+      ],
+      productName: [
+        ...(seededSuggestions.product_name ?? []),
+        ...productRecords.map((p) => p.name).filter(Boolean),
+      ],
       specKey: productRecords.flatMap((p) => p.specs.map((s) => s.key)).filter(Boolean),
-      specValue: productRecords.flatMap((p) => p.specs.map((s) => s.value)).filter(Boolean),
-      accessoryName: productRecords.flatMap((p) => p.accessories.map((a) => a.name)).filter(Boolean),
+      specValue: [
+        ...(seededSuggestions.spec_value ?? []),
+        ...productRecords.flatMap((p) => p.specs.map((s) => s.value)).filter(Boolean),
+      ],
+      accessoryName: [
+        ...(seededSuggestions.accessory_name ?? []),
+        ...productRecords.flatMap((p) => p.accessories.map((a) => a.name)).filter(Boolean),
+      ],
     }),
-    [productRecords],
+    [productRecords, seededSuggestions],
   );
 
   const openNew = () => {
@@ -40,6 +63,14 @@ export function ProductsView() {
     if (confirm(`Xoá sản phẩm "${p.name}" (${p.code})?`)) {
       await deleteProduct(p.id);
     }
+  };
+
+  const handleSave: typeof saveProduct = async (input) => {
+    const saved = await saveProduct(input);
+    const record = await getProductRecord(saved.id);
+    if (record) await rememberProductSuggestions(record);
+    await refreshSuggestions();
+    return saved;
   };
 
   return (
@@ -63,7 +94,7 @@ export function ProductsView() {
             key={editing?.id ?? 'new'}
             editing={editing}
             suggestions={suggestions}
-            onSave={saveProduct}
+            onSave={handleSave}
             onCancel={closeForm}
           />
         </div>

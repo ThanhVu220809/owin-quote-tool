@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Copy, Plus, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import type {
   AccessoryInput,
@@ -14,7 +14,17 @@ import { calculateQuote } from '@/lib/quote/quoteCalculator';
 import { generateQuoteCode } from '@/lib/quote/quoteCode';
 import { generateSnapshot } from '@/lib/quote/quoteSnapshot';
 import { createCustomQuoteItem, createQuoteItemFromProduct } from '@/lib/quote/productToQuoteItem';
+import { rememberQuoteSuggestions } from '@/lib/suggestions';
+import { useSuggestions } from '@/lib/useSuggestions';
 import { getAllQuotes, saveQuoteRecord } from './quoteStore';
+
+const QUOTE_SUGGESTION_TYPES = [
+  'customer_name',
+  'customer_address',
+  'item_name',
+  'category',
+  'accessory_name',
+] as const;
 
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
 
@@ -67,6 +77,7 @@ function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
 
 export function QuoteView() {
   const { productRecords, loading } = useProducts();
+  const { suggestions: seededSuggestions, refreshSuggestions } = useSuggestions(QUOTE_SUGGESTION_TYPES);
   const [history, setHistory] = useState<QuoteRecord[]>([]);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [quoteCode, setQuoteCode] = useState<string>('');
@@ -239,6 +250,8 @@ export function QuoteView() {
       setQuoteCode(saved.code);
       setStatus(saved.status);
       setMessage(`Đã lưu ${saved.code}`);
+      await rememberQuoteSuggestions(quoteInput);
+      await refreshSuggestions();
       await refreshHistory();
     } finally {
       setSaving(false);
@@ -279,10 +292,10 @@ export function QuoteView() {
         <div className="card">
           <div className="section-label">Thông tin khách hàng</div>
           <div className="two-col">
-            <Field label="Tên khách" value={customerName} onChange={setCustomerName} />
+            <Field label="Tên khách" value={customerName} onChange={setCustomerName} suggestions={seededSuggestions.customer_name} />
             <Field label="SĐT" value={customerPhone} onChange={setCustomerPhone} />
             <Field label="Email" value={customerEmail} onChange={setCustomerEmail} />
-            <Field label="Địa chỉ" value={customerAddress} onChange={setCustomerAddress} />
+            <Field label="Địa chỉ" value={customerAddress} onChange={setCustomerAddress} suggestions={seededSuggestions.customer_address} />
             <div className="field">
               <label>Ngày báo giá</label>
               <input className="input" type="date" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} />
@@ -352,6 +365,7 @@ export function QuoteView() {
                 index={index}
                 item={item}
                 calculated={calculated.items[index]}
+                suggestions={seededSuggestions}
                 onUpdate={(patch) => updateItem(index, patch)}
                 onDimension={(lineIndex, patch) => updateDimension(index, lineIndex, patch)}
                 onAccessory={(accIndex, patch) => updateAccessory(index, accIndex, patch)}
@@ -405,11 +419,27 @@ export function QuoteView() {
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function Field({
+  label,
+  value,
+  onChange,
+  suggestions = [],
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  suggestions?: string[];
+}) {
+  const listId = useId();
   return (
     <div className="field">
       <label>{label}</label>
-      <input className="input" value={value} onChange={(e) => onChange(e.target.value)} />
+      <input className="input" list={listId} value={value} onChange={(e) => onChange(e.target.value)} />
+      <datalist id={listId}>
+        {Array.from(new Set(suggestions.filter(Boolean))).map((item) => (
+          <option key={item} value={item} />
+        ))}
+      </datalist>
     </div>
   );
 }
@@ -427,6 +457,7 @@ function QuoteItemCard({
   index,
   item,
   calculated,
+  suggestions,
   onUpdate,
   onDimension,
   onAccessory,
@@ -440,6 +471,7 @@ function QuoteItemCard({
   index: number;
   item: QuoteItemInput;
   calculated: ReturnType<typeof calculateQuote>['items'][number] | undefined;
+  suggestions: Record<string, string[]>;
   onUpdate: (patch: Partial<QuoteItemInput>) => void;
   onDimension: (lineIndex: number, patch: Partial<DimensionInput>) => void;
   onAccessory: (accIndex: number, patch: Partial<AccessoryInput>) => void;
@@ -450,6 +482,7 @@ function QuoteItemCard({
   onMoveDown: () => void;
   onDelete: () => void;
 }) {
+  const accessoryListId = useId();
   return (
     <div className="card" style={{ marginBottom: 12, boxShadow: 'none' }}>
       <div className="toolbar" style={{ margin: 0 }}>
@@ -466,8 +499,8 @@ function QuoteItemCard({
 
       <div className="two-col">
         <Field label="Mã hạng mục" value={item.productCode} onChange={(value) => onUpdate({ productCode: value, quoteItemCode: value })} />
-        <Field label="Tên hạng mục" value={item.itemName} onChange={(value) => onUpdate({ itemName: value })} />
-        <Field label="Nhóm" value={item.category || ''} onChange={(value) => onUpdate({ category: value, groupName: value })} />
+        <Field label="Tên hạng mục" value={item.itemName} onChange={(value) => onUpdate({ itemName: value })} suggestions={suggestions.item_name} />
+        <Field label="Nhóm" value={item.category || ''} onChange={(value) => onUpdate({ category: value, groupName: value })} suggestions={suggestions.category} />
         <div className="field">
           <label>ĐVT chính</label>
           <select className="input" value={item.unit} onChange={(e) => onUpdate({ unit: e.target.value as ProductUnit })}>
@@ -510,7 +543,7 @@ function QuoteItemCard({
       </div>
       {item.accessories.map((accessory, accIndex) => (
         <div key={accIndex} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 120px 90px 44px', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <input className="input" value={accessory.name} onChange={(e) => onAccessory(accIndex, { name: e.target.value })} placeholder="Tên phụ kiện" />
+          <input className="input" list={accessoryListId} value={accessory.name} onChange={(e) => onAccessory(accIndex, { name: e.target.value })} placeholder="Tên phụ kiện" />
           <input className="input" type="number" value={accessory.quantityPerSet || ''} onChange={(e) => onAccessory(accIndex, { quantityPerSet: Number(e.target.value) || 0 })} />
           <input className="input" type="number" value={accessory.unitPriceVnd || ''} onChange={(e) => onAccessory(accIndex, { unitPriceVnd: Number(e.target.value) || 0 })} />
           <select className="input" value={accessory.isEnabled === false ? 'off' : 'on'} onChange={(e) => onAccessory(accIndex, { isEnabled: e.target.value === 'on' })}>
@@ -520,6 +553,11 @@ function QuoteItemCard({
           <button className="icon-btn danger" onClick={() => onUpdate({ accessories: item.accessories.filter((_, i) => i !== accIndex) })} aria-label="Xóa phụ kiện"><Trash2 size={16} /></button>
         </div>
       ))}
+      <datalist id={accessoryListId}>
+        {Array.from(new Set((suggestions.accessory_name ?? []).filter(Boolean))).map((item) => (
+          <option key={item} value={item} />
+        ))}
+      </datalist>
 
       <div className="two-col" style={{ gap: 12 }}>
         <div className="field">

@@ -1,6 +1,7 @@
-import type { OwinDB, ProductRecord, QuoteRecord } from '@/types/models';
+import type { OwinDB, ProductRecord, QuoteRecord, SuggestionRecord } from '@/types/models';
 import { getAllProductsRaw, bulkPut, normalizeProductRecord } from '@/features/products/productStore';
 import { bulkPutQuotes, getAllQuotesRaw } from '@/features/quote/quoteStore';
+import { bulkPutSuggestions, getAllSuggestionRecords } from '@/lib/suggestions';
 import { notifyProductsChanged } from '@/features/products/productEvents';
 import { getImage, saveImage } from '@/utils/imageStorage';
 import { downloadDB, downloadImage, uploadDB, uploadImage } from './driveSync';
@@ -17,6 +18,8 @@ export interface TransferConflictContext {
   remote: ProductRecord[];
   localQuotes: QuoteRecord[];
   remoteQuotes: QuoteRecord[];
+  localSuggestions: SuggestionRecord[];
+  remoteSuggestions: SuggestionRecord[];
 }
 
 export type TransferStatus =
@@ -50,7 +53,7 @@ export async function finishTransfer(
 ): Promise<TransferStatus> {
   if (context.mode === 'push-other') {
     const { count, errors } = await uploadLocalImages(finalProducts, context.local, context.token);
-    await uploadDB(buildDB(finalProducts, context.localQuotes), context.token);
+    await uploadDB(buildDB(finalProducts, context.localQuotes, context.localSuggestions), context.token);
     return {
       state: 'done',
       mode: context.mode,
@@ -62,6 +65,7 @@ export async function finishTransfer(
 
   await bulkPut(finalProducts);
   await bulkPutQuotes(context.remoteQuotes);
+  await bulkPutSuggestions(context.remoteSuggestions);
   const { count, errors } = await downloadRemoteImages(finalProducts, context.remote, context.token);
   notifyProductsChanged();
   return {
@@ -76,6 +80,7 @@ export async function finishTransfer(
 async function beginTransfer(mode: TransferMode, token: string): Promise<TransferStatus> {
   const local = await getAllProductsRaw();
   const localQuotes = await getAllQuotesRaw();
+  const localSuggestions = await getAllSuggestionRecords();
   const remoteDB = await downloadDB(token);
   if (mode === 'pull-other' && !remoteDB) return { state: 'empty-remote', mode };
 
@@ -83,11 +88,21 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
     normalizeProductRecord(product, index + 1),
   );
   const remoteQuotes = remoteDB?.quotes ?? [];
+  const remoteSuggestions = remoteDB?.suggestions ?? [];
   // Giao dịch giữa 2 tài khoản ĐỘC LẬP: KHÔNG dùng base của owner (vô nghĩa với tài
   // khoản kia, dễ nuốt thầm). base rỗng → mọi khác biệt cùng mã đều thành conflict cho
   // người chọn (đúng ý "gộp thông minh").
   const { merged, conflicts } = mergeEntities(local, remote, []);
-  const context: TransferConflictContext = { mode, token, local, remote, localQuotes, remoteQuotes };
+  const context: TransferConflictContext = {
+    mode,
+    token,
+    local,
+    remote,
+    localQuotes,
+    remoteQuotes,
+    localSuggestions,
+    remoteSuggestions,
+  };
 
   if (conflicts.length > 0) {
     return { state: 'conflict', mode, conflicts, merged, context };
@@ -95,8 +110,8 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
   return finishTransfer(context, merged);
 }
 
-function buildDB(products: ProductRecord[], quotes: QuoteRecord[]): OwinDB {
-  return { schemaVersion: SCHEMA_VERSION, systems: [], products, quotes };
+function buildDB(products: ProductRecord[], quotes: QuoteRecord[], suggestions: SuggestionRecord[]): OwinDB {
+  return { schemaVersion: SCHEMA_VERSION, systems: [], products, quotes, suggestions };
 }
 
 function imageSyncId(path: string): string {
