@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Package, FileText } from 'lucide-react';
+import { Calculator, Package, FileText } from 'lucide-react';
 import { ProductsView } from '@/features/products/ProductsView';
 import { QuoteView } from '@/features/quote/QuoteView';
 import { BangGiaView } from '@/features/catalogue/BangGiaView';
+import { TinhTamNhomView } from '@/features/aluminum/TinhTamNhomView';
 import { SyncBar } from '@/features/sync/SyncBar';
 
-type Tab = 'products' | 'quote' | 'bang-gia';
+type Tab = 'products' | 'quote' | 'bang-gia' | 'aluminum';
 
 function App() {
   const [tab, setTab] = useState<Tab>('products');
@@ -22,6 +23,9 @@ function App() {
         <button className={tab === 'bang-gia' ? 'active' : ''} onClick={() => setTab('bang-gia')}>
           <FileText size={16} style={{ verticalAlign: '-3px' }} /> Bảng giá
         </button>
+        <button className={tab === 'aluminum' ? 'active' : ''} onClick={() => setTab('aluminum')}>
+          <Calculator size={16} style={{ verticalAlign: '-3px' }} /> Tính tạm nhôm
+        </button>
       </div>
       {/* Giữ cả 2 view mounted, ẩn cái không active → không mất state báo giá khi đổi tab. */}
       <div style={{ display: tab === 'products' ? 'block' : 'none' }}>
@@ -32,6 +36,9 @@ function App() {
       </div>
       <div style={{ display: tab === 'bang-gia' ? 'block' : 'none' }}>
         <BangGiaView />
+      </div>
+      <div style={{ display: tab === 'aluminum' ? 'block' : 'none' }}>
+        <TinhTamNhomView />
       </div>
     </div>
   );
