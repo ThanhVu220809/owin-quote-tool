@@ -20,7 +20,7 @@ const COMPANY_DEFAULT = {
   phone: '0799040616',
   email: '',
   address: 'Tiên Điền – Nghi Xuân – Hà Tĩnh',
-  logo: '/owin-user-assets/logo/logo.webp',
+  logo: 'owin-user-assets/logo/logo.webp',
 };
 
 function nowIso(): string {

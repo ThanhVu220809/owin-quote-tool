@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Package } from 'lucide-react';
-import { getImageUrl } from '@/utils/imageStorage';
+import { resolveImageUrl } from '@/utils/imagePaths';
 
 /**
  * Thumbnail sản phẩm — đọc ảnh từ IndexedDB theo imageId.
@@ -8,10 +8,12 @@ import { getImageUrl } from '@/utils/imageStorage';
  */
 export function ProductThumb({
   imageId,
+  imagePath,
   size = 52,
   fill = false,
 }: {
   imageId?: string;
+  imagePath?: string | null;
   size?: number;
   fill?: boolean;
 }) {
@@ -22,14 +24,15 @@ export function ProductThumb({
     let active = true;
     void Promise.resolve().then(() => {
       if (!active) return;
-      if (!imageId) {
+      const path = imagePath || (imageId ? `legacy-images/${imageId}` : null);
+      if (!path) {
         setUrl(null);
         return;
       }
-      getImageUrl(imageId).then((u) => {
-        if (active && u) {
-          revoked = u;
-          setUrl(u);
+      resolveImageUrl(path).then((resolved) => {
+        if (active && resolved.url) {
+          if (resolved.revoke) revoked = resolved.url;
+          setUrl(resolved.url);
         }
       });
     });
@@ -37,7 +40,7 @@ export function ProductThumb({
       active = false;
       if (revoked) URL.revokeObjectURL(revoked);
     };
-  }, [imageId]);
+  }, [imageId, imagePath]);
 
   const sizeStyle = fill ? { width: '100%', height: '100%' } : { width: size, height: size };
   if (url) {

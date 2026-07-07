@@ -6,11 +6,6 @@ import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue
 import { formatVND } from '@/utils/format';
 import { exportBangGiaWord } from '@/features/export/wordExport';
 
-function legacyImageId(path: string): string | undefined {
-  const prefix = 'legacy-images/';
-  return path.startsWith(prefix) ? path.slice(prefix.length) : undefined;
-}
-
 function Lines({ text }: { text: string }) {
   if (!text) return null;
   return (
@@ -145,11 +140,11 @@ function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
   return (
     <tr className={row.rowType}>
       {isProduct && <td rowSpan={row.sttRowSpan}>{row.stt}</td>}
-      {isProduct && (
-        <td rowSpan={row.imageRowSpan} className="image-cell">
-          <ProductThumb imageId={legacyImageId(row.imagePath)} fill />
-        </td>
-      )}
+        {isProduct && (
+          <td rowSpan={row.imageRowSpan} className="image-cell">
+            <ProductThumb imagePath={row.imagePath} fill />
+          </td>
+        )}
       <td className="description-cell"><Lines text={row.description} /></td>
       <td>{row.unit}</td>
       <td>{row.width || (row.rowType !== 'product' ? '—' : '')}</td>

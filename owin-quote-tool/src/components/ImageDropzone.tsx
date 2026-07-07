@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ImagePlus, LoaderCircle } from 'lucide-react';
 import { compressAndStore, getImageUrl, ImageError } from '@/utils/imageStorage';
+import { resolveImageUrl } from '@/utils/imagePaths';
 
 interface Props {
   /** id ảnh hiện tại (đã lưu IndexedDB). */
   imageId?: string;
+  /** Logical image path, e.g. products/<folder>/images/cover.webp. */
+  imagePath?: string | null;
   /** Gọi khi nén+lưu xong, trả id mới để form gắn vào sản phẩm. */
   onImageStored: (id: string) => void;
 }
@@ -13,7 +16,7 @@ interface Props {
  * iOS Image Dropzone. Chọn/kéo-thả ảnh → nén (EXIF auto, BR-5) → lưu IndexedDB (BR-9)
  * → trả imageId. Hiển thị preview từ IndexedDB.
  */
-export function ImageDropzone({ imageId, onImageStored }: Props) {
+export function ImageDropzone({ imageId, imagePath, onImageStored }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,14 +29,15 @@ export function ImageDropzone({ imageId, onImageStored }: Props) {
     let active = true;
     void Promise.resolve().then(() => {
       if (!active) return;
-      if (!imageId) {
+      if (!imageId && !imagePath) {
         setUrl(null);
         return;
       }
-      getImageUrl(imageId).then((u) => {
-        if (active && u) {
-          revoked = u;
-          setUrl(u);
+      const load = imageId ? getImageUrl(imageId).then((u) => ({ url: u, revoke: Boolean(u) })) : resolveImageUrl(imagePath);
+      load.then((resolved) => {
+        if (active && resolved.url) {
+          if (resolved.revoke) revoked = resolved.url;
+          setUrl(resolved.url);
         }
       });
     });
@@ -41,7 +45,7 @@ export function ImageDropzone({ imageId, onImageStored }: Props) {
       active = false;
       if (revoked) URL.revokeObjectURL(revoked);
     };
-  }, [imageId]);
+  }, [imageId, imagePath]);
 
   const handleFile = useCallback(
     async (file: File) => {

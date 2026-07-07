@@ -21,7 +21,7 @@ import { buildFormat1Data, buildFormat2Data } from './buildQuoteData';
 import { TEMPLATE_FILES } from '@/types/placeholders';
 import { downloadBlob } from '@/utils/download';
 import { formatSoVND } from '@/utils/format';
-import { getImageDataUrl } from '@/utils/imageStorage';
+import { getImageDataUrlByPath } from '@/utils/imagePaths';
 import { buildCatalogueBlockRows } from '@/lib/catalogue/catalogueRows';
 
 import tplBaoGiaUrl from '@/assets/templates/Template_Bao_Gia.docx?url';
@@ -68,11 +68,6 @@ function formatDecimal(value: number | null | undefined): string {
   const n = Number(value);
   if (Number.isInteger(n)) return String(n);
   return n.toFixed(3).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
-}
-
-function legacyImageId(path: string): string | null {
-  const prefix = 'legacy-images/';
-  return path.startsWith(prefix) ? path.slice(prefix.length) : null;
 }
 
 export function buildQuoteWordData(quote: CalculatedQuote) {
@@ -162,9 +157,8 @@ export async function buildBangGiaWordData(products: ProductRecord[]) {
 
   for (const row of rows) {
     let image = '';
-    const imageId = legacyImageId(row.imagePath);
-    if (row.rowType === 'product' && imageId) {
-      image = (await getImageDataUrl(imageId)) || '';
+    if (row.rowType === 'product') {
+      image = (await getImageDataUrlByPath(row.imagePath)) || '';
       if (image) imageValues.push(image);
     }
 

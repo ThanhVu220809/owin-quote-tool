@@ -41,11 +41,6 @@ function unitLabel(unit: ProductUnit): string {
   return 'm²';
 }
 
-function legacyImageId(path?: string | null): string | undefined {
-  const prefix = 'legacy-images/';
-  return path?.startsWith(prefix) ? path.slice(prefix.length) : undefined;
-}
-
 function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
   return quote.snapshot.items.map((item) => ({
     sourceType: item.sourceType,
@@ -539,7 +534,7 @@ function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote
                   {lineIndex === 0 && <td rowSpan={rowSpan}>{item.quoteItemCode || item.productCode}</td>}
                   {lineIndex === 0 && (
                     <td rowSpan={rowSpan} className="quote-image-cell">
-                      <ProductThumb imageId={legacyImageId(item.image || item.coverImagePath)} fill />
+                      <ProductThumb imagePath={item.image || item.coverImagePath} fill />
                     </td>
                   )}
                   {lineIndex === 0 && (

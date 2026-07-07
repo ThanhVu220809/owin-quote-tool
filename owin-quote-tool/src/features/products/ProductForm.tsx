@@ -11,6 +11,8 @@ import { ImageDropzone } from '@/components/ImageDropzone';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Switch } from '@/components/Switch';
 import { formatVND } from '@/utils/format';
+import { getImage, saveImage } from '@/utils/imageStorage';
+import { productCoverPath } from '@/utils/imagePaths';
 
 type SaveProductInput = Parameters<typeof import('@/features/products/productStore').saveProduct>[0];
 
@@ -87,8 +89,21 @@ function legacyImageId(path: string | null): string | undefined {
   return path?.startsWith(prefix) ? path.slice(prefix.length) : undefined;
 }
 
-function coverPathFromImageId(imageId: string | undefined, existingPath: string | null): string | null {
-  if (imageId) return `legacy-images/${imageId}`;
+async function coverPathFromImageId(
+  imageId: string | undefined,
+  code: string,
+  name: string,
+  existingPath: string | null,
+): Promise<string | null> {
+  if (imageId) {
+    const blob = await getImage(imageId);
+    const nextPath = productCoverPath(code, name);
+    if (blob) {
+      await saveImage(nextPath, blob);
+      return nextPath;
+    }
+    return `legacy-images/${imageId}`;
+  }
   return existingPath || null;
 }
 
@@ -233,16 +248,23 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
           }),
       );
 
+      const normalizedCode = code.trim().toUpperCase();
+      const normalizedName = name.trim();
       await onSave({
         id: editing?.id,
         numericId: editing?.numericId,
-        code: code.trim().toUpperCase(),
-        name: name.trim(),
+        code: normalizedCode,
+        name: normalizedName,
         category: category.trim() || 'Khác',
         unit,
         unitPriceVnd: Number(unitPriceVnd || 0),
         shortDesc: shortDesc.trim() || null,
-        coverImagePath: coverPathFromImageId(coverImageId, editing?.coverImagePath ?? null),
+        coverImagePath: await coverPathFromImageId(
+          coverImageId,
+          normalizedCode,
+          normalizedName,
+          editing?.coverImagePath ?? null,
+        ),
         gallery: editing?.gallery ?? [],
         rawSizeText: rawSizeText.trim() || null,
         rawPriceText: rawPriceText.trim() || null,
@@ -328,7 +350,11 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
           </div>
           <div className="field">
             <label>Ảnh bìa</label>
-            <ImageDropzone imageId={coverImageId} onImageStored={setCoverImageId} />
+            <ImageDropzone
+              imageId={coverImageId}
+              imagePath={editing?.coverImagePath ?? null}
+              onImageStored={setCoverImageId}
+            />
           </div>
           <div className="switch-row">
             <span>Công khai</span>

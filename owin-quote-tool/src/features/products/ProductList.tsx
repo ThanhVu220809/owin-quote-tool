@@ -15,11 +15,6 @@ function unitLabel(unit: ProductRecord['unit']): string {
   return 'm²';
 }
 
-function legacyImageId(path: string | null): string | undefined {
-  const prefix = 'legacy-images/';
-  return path?.startsWith(prefix) ? path.slice(prefix.length) : undefined;
-}
-
 export function ProductList({ products, onEdit, onDelete }: Props) {
   if (products.length === 0) {
     return <div className="product-sub" style={{ padding: 16 }}>Chưa có sản phẩm nào.</div>;
@@ -28,7 +23,7 @@ export function ProductList({ products, onEdit, onDelete }: Props) {
     <div>
       {products.map((p) => (
         <div key={p.id} className="product-row" data-ma={p.code}>
-          <ProductThumb imageId={legacyImageId(p.coverImagePath)} />
+          <ProductThumb imagePath={p.coverImagePath} />
           <div className="product-meta">
             <div className="product-name">{p.name}</div>
             <div className="product-sub">

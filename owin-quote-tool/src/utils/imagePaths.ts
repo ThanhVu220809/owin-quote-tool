@@ -1,0 +1,90 @@
+import { getImage, getQuoteImage } from './imageStorage';
+
+export const DEFAULT_LOGO_PATH = 'owin-user-assets/logo/logo.webp';
+
+function appBase(): string {
+  const base = import.meta.env.BASE_URL || '/';
+  return base.endsWith('/') ? base : `${base}/`;
+}
+
+export function withBasePath(path: string): string {
+  const clean = path.replace(/^\/+/, '');
+  return `${appBase()}${clean}`;
+}
+
+export function normalizeImagePath(path: string | null | undefined): string | null {
+  const raw = String(path || '').trim();
+  if (!raw) return null;
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw;
+  const normalized = raw
+    .replace(/^\/api\/images\/+/, '')
+    .replace(/^api\/images\/+/, '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '');
+  if (normalized.startsWith('owin-user-assets/')) return withBasePath(normalized);
+  return normalized;
+}
+
+export function imageStoreKeyFromPath(path: string | null | undefined): string | null {
+  const normalized = normalizeImagePath(path);
+  if (!normalized || /^(https?:|data:|blob:)/i.test(normalized)) return null;
+  const legacyPrefix = 'legacy-images/';
+  if (normalized.startsWith(legacyPrefix)) return normalized.slice(legacyPrefix.length);
+  if (normalized.startsWith(appBase())) return null;
+  return normalized;
+}
+
+export function productCoverPath(code: string, name: string): string {
+  const slug = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const safeCode = code.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-') || 'product';
+  return `products/${safeCode}-${slug || 'item'}/images/cover.webp`;
+}
+
+export function quoteItemImagePath(quoteId: string, itemCode: string, extension = 'webp'): string {
+  const safeQuote = quoteId.trim().replace(/[^a-zA-Z0-9_-]+/g, '-') || 'draft';
+  const safeItem = itemCode.trim().replace(/[^a-zA-Z0-9_-]+/g, '-') || 'item';
+  const safeExt = extension.replace(/^\./, '').replace(/[^a-zA-Z0-9]+/g, '') || 'webp';
+  return `quotes/${safeQuote}/items/${safeItem}/cover.${safeExt}`;
+}
+
+export async function resolveImageUrl(path: string | null | undefined): Promise<{
+  url: string;
+  revoke: boolean;
+}> {
+  const normalized = normalizeImagePath(path);
+  if (!normalized) return { url: withBasePath(DEFAULT_LOGO_PATH), revoke: false };
+  if (/^(https?:|data:|blob:)/i.test(normalized) || normalized.startsWith(appBase())) {
+    return { url: normalized, revoke: false };
+  }
+
+  const key = imageStoreKeyFromPath(normalized);
+  if (!key) return { url: withBasePath(DEFAULT_LOGO_PATH), revoke: false };
+  const blob = normalized.startsWith('quotes/') ? await getQuoteImage(key) : await getImage(key);
+  return blob
+    ? { url: URL.createObjectURL(blob), revoke: true }
+    : { url: withBasePath(DEFAULT_LOGO_PATH), revoke: false };
+}
+
+export async function getImageDataUrlByPath(path: string | null | undefined): Promise<string | null> {
+  const normalized = normalizeImagePath(path);
+  if (!normalized || /^(https?:|data:|blob:)/i.test(normalized) || normalized.startsWith(appBase())) {
+    return null;
+  }
+  const key = imageStoreKeyFromPath(normalized);
+  if (!key) return null;
+  const blob = normalized.startsWith('quotes/') ? await getQuoteImage(key) : await getImage(key);
+  if (!blob) return null;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
