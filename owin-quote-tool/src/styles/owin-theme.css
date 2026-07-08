@@ -1045,6 +1045,15 @@
 }
 
 /* ───────────── Bảng giá printable table ───────────── */
+.catalogue-toolbar {
+  border-bottom: 1px solid var(--owin-border);
+  padding-bottom: 16px;
+  align-items: flex-start;
+}
+.catalogue-toolbar .btn {
+  font-size: 13px;
+  border-radius: 999px;
+}
 .bang-gia-doc {
   overflow-x: auto;
   padding: 10px;

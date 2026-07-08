@@ -1,4 +1,4 @@
-import { FileDown, Printer } from 'lucide-react';
+import { BookOpen, FileDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useProducts } from '@/features/products/useProducts';
 import { ProductThumb } from '@/features/products/ProductThumb';
@@ -23,6 +23,7 @@ function Money({ value }: { value: number | null }) {
 export function BangGiaView() {
   const { productRecords, loading } = useProducts();
   const [exporting, setExporting] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const rows = useMemo(() => buildCatalogueBlockRows(productRecords), [productRecords]);
   const blocks = useMemo(() => {
     const out: CatalogueBlockRow[][] = [];
@@ -37,11 +38,11 @@ export function BangGiaView() {
   }, [rows]);
 
   return (
-    <div>
-      <div className="toolbar no-print">
+    <section className="admin-page catalogue-page">
+      <div className="toolbar catalogue-toolbar no-print">
         <div>
-          <h1 className="app-title">Bảng giá</h1>
-          <p className="app-subtitle">{loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
+          <h1 className="app-title">Thư viện Catalogue</h1>
+          <p className="app-subtitle">BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN · {loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
         </div>
         <div className="spacer" />
         <button
@@ -54,10 +55,22 @@ export function BangGiaView() {
               .finally(() => setExporting(false));
           }}
         >
-          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Word'}
+          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Tải Word (.docx)'}
+        </button>
+        <button
+          className="btn btn-ghost"
+          disabled={productRecords.length === 0 || exportingExcel}
+          onClick={() => {
+            setExportingExcel(true);
+            import('@/features/export/catalogueExcelExport')
+              .then(({ exportBangGiaExcel }) => exportBangGiaExcel(productRecords))
+              .finally(() => setExportingExcel(false));
+          }}
+        >
+          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? 'Đang xuất…' : 'Tải Excel (.xlsx)'}
         </button>
         <button className="btn btn-primary" onClick={() => window.print()}>
-          <Printer size={17} style={{ verticalAlign: '-3px' }} /> In bảng giá
+          <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> Tải Catalogue PDF
         </button>
       </div>
 
@@ -107,7 +120,7 @@ export function BangGiaView() {
           )}
         </table>
       </div>
-    </div>
+    </section>
   );
 }
 
