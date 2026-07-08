@@ -4,6 +4,7 @@ import type {
   AccessoryInput,
   DimensionInput,
   ProductUnit,
+  QuoteExportRecord,
   QuoteInput,
   QuoteItemInput,
   QuoteRecord,
@@ -239,7 +240,7 @@ export function QuoteView() {
 
   const persistQuote = async (
     nextStatus: 'DRAFT' | 'SAVED' | 'EXPORTED' = 'SAVED',
-    options: { code?: string; exportFileName?: string } = {},
+    options: { code?: string; exportFileName?: string; exportType?: QuoteExportRecord['type'] } = {},
   ): Promise<QuoteRecord> => {
     setSaving(true);
     setMessage('');
@@ -310,7 +311,7 @@ export function QuoteView() {
               ...(existingRecord?.exports ?? []),
               {
                 id: crypto.randomUUID(),
-                type: 'docx',
+                type: options.exportType ?? 'docx',
                 fileName: options.exportFileName,
                 filePath: null,
                 createdAt: new Date().toISOString(),
@@ -342,7 +343,22 @@ export function QuoteView() {
       const code = quoteCode || generateQuoteCode(existing);
       const { exportQuoteWord } = await import('@/features/export/wordExport');
       const fileName = await exportQuoteWord({ ...calculated, quoteCode: code }, code);
-      await persistQuote('EXPORTED', { code, exportFileName: fileName });
+      await persistQuote('EXPORTED', { code, exportFileName: fileName, exportType: 'docx' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const exportExcel = async () => {
+    if (items.length === 0) return;
+    setSaving(true);
+    setMessage('');
+    try {
+      const existing = await getAllQuotes();
+      const code = quoteCode || generateQuoteCode(existing);
+      const { exportQuoteExcel } = await import('@/features/export/quoteExcelExport');
+      const fileName = await exportQuoteExcel({ ...calculated, quoteCode: code }, code);
+      await persistQuote('EXPORTED', { code, exportFileName: fileName, exportType: 'xlsx' });
     } finally {
       setSaving(false);
     }
@@ -370,6 +386,34 @@ export function QuoteView() {
       });
       if (detailQuote?.id === saved.id) setDetailQuote(saved);
       setMessage(`Đã xuất ${quote.code}`);
+      await refreshHistory();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const exportSavedQuoteExcel = async (quote: QuoteRecord) => {
+    setSaving(true);
+    setMessage('');
+    try {
+      const { exportQuoteExcel } = await import('@/features/export/quoteExcelExport');
+      const fileName = await exportQuoteExcel(quote.snapshot, quote.code);
+      const saved = await saveQuoteRecord({
+        ...quote,
+        status: 'EXPORTED',
+        exports: [
+          ...(quote.exports ?? []),
+          {
+            id: crypto.randomUUID(),
+            type: 'xlsx',
+            fileName,
+            filePath: null,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      });
+      if (detailQuote?.id === saved.id) setDetailQuote(saved);
+      setMessage(`Đã xuất Excel ${quote.code}`);
       await refreshHistory();
     } finally {
       setSaving(false);
@@ -426,6 +470,7 @@ export function QuoteView() {
         onDuplicate={(quote) => loadQuote(quote, true)}
         onDelete={(quote) => void deleteSavedQuote(quote)}
         onExport={(quote) => void exportSavedQuote(quote)}
+        onExportExcel={(quote) => void exportSavedQuoteExcel(quote)}
       />
     );
   }
@@ -440,6 +485,7 @@ export function QuoteView() {
         onDuplicate={() => loadQuote(detailQuote, true)}
         onDelete={() => void deleteSavedQuote(detailQuote)}
         onExport={() => void exportSavedQuote(detailQuote)}
+        onExportExcel={() => void exportSavedQuoteExcel(detailQuote)}
       />
     );
   }
@@ -463,6 +509,9 @@ export function QuoteView() {
         </button>
         <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportWord()}>
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Word
+        </button>
+        <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportExcel()}>
+          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Excel
         </button>
         <button className="btn btn-ghost" disabled={items.length === 0} onClick={exportQuotePDF}>
           <Printer size={17} style={{ verticalAlign: '-3px' }} /> In/PDF
@@ -594,6 +643,7 @@ function QuoteListPanel({
   onDuplicate,
   onDelete,
   onExport,
+  onExportExcel,
 }: {
   history: QuoteRecord[];
   filteredHistory: QuoteRecord[];
@@ -609,6 +659,7 @@ function QuoteListPanel({
   onDuplicate: (quote: QuoteRecord) => void;
   onDelete: (quote: QuoteRecord) => void;
   onExport: (quote: QuoteRecord) => void;
+  onExportExcel: (quote: QuoteRecord) => void;
 }) {
   return (
     <section className="admin-page quote-list-page">
@@ -705,6 +756,7 @@ function QuoteListPanel({
                       <button className="icon-btn" disabled={saving} onClick={() => onExport(quote)} aria-label="Xuất Word">
                         <FileDown size={16} />
                       </button>
+                      <button className="btn btn-ghost" disabled={saving} onClick={() => onExportExcel(quote)}>Excel</button>
                       <button className="icon-btn danger" onClick={() => onDelete(quote)} aria-label="Xoá báo giá">
                         <Trash2 size={16} />
                       </button>
@@ -728,6 +780,7 @@ function QuoteDetailPanel({
   onDuplicate,
   onDelete,
   onExport,
+  onExportExcel,
 }: {
   quote: QuoteRecord;
   saving: boolean;
@@ -736,6 +789,7 @@ function QuoteDetailPanel({
   onDuplicate: () => void;
   onDelete: () => void;
   onExport: () => void;
+  onExportExcel: () => void;
 }) {
   return (
     <section className="admin-page quote-detail-page">
@@ -756,6 +810,9 @@ function QuoteDetailPanel({
           </button>
           <button className="btn btn-ghost" disabled={saving} onClick={onExport}>
             <FileDown size={16} style={{ verticalAlign: '-3px' }} /> Word
+          </button>
+          <button className="btn btn-ghost" disabled={saving} onClick={onExportExcel}>
+            <FileDown size={16} style={{ verticalAlign: '-3px' }} /> Excel
           </button>
           <button className="btn btn-ghost" onClick={exportQuotePDF}>
             <Printer size={16} style={{ verticalAlign: '-3px' }} /> In/PDF

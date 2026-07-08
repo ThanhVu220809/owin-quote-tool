@@ -13,3 +13,9 @@
 
 - Full-page capture on the target SPA can stitch repeated content because heavy panels stay mounted. Viewport screenshots are the reliable comparison set.
 - Reference dashboard currently shows skeleton cards only in the running dev server; product/quote/catalogue/aluminum pages are usable for visual comparison.
+
+## Export Pass
+
+- Quote Word and Bảng giá Word use bundled browser-safe reference templates.
+- Quote Excel now follows the reference 11-column quote table, totals, and signature block without server filesystem image embedding.
+- Catalogue Excel remains browser-safe and uses the shared catalogue row builder.
