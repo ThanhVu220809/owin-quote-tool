@@ -1,6 +1,7 @@
 import localforage from 'localforage';
 import type { ProductRecord, QuoteInput, SuggestionRecord } from '@/types/models';
 import importedSuggestions from '@/data/imported/suggestions.json';
+import { normalizeSuggestionText, rankSuggestionCandidates } from './suggestionEngine';
 
 export const SUGGESTION_TYPES = [
   'accessory_name',
@@ -54,7 +55,7 @@ function normalizeValue(value: unknown): string {
 }
 
 function suggestionId(type: SuggestionType, value: string): string {
-  return `${type}:${value.toLocaleLowerCase('vi')}`;
+  return `${type}:${normalizeSuggestionText(value)}`;
 }
 
 function typeFromPath(path: string): string {
@@ -97,16 +98,14 @@ export async function seedSuggestionsIfEmpty(): Promise<void> {
   await suggestionStore.setItem(SEED_KEY, true);
 }
 
-export async function getSuggestions(type: SuggestionType): Promise<string[]> {
+export async function getSuggestions(type: SuggestionType, query = ''): Promise<string[]> {
   await seedSuggestionsIfEmpty();
   const out: SuggestionRecord[] = [];
   await suggestionStore.iterate<SuggestionRecord | boolean, void>((value, key) => {
     if (key === SEED_KEY || !value || typeof value === 'boolean') return;
     if (value.type === type) out.push(value);
   });
-  return out
-    .sort((a, b) => b.usedCount - a.usedCount || a.value.localeCompare(b.value, 'vi'))
-    .map((item) => item.value);
+  return rankSuggestionCandidates(query, out, 60).map((item) => item.value);
 }
 
 export async function getSuggestionMap(types: SuggestionType[]): Promise<Record<string, string[]>> {
@@ -189,6 +188,7 @@ export async function rememberProductSuggestions(product: ProductRecord): Promis
     ['unit', product.unit],
   ];
   product.specs.forEach((spec) => {
+    entries.push(['spec_label', spec.key]);
     entries.push(['spec_value', spec.value]);
     entries.push([suggestionTypeForSpecKey(spec.key), spec.value]);
   });
@@ -204,9 +204,16 @@ export async function rememberQuoteSuggestions(quote: QuoteInput): Promise<void>
   ];
   quote.items.forEach((item) => {
     entries.push(['item_name', item.itemName]);
+    entries.push(['product_name', item.itemName]);
+    entries.push(['product_type', item.productType]);
     entries.push(['category', item.category || item.groupName]);
+    entries.push(['unit', item.unit]);
+    item.dimensions.forEach((dimension) => entries.push(['unit', dimension.unit || item.unit]));
     item.accessories.forEach((accessory) => entries.push(['accessory_name', accessory.name]));
-    item.specs?.forEach((spec) => entries.push([suggestionTypeForSpecKey(spec.key), spec.value]));
+    item.specs?.forEach((spec) => {
+      entries.push(['spec_label', spec.key]);
+      entries.push([suggestionTypeForSpecKey(spec.key), spec.value]);
+    });
     entries.push(...collectAccessorySuggestionEntries(item.fixedAccessoryPackage, item.extraAccessories));
   });
   await rememberSuggestions(entries);

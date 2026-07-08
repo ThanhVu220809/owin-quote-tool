@@ -618,22 +618,45 @@
   box-shadow: 0 14px 34px rgba(15, 42, 61, 0.16);
   padding: 5px;
 }
-.autosuggest-menu button {
-  width: 100%;
+.autosuggest-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 10px;
+}
+.autosuggest-row:hover,
+.autosuggest-row.active {
+  background: var(--owin-bg);
+  color: var(--owin-action);
+  font-weight: 600;
+}
+.autosuggest-option {
+  flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
-  color: var(--owin-ink);
-  border-radius: 10px;
+  color: inherit;
   padding: 9px 10px;
   text-align: left;
   font-size: 13px;
   cursor: pointer;
 }
-.autosuggest-menu button:hover,
-.autosuggest-menu button.active {
-  background: var(--owin-bg);
-  color: var(--owin-action);
-  font-weight: 600;
+.autosuggest-remove {
+  width: 28px;
+  height: 28px;
+  margin-right: 3px;
+  border: none;
+  background: transparent;
+  color: var(--owin-ink-muted);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.autosuggest-remove:hover {
+  background: rgba(15, 42, 61, 0.08);
+  color: var(--owin-danger);
 }
 .editor-panel {
   border: 1px solid var(--owin-border);
