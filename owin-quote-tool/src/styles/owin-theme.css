@@ -788,6 +788,16 @@
   .quote-history-filters .field {
     width: 100%;
   }
+  .quote-detail-grid,
+  .quote-detail-info {
+    grid-template-columns: 1fr;
+  }
+  .quote-detail-item {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+  .quote-detail-item strong {
+    grid-column: 2;
+  }
 }
 
 /* Pick-card: hover nâng nhẹ */
@@ -884,6 +894,13 @@
   overflow-x: auto;
   margin-top: 12px;
 }
+.quote-list-table-card {
+  margin-top: 0;
+  background: #fff;
+  border: 1px solid var(--owin-border);
+  border-radius: 20px;
+  box-shadow: var(--ios-shadow);
+}
 .quote-history-table {
   width: 100%;
   min-width: 960px;
@@ -972,6 +989,59 @@
 .quote-actions .btn {
   padding: 8px 12px;
   font-size: 13px;
+}
+.quote-form-heading {
+  align-items: flex-start;
+}
+.quote-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.quote-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.8fr);
+  gap: 16px;
+}
+.quote-detail-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.quote-detail-info span,
+.quote-detail-info strong {
+  display: block;
+}
+.quote-detail-info span {
+  color: var(--owin-ink-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.quote-detail-info strong {
+  margin-top: 4px;
+  color: var(--owin-ink);
+  font-size: 14px;
+}
+.quote-detail-items {
+  display: grid;
+  gap: 10px;
+}
+.quote-detail-item {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--owin-border);
+  border-radius: 14px;
+  padding: 10px;
+}
+.quote-detail-item strong {
+  color: var(--owin-primary);
+  white-space: nowrap;
 }
 
 /* ───────────── Bảng giá printable table ───────────── */

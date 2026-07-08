@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, FileDown, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, FileDown, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -63,6 +63,10 @@ function formatShortDate(value?: string | null): string {
   return date.toLocaleDateString('vi-VN');
 }
 
+function scrollPageTop() {
+  window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+}
+
 function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
   return quote.snapshot.items.map((item) => ({
     sourceType: item.sourceType,
@@ -103,6 +107,8 @@ function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
 export function QuoteView() {
   const { productRecords, loading } = useProducts();
   const { suggestions: seededSuggestions, refreshSuggestions } = useSuggestions(QUOTE_SUGGESTION_TYPES);
+  const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
+  const [detailQuote, setDetailQuote] = useState<QuoteRecord | null>(null);
   const [history, setHistory] = useState<QuoteRecord[]>([]);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [quoteCode, setQuoteCode] = useState<string>('');
@@ -187,6 +193,13 @@ export function QuoteView() {
     setDepositVnd(0);
     setItems([]);
     setMessage('');
+  };
+
+  const openNewQuote = () => {
+    resetForm();
+    setView('form');
+    setDetailQuote(null);
+    scrollPageTop();
   };
 
   const addProduct = (productId: string) => {
@@ -341,7 +354,7 @@ export function QuoteView() {
     try {
       const { exportQuoteWord } = await import('@/features/export/wordExport');
       const fileName = await exportQuoteWord(quote.snapshot, quote.code);
-      await saveQuoteRecord({
+      const saved = await saveQuoteRecord({
         ...quote,
         status: 'EXPORTED',
         exports: [
@@ -355,6 +368,7 @@ export function QuoteView() {
           },
         ],
       });
+      if (detailQuote?.id === saved.id) setDetailQuote(saved);
       setMessage(`Đã xuất ${quote.code}`);
       await refreshHistory();
     } finally {
@@ -366,6 +380,8 @@ export function QuoteView() {
     if (!window.confirm(`Xoá báo giá "${quote.code}"?`)) return;
     await deleteQuote(quote.id);
     if (quoteId === quote.id) resetForm();
+    if (detailQuote?.id === quote.id) setDetailQuote(null);
+    setView('list');
     await refreshHistory();
     setMessage(`Đã xoá ${quote.code}`);
   };
@@ -382,19 +398,66 @@ export function QuoteView() {
     setDepositVnd(quote.depositVnd);
     setItems(snapshotToInputs(quote));
     setMessage(duplicate ? `Đã nhân bản từ ${quote.code}` : `Đã tải ${quote.code}`);
+    setView('form');
+    setDetailQuote(null);
+    scrollPageTop();
   };
 
+  const openDetail = (quote: QuoteRecord) => {
+    setDetailQuote(quote);
+    setView('detail');
+    scrollPageTop();
+  };
+
+  if (view === 'list') {
+    return (
+      <QuoteListPanel
+        history={history}
+        filteredHistory={filteredHistory}
+        quoteSearch={quoteSearch}
+        quoteStatusFilter={quoteStatusFilter}
+        saving={saving}
+        message={message}
+        onSearch={setQuoteSearch}
+        onStatusFilter={setQuoteStatusFilter}
+        onCreate={openNewQuote}
+        onView={openDetail}
+        onEdit={loadQuote}
+        onDuplicate={(quote) => loadQuote(quote, true)}
+        onDelete={(quote) => void deleteSavedQuote(quote)}
+        onExport={(quote) => void exportSavedQuote(quote)}
+      />
+    );
+  }
+
+  if (view === 'detail' && detailQuote) {
+    return (
+      <QuoteDetailPanel
+        quote={detailQuote}
+        saving={saving}
+        onBack={() => setView('list')}
+        onEdit={() => loadQuote(detailQuote)}
+        onDuplicate={() => loadQuote(detailQuote, true)}
+        onDelete={() => void deleteSavedQuote(detailQuote)}
+        onExport={() => void exportSavedQuote(detailQuote)}
+      />
+    );
+  }
+
   return (
-    <div>
-      <div className="toolbar">
+    <section className="admin-page quote-workflow-page">
+      <div className="toolbar quote-form-heading">
+        <button className="admin-back-button" onClick={() => setView('list')} aria-label="Quay lại danh sách báo giá">
+          <ArrowLeft size={20} />
+        </button>
         <div>
-          <h1 className="app-title">Tạo báo giá</h1>
+          <h1 className="app-title">{quoteId ? 'Cập nhật báo giá' : 'Thiết kế & Lập báo giá'}</h1>
           <p className="app-subtitle">
             {loading ? 'Đang tải kho…' : `${productRecords.length} sản phẩm · ${history.length} báo giá đã lưu`}
           </p>
         </div>
         <div className="spacer" />
-        <button className="btn btn-ghost" onClick={resetForm}>Báo giá mới</button>
+        <button className="btn btn-ghost" onClick={openNewQuote}>Báo giá mới</button>
         <button className="btn btn-primary" disabled={items.length === 0 || saving} onClick={() => void persistQuote('SAVED')}>
           <Save size={17} style={{ verticalAlign: '-3px' }} /> {saving ? 'Đang lưu…' : 'Lưu báo giá'}
         </button>
@@ -511,93 +574,239 @@ export function QuoteView() {
         )}
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="toolbar quote-history-toolbar" style={{ margin: 0 }}>
-          <div>
-            <div className="section-label" style={{ margin: 0 }}>Lịch sử báo giá</div>
-            <div className="product-sub">{filteredHistory.length}/{history.length} báo giá</div>
-          </div>
-          <div className="spacer" />
-          <div className="quote-history-filters">
-            <div className="field">
-              <label><Search size={14} style={{ verticalAlign: '-2px' }} /> Tìm báo giá</label>
-              <input className="input" value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} />
-            </div>
-            <div className="field">
-              <label>Trạng thái</label>
-              <select
-                className="input"
-                value={quoteStatusFilter}
-                onChange={(event) => setQuoteStatusFilter(event.target.value as QuoteRecord['status'] | '')}
-              >
-                <option value="">Tất cả</option>
-                <option value="DRAFT">Nháp</option>
-                <option value="SAVED">Đã lưu</option>
-                <option value="EXPORTED">Đã xuất</option>
-              </select>
-            </div>
-          </div>
+      <QuotePrintDocument quote={calculated} />
+    </section>
+  );
+}
+
+function QuoteListPanel({
+  history,
+  filteredHistory,
+  quoteSearch,
+  quoteStatusFilter,
+  saving,
+  message,
+  onSearch,
+  onStatusFilter,
+  onCreate,
+  onView,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  onExport,
+}: {
+  history: QuoteRecord[];
+  filteredHistory: QuoteRecord[];
+  quoteSearch: string;
+  quoteStatusFilter: QuoteRecord['status'] | '';
+  saving: boolean;
+  message: string;
+  onSearch: (value: string) => void;
+  onStatusFilter: (value: QuoteRecord['status'] | '') => void;
+  onCreate: () => void;
+  onView: (quote: QuoteRecord) => void;
+  onEdit: (quote: QuoteRecord) => void;
+  onDuplicate: (quote: QuoteRecord) => void;
+  onDelete: (quote: QuoteRecord) => void;
+  onExport: (quote: QuoteRecord) => void;
+}) {
+  return (
+    <section className="admin-page quote-list-page">
+      <div className="admin-page-heading">
+        <div>
+          <h1 className="app-title">Danh sách báo giá</h1>
+          <p className="app-subtitle">Hồ sơ báo giá chi tiết nhôm kính hệ OWIN · {history.length} báo giá</p>
         </div>
-        {history.length === 0 ? (
-          <div className="muted" style={{ padding: 12 }}>Chưa có báo giá đã lưu.</div>
-        ) : filteredHistory.length === 0 ? (
-          <div className="muted" style={{ padding: 12 }}>Không tìm thấy báo giá phù hợp.</div>
-        ) : (
-          <div className="quote-history-table-wrap">
-            <table className="quote-history-table">
-              <thead>
-                <tr>
-                  <th>Mã báo giá</th>
-                  <th>Khách hàng</th>
-                  <th>Giá trị nhôm</th>
-                  <th>Phụ kiện</th>
-                  <th>Tổng cộng</th>
-                  <th>Trạng thái</th>
-                  <th>Ngày tạo</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredHistory.map((quote) => (
-                  <tr key={quote.id}>
-                    <td>
-                      <button className="quote-code-button" onClick={() => loadQuote(quote)}>
-                        {quote.code}
-                      </button>
-                    </td>
-                    <td>
-                      <div className="quote-customer-name">{quote.customerName || 'Khách chưa đặt tên'}</div>
-                      <div className="quote-customer-meta">{quote.customerPhone || quote.customerAddress || ''}</div>
-                    </td>
-                    <td className="num">{formatVND(quote.subtotalProductVnd)}</td>
-                    <td className="num">{formatVND(quote.subtotalAccessoryVnd)}</td>
-                    <td className="num total-cell">{formatVND(quote.roundedTotalVnd)}</td>
-                    <td><span className={`quote-status-pill quote-status-${quote.status.toLowerCase()}`}>{statusLabel(quote.status)}</span></td>
-                    <td>{formatShortDate(quote.createdAt)}</td>
-                    <td>
-                      <div className="quote-actions">
-                        <button className="btn btn-ghost" onClick={() => loadQuote(quote)}>Mở</button>
-                        <button className="icon-btn" onClick={() => loadQuote(quote, true)} aria-label="Nhân bản">
-                          <Copy size={16} />
-                        </button>
-                        <button className="icon-btn" disabled={saving} onClick={() => void exportSavedQuote(quote)} aria-label="Xuất Word">
-                          <FileDown size={16} />
-                        </button>
-                        <button className="icon-btn danger" onClick={() => void deleteSavedQuote(quote)} aria-label="Xoá báo giá">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <button className="btn btn-primary" onClick={onCreate}>
+          <Plus size={18} style={{ verticalAlign: '-3px' }} /> Tạo báo giá mới
+        </button>
       </div>
 
-      <QuotePrintDocument quote={calculated} />
-    </div>
+      {message && <div className="product-toast">{message}</div>}
+
+      <div className="product-filter-card">
+        <div className="field product-filter-search">
+          <label><Search size={15} style={{ verticalAlign: '-2px' }} /> Tìm báo giá</label>
+          <input
+            className="input"
+            value={quoteSearch}
+            onChange={(event) => onSearch(event.target.value)}
+            placeholder="Tìm theo mã báo giá, tên khách, sđt..."
+          />
+        </div>
+        <div className="field">
+          <label>Trạng thái</label>
+          <select
+            className="input"
+            value={quoteStatusFilter}
+            onChange={(event) => onStatusFilter(event.target.value as QuoteRecord['status'] | '')}
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="DRAFT">Nháp</option>
+            <option value="SAVED">Đã lưu</option>
+            <option value="EXPORTED">Đã xuất</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="quote-history-table-wrap quote-list-table-card">
+        {history.length === 0 ? (
+          <div className="product-empty-card">
+            <FileDown size={44} />
+            <h3>Chưa có báo giá</h3>
+            <p>Tạo báo giá mới để bắt đầu lưu lịch sử.</p>
+          </div>
+        ) : filteredHistory.length === 0 ? (
+          <div className="product-empty-card">
+            <Search size={44} />
+            <h3>Không tìm thấy báo giá</h3>
+            <p>Thử đổi từ khóa hoặc trạng thái lọc.</p>
+          </div>
+        ) : (
+          <table className="quote-history-table">
+            <thead>
+              <tr>
+                <th>Mã báo giá</th>
+                <th>Khách hàng</th>
+                <th>Giá trị nhôm</th>
+                <th>Phụ kiện</th>
+                <th>Tổng cộng</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredHistory.map((quote) => (
+                <tr key={quote.id}>
+                  <td>
+                    <button className="quote-code-button" onClick={() => onView(quote)}>
+                      {quote.code}
+                    </button>
+                  </td>
+                  <td>
+                    <div className="quote-customer-name">{quote.customerName || 'Khách chưa đặt tên'}</div>
+                    <div className="quote-customer-meta">{quote.customerPhone || quote.customerAddress || ''}</div>
+                  </td>
+                  <td className="num">{formatVND(quote.subtotalProductVnd)}</td>
+                  <td className="num">{formatVND(quote.subtotalAccessoryVnd)}</td>
+                  <td className="num total-cell">{formatVND(quote.roundedTotalVnd)}</td>
+                  <td><span className={`quote-status-pill quote-status-${quote.status.toLowerCase()}`}>{statusLabel(quote.status)}</span></td>
+                  <td>{formatShortDate(quote.createdAt)}</td>
+                  <td>
+                    <div className="quote-actions">
+                      <button className="icon-btn" onClick={() => onView(quote)} aria-label="Xem báo giá">
+                        <Eye size={16} />
+                      </button>
+                      <button className="btn btn-ghost" onClick={() => onEdit(quote)}>Sửa</button>
+                      <button className="icon-btn" onClick={() => onDuplicate(quote)} aria-label="Nhân bản">
+                        <Copy size={16} />
+                      </button>
+                      <button className="icon-btn" disabled={saving} onClick={() => onExport(quote)} aria-label="Xuất Word">
+                        <FileDown size={16} />
+                      </button>
+                      <button className="icon-btn danger" onClick={() => onDelete(quote)} aria-label="Xoá báo giá">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function QuoteDetailPanel({
+  quote,
+  saving,
+  onBack,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  onExport,
+}: {
+  quote: QuoteRecord;
+  saving: boolean;
+  onBack: () => void;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onExport: () => void;
+}) {
+  return (
+    <section className="admin-page quote-detail-page">
+      <div className="admin-page-heading">
+        <div className="title-row">
+          <button className="admin-back-button" onClick={onBack} aria-label="Quay lại danh sách báo giá">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="app-title">{quote.code}</h1>
+            <p className="app-subtitle">{quote.customerName || 'Khách chưa đặt tên'} · {formatShortDate(quote.createdAt)}</p>
+          </div>
+        </div>
+        <div className="quote-detail-actions">
+          <button className="btn btn-ghost" onClick={onEdit}>Sửa</button>
+          <button className="btn btn-ghost" onClick={onDuplicate}>
+            <Copy size={16} style={{ verticalAlign: '-3px' }} /> Nhân bản
+          </button>
+          <button className="btn btn-ghost" disabled={saving} onClick={onExport}>
+            <FileDown size={16} style={{ verticalAlign: '-3px' }} /> Word
+          </button>
+          <button className="btn btn-ghost" onClick={exportQuotePDF}>
+            <Printer size={16} style={{ verticalAlign: '-3px' }} /> In/PDF
+          </button>
+          <button className="btn btn-danger" onClick={onDelete}>Xóa</button>
+        </div>
+      </div>
+
+      <div className="quote-detail-grid">
+        <section className="card">
+          <div className="section-label">Thông tin khách hàng</div>
+          <div className="quote-detail-info">
+            <div><span>Khách hàng</span><strong>{quote.customerName || '—'}</strong></div>
+            <div><span>SĐT</span><strong>{quote.customerPhone || '—'}</strong></div>
+            <div><span>Email</span><strong>{quote.customerEmail || '—'}</strong></div>
+            <div><span>Địa chỉ</span><strong>{quote.customerAddress || '—'}</strong></div>
+            <div><span>Ngày báo giá</span><strong>{formatShortDate(quote.quoteDate || quote.createdAt)}</strong></div>
+            <div><span>Trạng thái</span><strong>{statusLabel(quote.status)}</strong></div>
+          </div>
+        </section>
+        <section className="card">
+          <div className="section-label">Tổng quan giá trị đơn hàng</div>
+          <TotalLine label="Sản phẩm chính" value={quote.subtotalProductVnd} />
+          <TotalLine label="Phụ kiện lắp đặt" value={quote.subtotalAccessoryVnd} />
+          <TotalLine label="Tổng tiền" value={quote.totalVnd} />
+          <TotalLine label="Làm tròn" value={quote.roundedTotalVnd} strong />
+          <TotalLine label="Tạm ứng" value={quote.depositVnd} />
+          <TotalLine label="Cần thanh toán" value={quote.balanceVnd} strong />
+        </section>
+      </div>
+
+      <section className="card" style={{ marginTop: 16 }}>
+        <div className="section-label">Hạng mục báo giá ({quote.snapshot.items.length})</div>
+        <div className="quote-detail-items">
+          {quote.snapshot.items.map((item) => (
+            <div key={`${item.quoteItemCode}-${item.sortOrder}`} className="quote-detail-item">
+              <ProductThumb imagePath={item.coverImagePath || item.image || null} />
+              <div>
+                <div className="product-name">{item.quoteItemCode} · {item.itemName}</div>
+                <div className="product-sub">
+                  {item.category || item.groupName || '—'} · {formatVND(item.productSubtotalVnd)} · PK {formatVND(item.accessorySubtotalVnd)}
+                </div>
+              </div>
+              <strong>{formatVND(item.itemTotalVnd)}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <QuotePrintDocument quote={quote.snapshot} />
+    </section>
   );
 }
 
