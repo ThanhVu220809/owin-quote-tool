@@ -24,3 +24,9 @@
 
 - Autosuggest ranking now matches the reference scoring style: exact, prefix, token-prefix, contains, acronym, then usage order.
 - Fields can hide weak suggestions locally, and saved products/quotes now learn spec labels, units, product/item names, categories, customers, and accessories.
+
+## Aluminum Pass
+
+- TARGET now has the full reference aluminum estimator workflow: system tabs, entered-row badges, current/all totals, profile table, copy, CSV, Word, and browser print.
+- Aluminum data and 111 profile images were copied into TARGET public assets; image paths resolve through the Vite base path for GitHub Pages.
+- Screenshots saved: `target/aluminum-after-phase8.png` and `target/aluminum-table-after-phase8.png`.
