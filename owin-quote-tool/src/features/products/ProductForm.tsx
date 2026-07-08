@@ -97,13 +97,38 @@ function normalizeSpecKey(value: string): string {
     .toLowerCase();
 }
 
+function parseRawSizeText(value: string | null | undefined): { width: string; height: string } {
+  if (!value) return { width: '', height: '' };
+  const parts = value.split(/\s*[xX*]\s*/);
+  if (parts.length < 2) return { width: '', height: '' };
+  return {
+    width: parts[0]?.trim() ?? '',
+    height: parts[1]?.trim() ?? '',
+  };
+}
+
+function parseDecimalText(value: string): number {
+  const normalized = value.trim().replace(',', '.');
+  const match = normalized.match(/\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+}
+
+function buildRawSizeText(width: string, height: string): string | null {
+  const widthM = parseDecimalText(width);
+  const heightM = parseDecimalText(height);
+  if (widthM <= 0 || heightM <= 0) return null;
+  return `${widthM.toFixed(2)} x ${heightM.toFixed(2)}`;
+}
+
 export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
+  const initialSize = parseRawSizeText(editing?.rawSizeText);
   const [name, setName] = useState(editing?.name ?? '');
   const [code, setCode] = useState(editing?.code ?? '');
   const [category, setCategory] = useState(editing?.category ?? 'Khác');
   const [unit, setUnit] = useState<ProductUnit>(editing?.unit ?? 'M2');
   const [unitPriceVnd, setUnitPriceVnd] = useState(editing?.unitPriceVnd ?? 0);
-  const [rawSizeText, setRawSizeText] = useState(editing?.rawSizeText ?? '');
+  const [widthM, setWidthM] = useState(initialSize.width);
+  const [heightM, setHeightM] = useState(initialSize.height);
   const [rawPriceText, setRawPriceText] = useState(editing?.rawPriceText ?? '');
   const [shortDesc, setShortDesc] = useState(editing?.shortDesc ?? '');
   const [coverImageId, setCoverImageId] = useState<string | undefined>(() =>
@@ -170,6 +195,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
         .filter((item) => item.name);
       const fixedAccessoryPackage = serializeFixedAccessoriesJson(fixedPackage);
       const extraAccessoriesJson = serializeExtraAccessoriesJson(extraAccessories) ?? '[]';
+      const rawSizeText = buildRawSizeText(widthM, heightM) ?? editing?.rawSizeText ?? null;
 
       const normalizedCode = code.trim().toUpperCase();
       const normalizedName = name.trim();
@@ -189,7 +215,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
           editing?.coverImagePath ?? null,
         ),
         gallery: editing?.gallery ?? [],
-        rawSizeText: rawSizeText.trim() || null,
+        rawSizeText,
         rawPriceText: rawPriceText.trim() || null,
         specs: cleanSpecs,
         accessories: cleanAccessories,
@@ -238,23 +264,34 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
           </div>
           <div className="two-col" style={{ gap: 12 }}>
             <div className="field">
-              <label>Kích thước mẫu</label>
+              <label>Rộng mẫu (m)</label>
               <input
                 className="input"
-                value={rawSizeText}
-                onChange={(e) => setRawSizeText(e.target.value)}
-                placeholder="1.80 x 2.20"
+                inputMode="decimal"
+                value={widthM}
+                onChange={(e) => setWidthM(e.target.value)}
+                placeholder="1.80"
               />
             </div>
             <div className="field">
-              <label>Giá gốc mô tả</label>
+              <label>Cao mẫu (m)</label>
+              <input
+                className="input"
+                inputMode="decimal"
+                value={heightM}
+                onChange={(e) => setHeightM(e.target.value)}
+                placeholder="2.20"
+              />
+            </div>
+          </div>
+          <div className="field">
+            <label>Giá gốc mô tả</label>
               <input
                 className="input"
                 value={rawPriceText}
                 onChange={(e) => setRawPriceText(e.target.value)}
                 placeholder="Theo bảng giá OWIN"
               />
-            </div>
           </div>
           <div className="field">
             <label>Mô tả ngắn</label>
@@ -307,30 +344,34 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
             ))}
           </div>
 
-          <SectionHeader title="Phụ kiện đi kèm cũ" onAdd={() => setAccessories([...accessories, { name: '', quantityPerSet: 1, unitPriceVnd: 0, note: null }])} />
-          <div className="stack">
-            {accessories.map((item, index) => (
-              <div key={index} className="switch-row" style={{ alignItems: 'flex-end' }}>
-                <AutoSuggestInput
-                  label="Tên"
-                  value={item.name}
-                  onChange={(value) => updateAccessory(index, { name: value })}
-                  suggestions={suggestions.accessoryName}
-                />
-                <div className="field">
-                  <label>SL/Bộ</label>
-                  <input className="input" type="number" value={item.quantityPerSet || ''} onChange={(e) => updateAccessory(index, { quantityPerSet: Number(e.target.value) || 0 })} />
-                </div>
-                <div className="field">
-                  <label>Đơn giá</label>
-                  <CurrencyInput value={item.unitPriceVnd || 0} onChange={(unitPriceVnd) => updateAccessory(index, { unitPriceVnd })} />
-                </div>
-                <button className="icon-btn danger" type="button" onClick={() => setAccessories(accessories.filter((_, i) => i !== index))}>
-                  <Trash2 size={16} />
-                </button>
+          {accessories.length > 0 && (
+            <>
+              <SectionHeader title="Phụ kiện đi kèm cũ" onAdd={() => setAccessories([...accessories, { name: '', quantityPerSet: 1, unitPriceVnd: 0, note: null }])} />
+              <div className="stack">
+                {accessories.map((item, index) => (
+                  <div key={index} className="switch-row" style={{ alignItems: 'flex-end' }}>
+                    <AutoSuggestInput
+                      label="Tên"
+                      value={item.name}
+                      onChange={(value) => updateAccessory(index, { name: value })}
+                      suggestions={suggestions.accessoryName}
+                    />
+                    <div className="field">
+                      <label>SL/Bộ</label>
+                      <input className="input" type="number" value={item.quantityPerSet || ''} onChange={(e) => updateAccessory(index, { quantityPerSet: Number(e.target.value) || 0 })} />
+                    </div>
+                    <div className="field">
+                      <label>Đơn giá</label>
+                      <CurrencyInput value={item.unitPriceVnd || 0} onChange={(unitPriceVnd) => updateAccessory(index, { unitPriceVnd })} />
+                    </div>
+                    <button className="icon-btn danger" type="button" onClick={() => setAccessories(accessories.filter((_, i) => i !== index))}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       </div>
 

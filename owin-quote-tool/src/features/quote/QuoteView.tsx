@@ -793,7 +793,7 @@ function QuoteItemCard({
         })}
       </div>
 
-      {!usesPackageAccessories && (
+      {!usesPackageAccessories && item.accessories.length > 0 && (
         <>
           <div className="toolbar" style={{ margin: '10px 0 6px' }}>
             <div className="section-label" style={{ margin: 0 }}>Phụ kiện đi kèm cũ</div>
