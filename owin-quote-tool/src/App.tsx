@@ -98,7 +98,7 @@ function App() {
             <DashboardView onNavigate={selectTab} />
           </div>
           <div style={{ display: tab === 'products' ? 'block' : 'none' }}>
-            <ProductsView />
+            <ProductsView onOpenCatalogue={() => selectTab('catalogue')} />
           </div>
           <div style={{ display: tab === 'customers' ? 'block' : 'none' }}>
             <CustomersView onCreateQuote={() => selectTab('quotes')} />

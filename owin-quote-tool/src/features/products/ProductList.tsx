@@ -1,12 +1,17 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { Copy, Eye, Package, Pencil, Trash2 } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { formatVND } from '@/utils/format';
 import { ProductThumb } from './ProductThumb';
 
 interface Props {
   products: ProductRecord[];
+  loading?: boolean;
+  totalCount?: number;
+  duplicatingId?: string | null;
   onEdit: (p: ProductRecord) => void;
   onDelete: (p: ProductRecord) => void;
+  onDuplicate: (p: ProductRecord) => void;
+  onPreview: (p: ProductRecord) => void;
 }
 
 function unitLabel(unit: ProductRecord['unit']): string {
@@ -15,33 +20,88 @@ function unitLabel(unit: ProductRecord['unit']): string {
   return 'm²';
 }
 
-export function ProductList({ products, onEdit, onDelete }: Props) {
-  if (products.length === 0) {
-    return <div className="product-sub" style={{ padding: 16 }}>Chưa có sản phẩm nào.</div>;
+export function ProductList({
+  products,
+  loading,
+  totalCount,
+  duplicatingId,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  onPreview,
+}: Props) {
+  if (loading) {
+    return (
+      <div className="product-table-card product-list-skeleton">
+        {[1, 2, 3, 4].map((item) => (
+          <div key={item} />
+        ))}
+      </div>
+    );
   }
+
+  if (products.length === 0) {
+    return (
+      <div className="product-empty-card">
+        <Package size={44} />
+        <h3>Chưa có sản phẩm</h3>
+        <p>{totalCount ? 'Không tìm thấy sản phẩm phù hợp bộ lọc.' : 'Hãy tạo sản phẩm đầu tiên để bắt đầu quản lý báo giá.'}</p>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {products.map((p) => (
-        <div key={p.id} className="product-row" data-ma={p.code}>
-          <ProductThumb imagePath={p.coverImagePath} />
-          <div className="product-meta">
-            <div className="product-name">{p.name}</div>
-            <div className="product-sub">
-              {p.code} · {p.category} · {formatVND(p.unitPriceVnd)}/{unitLabel(p.unit)}
-              {p.rawSizeText ? ` · ${p.rawSizeText}` : ''}
-            </div>
-          </div>
-          <span className="badge">{unitLabel(p.unit)}</span>
-          <div className="row-actions">
-            <button className="icon-btn" onClick={() => onEdit(p)} aria-label={`Sửa ${p.code}`}>
-              <Pencil size={16} />
-            </button>
-            <button className="icon-btn danger" onClick={() => onDelete(p)} aria-label={`Xoá ${p.code}`}>
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-      ))}
+    <div className="product-table-card">
+      <div className="product-table-wrap">
+        <table className="product-table">
+          <thead>
+            <tr>
+              <th>Hình ảnh</th>
+              <th>Tên sản phẩm</th>
+              <th>Danh mục</th>
+              <th>Đơn vị</th>
+              <th>Kích thước</th>
+              <th>Đơn giá</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p.id} data-ma={p.code}>
+                <td>
+                  <button className="product-image-button" onClick={() => onPreview(p)} aria-label={`Xem ảnh ${p.code}`}>
+                    <ProductThumb imagePath={p.coverImagePath} fill />
+                  </button>
+                </td>
+                <td>
+                  <div className="product-name">{p.name}</div>
+                  <div className="product-sub">{p.code}</div>
+                </td>
+                <td>{p.category}</td>
+                <td>{unitLabel(p.unit)}</td>
+                <td>{p.rawSizeText || '—'}</td>
+                <td className="num">{formatVND(p.unitPriceVnd)}</td>
+                <td>
+                  <div className="product-table-actions">
+                    <button className="icon-btn" onClick={() => onPreview(p)} aria-label={`Xem ${p.code}`}>
+                      <Eye size={16} />
+                    </button>
+                    <button className="icon-btn" disabled={duplicatingId === p.id} onClick={() => onDuplicate(p)} aria-label={`Nhân bản ${p.code}`}>
+                      <Copy size={16} />
+                    </button>
+                    <button className="icon-btn" onClick={() => onEdit(p)} aria-label={`Sửa ${p.code}`}>
+                      <Pencil size={16} />
+                    </button>
+                    <button className="icon-btn danger" onClick={() => onDelete(p)} aria-label={`Xoá ${p.code}`}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

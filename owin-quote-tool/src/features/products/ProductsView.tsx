@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { ArrowLeft, BookOpen, Pencil, Plus, Search, X } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { useProducts } from './useProducts';
 import { getProductRecord } from './productStore';
 import { ProductForm } from './ProductForm';
 import { ProductList } from './ProductList';
+import { ProductThumb } from './ProductThumb';
 import { rememberProductSuggestions } from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
+import { formatVND } from '@/utils/format';
+import { sortCategoryNames } from '@/config/categoryOrder';
 
 const PRODUCT_SUGGESTION_TYPES = [
   'accessory_package_name',
@@ -79,11 +82,16 @@ function accessoryNames(products: ProductRecord[]): string[] {
 }
 
 /** Màn quản lý sản phẩm gốc (catalog). */
-export function ProductsView() {
+export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void }) {
   const { productRecords, loading, saveProduct, deleteProduct } = useProducts();
   const { suggestions: seededSuggestions, refreshSuggestions } = useSuggestions(PRODUCT_SUGGESTION_TYPES);
   const [editing, setEditing] = useState<ProductRecord | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [previewProduct, setPreviewProduct] = useState<ProductRecord | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
 
   // Gợi ý auto-suggest rút từ các giá trị đã nhập trong catalog.
   const suggestions = useMemo(
@@ -146,10 +154,12 @@ export function ProductsView() {
 
   const openNew = () => {
     setEditing(null);
+    setMessage('');
     setShowForm(true);
   };
   const openEdit = (p: ProductRecord) => {
     setEditing(p);
+    setMessage('');
     setShowForm(true);
   };
   const closeForm = () => {
@@ -160,8 +170,63 @@ export function ProductsView() {
   const handleDelete = async (p: ProductRecord) => {
     if (confirm(`Xoá sản phẩm "${p.name}" (${p.code})?`)) {
       await deleteProduct(p.id);
+      setMessage(`Đã xoá "${p.name}".`);
     }
   };
+
+  const handleDuplicate = async (p: ProductRecord) => {
+    setDuplicatingId(p.id);
+    setMessage('');
+    try {
+      const copyCode = `${p.code}-COPY-${String(Date.now()).slice(-4)}`;
+      const saved = await saveProduct({
+        ...p,
+        id: undefined,
+        numericId: undefined,
+        code: copyCode,
+        name: `Copy: ${p.name}`,
+        isFeatured: false,
+        createdAt: undefined,
+        updatedAt: undefined,
+        deletedAt: null,
+        deleted: undefined,
+      });
+      const record = await getProductRecord(saved.id);
+      if (record) {
+        await rememberProductSuggestions(record);
+        setEditing(record);
+        setShowForm(true);
+      }
+      await refreshSuggestions();
+      setMessage(`Đã nhân bản "${p.name}".`);
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
+
+  const categories = useMemo(
+    () => Array.from(new Set(productRecords.map((product) => product.category).filter(Boolean))).sort(sortCategoryNames),
+    [productRecords],
+  );
+
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return productRecords.filter((product) => {
+      const categoryOk = !selectedCategory || product.category === selectedCategory;
+      const text = [
+        product.code,
+        product.name,
+        product.category,
+        product.unit,
+        product.rawSizeText,
+        product.specs.map((spec) => `${spec.key} ${spec.value}`).join(' '),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return categoryOk && (!q || text.includes(q));
+    });
+  }, [productRecords, searchQuery, selectedCategory]);
 
   const handleSave: typeof saveProduct = async (input) => {
     const saved = await saveProduct(input);
@@ -171,36 +236,125 @@ export function ProductsView() {
     return saved;
   };
 
-  return (
-    <div>
-      <div className="toolbar">
-        <div>
-          <h1 className="app-title">Kho sản phẩm gốc</h1>
-          <p className="app-subtitle">{loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
+  if (showForm) {
+    return (
+      <section className="admin-page product-workflow-page">
+        <div className="admin-page-heading">
+          <div className="title-row">
+            <button className="admin-back-button" onClick={closeForm} aria-label="Quay lại danh sách sản phẩm">
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="app-title">{editing ? 'Cập nhật sản phẩm' : 'Tạo sản phẩm mới'}</h1>
+              <p className="app-subtitle">Thiết lập thông tin, thông số, phụ kiện và ảnh sản phẩm.</p>
+            </div>
+          </div>
         </div>
-        <div className="spacer" />
-        {!showForm && (
+        <ProductForm
+          key={editing?.id ?? 'new'}
+          editing={editing}
+          suggestions={suggestions}
+          onSave={handleSave}
+          onCancel={closeForm}
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section className="admin-page product-workflow-page">
+      <div className="admin-page-heading">
+        <div>
+          <h1 className="app-title">Quản lý sản phẩm</h1>
+          <p className="app-subtitle">
+            {loading ? 'Đang tải danh mục sản phẩm…' : `Danh mục sản phẩm nhôm kính của hệ thống · ${productRecords.length} sản phẩm`}
+          </p>
+        </div>
+        <div className="product-header-actions">
+          <button className="btn btn-ghost" onClick={onOpenCatalogue}>
+            <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> Catalogue
+          </button>
           <button className="btn btn-primary" onClick={openNew}>
             <Plus size={18} style={{ verticalAlign: '-3px' }} /> Thêm sản phẩm
           </button>
-        )}
+        </div>
       </div>
 
-      {showForm && (
-        <div style={{ marginBottom: 20 }}>
-          <ProductForm
-            key={editing?.id ?? 'new'}
-            editing={editing}
-            suggestions={suggestions}
-            onSave={handleSave}
-            onCancel={closeForm}
+      {message && <div className="product-toast">{message}</div>}
+
+      <div className="product-filter-card">
+        <div className="field product-filter-search">
+          <label><Search size={15} style={{ verticalAlign: '-2px' }} /> Tìm sản phẩm</label>
+          <input
+            className="input"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Tìm theo tên hoặc nhóm sản phẩm..."
           />
         </div>
-      )}
-
-      <div className="card">
-        <ProductList products={productRecords} onEdit={openEdit} onDelete={handleDelete} />
+        <div className="field">
+          <label>Nhóm sản phẩm</label>
+          <select className="input" value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
+            <option value="">Tất cả nhóm sản phẩm</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+        </div>
       </div>
-    </div>
+
+      <ProductList
+        products={filteredProducts}
+        loading={loading}
+        totalCount={productRecords.length}
+        duplicatingId={duplicatingId}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+        onDuplicate={(product) => void handleDuplicate(product)}
+        onPreview={setPreviewProduct}
+      />
+
+      {previewProduct && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setPreviewProduct(null)}>
+          <div className="product-preview-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="product-preview-header">
+              <div>
+                <div className="product-name">{previewProduct.name}</div>
+                <div className="product-sub">{previewProduct.category} · {formatVND(previewProduct.unitPriceVnd)}</div>
+              </div>
+              <button className="icon-btn" onClick={() => setPreviewProduct(null)} aria-label="Đóng xem ảnh">
+                <X size={17} />
+              </button>
+            </div>
+            <div className="product-preview-body">
+              <div className="product-preview-image">
+                <ProductThumb imagePath={previewProduct.coverImagePath} fill />
+              </div>
+              <div className="product-preview-meta">
+                <div>
+                  <span>Danh mục</span>
+                  <strong>{previewProduct.category}</strong>
+                </div>
+                <div>
+                  <span>Đơn vị</span>
+                  <strong>{previewProduct.unit === 'BO' ? 'Bộ' : previewProduct.unit === 'METER' ? 'md' : 'm²'}</strong>
+                </div>
+                <div>
+                  <span>Kích thước mẫu</span>
+                  <strong>{previewProduct.rawSizeText || '—'}</strong>
+                </div>
+                <div>
+                  <span>Đơn giá</span>
+                  <strong>{formatVND(previewProduct.unitPriceVnd)}</strong>
+                </div>
+                <button className="btn btn-primary" onClick={() => openEdit(previewProduct)}>
+                  <Pencil size={16} style={{ verticalAlign: '-3px' }} /> Chỉnh sửa sản phẩm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

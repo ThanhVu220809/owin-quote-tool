@@ -120,6 +120,19 @@ function buildRawSizeText(width: string, height: string): string | null {
   return `${widthM.toFixed(2)} x ${heightM.toFixed(2)}`;
 }
 
+function generateProductCode(): string {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return [
+    now.getFullYear(),
+    pad(now.getMonth() + 1),
+    pad(now.getDate()),
+    pad(now.getHours()),
+    pad(now.getMinutes()),
+    pad(now.getSeconds()),
+  ].join('');
+}
+
 export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const initialSize = parseRawSizeText(editing?.rawSizeText);
   const [name, setName] = useState(editing?.name ?? '');
@@ -148,7 +161,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const [isPublic, setIsPublic] = useState(editing?.isPublic !== false);
   const [saving, setSaving] = useState(false);
 
-  const canSave = name.trim() !== '' && code.trim() !== '';
+  const canSave = name.trim() !== '';
 
   const updateSpec = (index: number, patch: Partial<ProductSpecRecord>) =>
     setSpecs((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -197,7 +210,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
       const extraAccessoriesJson = serializeExtraAccessoriesJson(extraAccessories) ?? '[]';
       const rawSizeText = buildRawSizeText(widthM, heightM) ?? editing?.rawSizeText ?? null;
 
-      const normalizedCode = code.trim().toUpperCase();
+      const normalizedCode = (code.trim() || generateProductCode()).toUpperCase();
       const normalizedName = name.trim();
       await onSave({
         id: editing?.id,
