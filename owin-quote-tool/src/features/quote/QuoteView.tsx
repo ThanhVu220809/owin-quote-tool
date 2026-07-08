@@ -27,7 +27,7 @@ import {
   serializeExtraAccessoriesJson,
   serializeFixedAccessoriesJson,
 } from '@/lib/quote/accessoryDrafts';
-import { getAllQuotes, saveQuoteRecord } from './quoteStore';
+import { deleteQuote, getAllQuotes, saveQuoteRecord } from './quoteStore';
 
 const QUOTE_SUGGESTION_TYPES = [
   'customer_name',
@@ -48,6 +48,19 @@ function unitLabel(unit: ProductUnit): string {
   if (unit === 'BO') return 'Bộ';
   if (unit === 'METER') return 'md';
   return 'm²';
+}
+
+function statusLabel(status: QuoteRecord['status']): string {
+  if (status === 'EXPORTED') return 'Đã xuất';
+  if (status === 'SAVED') return 'Đã lưu';
+  return 'Nháp';
+}
+
+function formatShortDate(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return date.toLocaleDateString('vi-VN');
 }
 
 function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
@@ -103,6 +116,8 @@ export function QuoteView() {
   const [items, setItems] = useState<QuoteItemInput[]>([]);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [quoteSearch, setQuoteSearch] = useState('');
+  const [quoteStatusFilter, setQuoteStatusFilter] = useState<QuoteRecord['status'] | ''>('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -125,6 +140,25 @@ export function QuoteView() {
       return categoryOk && (!q || text.includes(q));
     });
   }, [categoryFilter, productRecords, search]);
+
+  const filteredHistory = useMemo(() => {
+    const q = quoteSearch.trim().toLowerCase();
+    return history.filter((quote) => {
+      const statusOk = !quoteStatusFilter || quote.status === quoteStatusFilter;
+      const text = [
+        quote.code,
+        quote.customerName,
+        quote.customerPhone,
+        quote.customerEmail,
+        quote.customerAddress,
+        quote.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return statusOk && (!q || text.includes(q));
+    });
+  }, [history, quoteSearch, quoteStatusFilter]);
 
   const quoteInput: QuoteInput = useMemo(
     () => ({
@@ -301,6 +335,41 @@ export function QuoteView() {
     }
   };
 
+  const exportSavedQuote = async (quote: QuoteRecord) => {
+    setSaving(true);
+    setMessage('');
+    try {
+      const { exportQuoteWord } = await import('@/features/export/wordExport');
+      const fileName = await exportQuoteWord(quote.snapshot, quote.code);
+      await saveQuoteRecord({
+        ...quote,
+        status: 'EXPORTED',
+        exports: [
+          ...(quote.exports ?? []),
+          {
+            id: crypto.randomUUID(),
+            type: 'docx',
+            fileName,
+            filePath: null,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      });
+      setMessage(`Đã xuất ${quote.code}`);
+      await refreshHistory();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteSavedQuote = async (quote: QuoteRecord) => {
+    if (!window.confirm(`Xoá báo giá "${quote.code}"?`)) return;
+    await deleteQuote(quote.id);
+    if (quoteId === quote.id) resetForm();
+    await refreshHistory();
+    setMessage(`Đã xoá ${quote.code}`);
+  };
+
   const loadQuote = (quote: QuoteRecord, duplicate = false) => {
     setQuoteId(duplicate ? null : quote.id);
     setQuoteCode(duplicate ? '' : quote.code);
@@ -443,26 +512,87 @@ export function QuoteView() {
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-label">Lịch sử báo giá</div>
+        <div className="toolbar quote-history-toolbar" style={{ margin: 0 }}>
+          <div>
+            <div className="section-label" style={{ margin: 0 }}>Lịch sử báo giá</div>
+            <div className="product-sub">{filteredHistory.length}/{history.length} báo giá</div>
+          </div>
+          <div className="spacer" />
+          <div className="quote-history-filters">
+            <div className="field">
+              <label><Search size={14} style={{ verticalAlign: '-2px' }} /> Tìm báo giá</label>
+              <input className="input" value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} />
+            </div>
+            <div className="field">
+              <label>Trạng thái</label>
+              <select
+                className="input"
+                value={quoteStatusFilter}
+                onChange={(event) => setQuoteStatusFilter(event.target.value as QuoteRecord['status'] | '')}
+              >
+                <option value="">Tất cả</option>
+                <option value="DRAFT">Nháp</option>
+                <option value="SAVED">Đã lưu</option>
+                <option value="EXPORTED">Đã xuất</option>
+              </select>
+            </div>
+          </div>
+        </div>
         {history.length === 0 ? (
           <div className="muted" style={{ padding: 12 }}>Chưa có báo giá đã lưu.</div>
+        ) : filteredHistory.length === 0 ? (
+          <div className="muted" style={{ padding: 12 }}>Không tìm thấy báo giá phù hợp.</div>
         ) : (
-          history.map((quote) => (
-            <div key={quote.id} className="product-row">
-              <div className="product-meta">
-                <div className="product-name">{quote.code}</div>
-                <div className="product-sub">
-                  {quote.customerName || 'Khách chưa đặt tên'} · {quote.status} · {formatVND(quote.roundedTotalVnd)}
-                </div>
-              </div>
-              <div className="row-actions">
-                <button className="btn btn-ghost" onClick={() => loadQuote(quote)}>Mở</button>
-                <button className="icon-btn" onClick={() => loadQuote(quote, true)} aria-label="Nhân bản">
-                  <Copy size={16} />
-                </button>
-              </div>
-            </div>
-          ))
+          <div className="quote-history-table-wrap">
+            <table className="quote-history-table">
+              <thead>
+                <tr>
+                  <th>Mã báo giá</th>
+                  <th>Khách hàng</th>
+                  <th>Giá trị nhôm</th>
+                  <th>Phụ kiện</th>
+                  <th>Tổng cộng</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày tạo</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredHistory.map((quote) => (
+                  <tr key={quote.id}>
+                    <td>
+                      <button className="quote-code-button" onClick={() => loadQuote(quote)}>
+                        {quote.code}
+                      </button>
+                    </td>
+                    <td>
+                      <div className="quote-customer-name">{quote.customerName || 'Khách chưa đặt tên'}</div>
+                      <div className="quote-customer-meta">{quote.customerPhone || quote.customerAddress || ''}</div>
+                    </td>
+                    <td className="num">{formatVND(quote.subtotalProductVnd)}</td>
+                    <td className="num">{formatVND(quote.subtotalAccessoryVnd)}</td>
+                    <td className="num total-cell">{formatVND(quote.roundedTotalVnd)}</td>
+                    <td><span className={`quote-status-pill quote-status-${quote.status.toLowerCase()}`}>{statusLabel(quote.status)}</span></td>
+                    <td>{formatShortDate(quote.createdAt)}</td>
+                    <td>
+                      <div className="quote-actions">
+                        <button className="btn btn-ghost" onClick={() => loadQuote(quote)}>Mở</button>
+                        <button className="icon-btn" onClick={() => loadQuote(quote, true)} aria-label="Nhân bản">
+                          <Copy size={16} />
+                        </button>
+                        <button className="icon-btn" disabled={saving} onClick={() => void exportSavedQuote(quote)} aria-label="Xuất Word">
+                          <FileDown size={16} />
+                        </button>
+                        <button className="icon-btn danger" onClick={() => void deleteSavedQuote(quote)} aria-label="Xoá báo giá">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

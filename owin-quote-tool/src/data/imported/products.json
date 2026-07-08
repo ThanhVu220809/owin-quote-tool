@@ -1,0 +1,1123 @@
+[
+  {
+    "id": "20260614215700",
+    "numericId": 1,
+    "code": "20260614215700",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260614215700-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Tấm Liền Nguyên Khối + Fix Kính",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260614215700-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-14T14:57:00.930+00:00",
+    "updatedAt": "2026-06-15T16:04:31.497+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615230437",
+    "numericId": 2,
+    "code": "20260615230437",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615230437-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Tấm Liền Nguyên Khối + Fix Kính",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615230437-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:04:37.628+00:00",
+    "updatedAt": "2026-06-15T16:10:26.880+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615231227",
+    "numericId": 3,
+    "code": "20260615231227",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615231227-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Lim",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Tấm Liền Nguyên Khối + Fix Kính",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615231227-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:12:27.269+00:00",
+    "updatedAt": "2026-06-15T16:14:01.786+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615231423",
+    "numericId": 4,
+    "code": "20260615231423",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615231423-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Tấm Liền Nguyên Khối + Fix Kính",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615231423-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:14:23.394+00:00",
+    "updatedAt": "2026-06-15T16:18:22.459+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615231748",
+    "numericId": 5,
+    "code": "20260615231748",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615231748-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Tấm Liền Nguyên Khối + Fix Kính",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615231748-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:17:48.515+00:00",
+    "updatedAt": "2026-06-15T16:18:30.361+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615231932",
+    "numericId": 6,
+    "code": "20260615231932",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615231932-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Ghi",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Tấm Liền Nguyên Khối + Fix Kính",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615231932-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:19:32.288+00:00",
+    "updatedAt": "2026-06-15T16:19:56.026+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232055",
+    "numericId": 7,
+    "code": "20260615232055",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232055-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Tấm Liền Nguyên Khối + Fix Kính",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232055-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:20:55.095+00:00",
+    "updatedAt": "2026-06-15T16:21:07.660+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232128",
+    "numericId": 8,
+    "code": "20260615232128",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232128-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Tấm Liền Nguyên Khối",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232128-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:21:28.474+00:00",
+    "updatedAt": "2026-06-15T16:22:24.441+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232233",
+    "numericId": 9,
+    "code": "20260615232233",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232233-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232233-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:22:33.338+00:00",
+    "updatedAt": "2026-06-15T16:23:14.601+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232321",
+    "numericId": 10,
+    "code": "20260615232321",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232321-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232321-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:23:21.934+00:00",
+    "updatedAt": "2026-06-15T16:23:32.375+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232341",
+    "numericId": 11,
+    "code": "20260615232341",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232341-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232341-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:23:41.663+00:00",
+    "updatedAt": "2026-06-15T16:23:54.643+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232415",
+    "numericId": 12,
+    "code": "20260615232415",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232415-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Lim",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2},{\"id\":\"c9d2f8db-9555-4318-be1a-16b868862bd7\",\"name\":\"Khóa Vân Tay\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":12000000,\"amount\":12000000,\"total\":12000000,\"sortOrder\":3}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232415-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:24:15.270+00:00",
+    "updatedAt": "2026-06-15T16:26:18.705+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232438",
+    "numericId": 13,
+    "code": "20260615232438",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232438-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Lim",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232438-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:24:38.141+00:00",
+    "updatedAt": "2026-06-15T16:25:37.176+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232627",
+    "numericId": 14,
+    "code": "20260615232627",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232627-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2},{\"id\":\"793f7f0a-a092-478c-b3d0-bc0886ac633a\",\"name\":\"Góc Đồng Cá Chép\",\"unit\":\"BO\",\"quantity\":16,\"weight\":0,\"unitPrice\":100000,\"amount\":1600000,\"total\":1600000,\"sortOrder\":3}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232627-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:26:27.504+00:00",
+    "updatedAt": "2026-06-15T16:27:02.598+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232717",
+    "numericId": 15,
+    "code": "20260615232717",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232717-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Vân Gỗ Trắc",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2},{\"id\":\"793f7f0a-a092-478c-b3d0-bc0886ac633a\",\"name\":\"Góc Đồng Cá Chép\",\"unit\":\"BO\",\"quantity\":16,\"weight\":0,\"unitPrice\":100000,\"amount\":1600000,\"total\":1600000,\"sortOrder\":3}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232717-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:27:17.118+00:00",
+    "updatedAt": "2026-06-15T16:28:45.100+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232853",
+    "numericId": 16,
+    "code": "20260615232853",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232853-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Ghi",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2},{\"id\":\"793f7f0a-a092-478c-b3d0-bc0886ac633a\",\"name\":\"Góc Đồng Cá Chép\",\"unit\":\"BO\",\"quantity\":16,\"weight\":0,\"unitPrice\":100000,\"amount\":1600000,\"total\":1600000,\"sortOrder\":3}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232853-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:28:53.435+00:00",
+    "updatedAt": "2026-06-15T16:29:13.092+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615232923",
+    "numericId": 17,
+    "code": "20260615232923",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615232923-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Ghi",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2},{\"id\":\"793f7f0a-a092-478c-b3d0-bc0886ac633a\",\"name\":\"Góc Đồng Cá Chép\",\"unit\":\"BO\",\"quantity\":16,\"weight\":0,\"unitPrice\":100000,\"amount\":1600000,\"total\":1600000,\"sortOrder\":3}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615232923-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:29:23.641+00:00",
+    "updatedAt": "2026-06-15T16:34:07.725+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615233209",
+    "numericId": 19,
+    "code": "20260615233209",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615233209-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Ghi",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2},{\"id\":\"793f7f0a-a092-478c-b3d0-bc0886ac633a\",\"name\":\"Góc Đồng Cá Chép\",\"unit\":\"BO\",\"quantity\":16,\"weight\":0,\"unitPrice\":100000,\"amount\":1600000,\"total\":1600000,\"sortOrder\":3}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615233209-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:32:09.513+00:00",
+    "updatedAt": "2026-06-15T16:32:20.028+00:00",
+    "deletedAt": null
+  },
+  {
+    "id": "20260615233234",
+    "numericId": 20,
+    "code": "20260615233234",
+    "name": "Cửa Thủy Lực Nhôm OWIN",
+    "slug": "cua-thuy-luc-nhom-owin",
+    "category": "Cửa chính",
+    "unit": "M2",
+    "unitPriceVnd": 4500000,
+    "shortDesc": null,
+    "coverImagePath": "imported-assets/products/20260615233234-cua-thuy-luc-nhom-owin/images/cover.jpeg",
+    "gallery": [],
+    "rawSizeText": "2.80 x 2.80",
+    "rawPriceText": null,
+    "specs": [
+      {
+        "key": "Màu",
+        "value": "Ghi",
+        "sortOrder": 0
+      },
+      {
+        "key": "Khung Bao",
+        "value": "50 X 200",
+        "sortOrder": 1
+      },
+      {
+        "key": "Bản Cánh",
+        "value": "60 X 180",
+        "sortOrder": 2
+      },
+      {
+        "key": "Độ Dày",
+        "value": "2 mm",
+        "sortOrder": 3
+      },
+      {
+        "key": "Loại Kính",
+        "value": "Kính Hộp Nan Hoa Mạ Đồng",
+        "sortOrder": 4
+      }
+    ],
+    "accessories": [
+      {
+        "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+        "quantityPerSet": 1,
+        "unitPriceVnd": 10000000,
+        "note": "Khóa Bi Ngang x1, Bản Lề Sàn x1, Tay Nắm x1, Ngỗng Trên Dưới x1, Vật Tư Phụ x1",
+        "sortOrder": 0
+      }
+    ],
+    "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":1},{\"name\":\"Bản Lề Sàn\",\"quantity\":1},{\"name\":\"Tay Nắm\",\"quantity\":1},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":1},{\"name\":\"Vật Tư Phụ\",\"quantity\":1}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000}",
+    "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào BIệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2},{\"id\":\"793f7f0a-a092-478c-b3d0-bc0886ac633a\",\"name\":\"Góc Đồng Cá Chép\",\"unit\":\"BO\",\"quantity\":16,\"weight\":0,\"unitPrice\":100000,\"amount\":1600000,\"total\":1600000,\"sortOrder\":3}]",
+    "isFeatured": false,
+    "isPublic": true,
+    "folderPath": "storage/products/20260615233234-cua-thuy-luc-nhom-owin",
+    "createdAt": "2026-06-15T16:32:34.008+00:00",
+    "updatedAt": "2026-06-15T16:32:47.075+00:00",
+    "deletedAt": null
+  }
+]

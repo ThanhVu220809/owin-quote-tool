@@ -17,6 +17,7 @@ import type {
   ProductUnit,
 } from '@/types/models';
 import initialData from '@/data/initialData.json';
+import importedProducts from '@/data/imported/products.json';
 
 const productStore = localforage.createInstance({
   name: 'owin-quote-tool',
@@ -26,6 +27,7 @@ const productStore = localforage.createInstance({
 });
 
 const SEED_FLAG = '__seeded__';
+const REFERENCE_SEED_FLAG = '__reference_products_seed_v1__';
 const DEFAULT_CATEGORY = 'Khác';
 
 type ProductInput = {
@@ -280,13 +282,36 @@ async function getNextNumericId(): Promise<number> {
 /** Nạp dữ liệu mẫu lần đầu (chỉ chạy 1 lần), migrate từ schema cũ sang ProductRecord. */
 export async function seedIfEmpty(): Promise<void> {
   const seeded = await productStore.getItem<boolean>(SEED_FLAG);
-  if (seeded) return;
-  let numericId = 1;
-  for (const p of initialData.products as ProductInput[]) {
-    const record = normalizeProductRecord(p, numericId++);
-    await productStore.setItem(record.id, record);
+  if (!seeded) {
+    let numericId = 1;
+    const seedProducts = (importedProducts as ProductInput[]).length > 0
+      ? (importedProducts as ProductInput[])
+      : (initialData.products as ProductInput[]);
+    for (const p of seedProducts) {
+      const record = normalizeProductRecord(p, numericId++);
+      await productStore.setItem(record.id, record);
+    }
+    await productStore.setItem(SEED_FLAG, true);
   }
-  await productStore.setItem(SEED_FLAG, true);
+  await importReferenceProductsIfNeeded();
+}
+
+async function importReferenceProductsIfNeeded(): Promise<void> {
+  if ((importedProducts as ProductInput[]).length === 0) return;
+  const imported = await productStore.getItem<boolean>(REFERENCE_SEED_FLAG);
+  if (imported) return;
+
+  const existing = await getAllProductsRaw();
+  const existingIds = new Set(existing.map((product) => product.id));
+  const existingCodes = new Set(existing.map((product) => product.code));
+  for (const input of importedProducts as ProductInput[]) {
+    const record = normalizeProductRecord(input, existing.length + 1);
+    if (existingIds.has(record.id) || existingCodes.has(record.code)) continue;
+    await productStore.setItem(record.id, record);
+    existingIds.add(record.id);
+    existingCodes.add(record.code);
+  }
+  await productStore.setItem(REFERENCE_SEED_FLAG, true);
 }
 
 /** Tất cả sản phẩm CÒN SỐNG, compatibility view cho UI cũ. */
@@ -302,7 +327,7 @@ export async function getAllProducts(): Promise<Product[]> {
 export async function getAllProductsRaw(): Promise<ProductRecord[]> {
   const out: ProductRecord[] = [];
   await productStore.iterate<ProductRecord | ProductInput | boolean, void>((value, key) => {
-    if (key === SEED_FLAG || !value || typeof value === 'boolean') return;
+    if (key === SEED_FLAG || key === REFERENCE_SEED_FLAG || !value || typeof value === 'boolean') return;
     out.push(normalizeProductRecord(value as ProductInput, out.length + 1));
   });
   return out.sort((a, b) => a.code.localeCompare(b.code));

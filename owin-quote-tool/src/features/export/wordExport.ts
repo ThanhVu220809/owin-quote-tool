@@ -1,50 +1,39 @@
 /**
- * ENGINE XUẤT WORD (docxtemplater) — TASK 4.5.
+ * Browser-safe Word export for the migrated REFERENCE templates.
  *
- * VERIFY DOCS (đã đọc node_modules, KHÔNG theo trí nhớ):
- *  - docxtemplater@3.68.7:
- *      new Docxtemplater(zip, { modules, paragraphLoop, linebreaks })  // compile on the fly
- *      doc.render(data)        // KHÔNG dùng setData (deprecated)
- *      doc.toBlob()            // xuất Blob trực tiếp
- *  - docxtemplater-image-module-free@1.1.1:
- *      default export = ImageModule (function), new ImageModule(opts)
- *      opts.getImage(tagValue) → PHẢI trả ArrayBuffer (xem test.js: bytes.buffer)
- *      opts.getSize(img, tagValue) → [width, height]
- *      ⚠️ regex mẫu chỉ nhận png/jpg → ta tự strip mọi prefix data:*;base64,
+ * The bundled DOCX files are the REFERENCE marker-row templates:
+ * - quote: {nhom}, {stt}/{ma_sp}/{anh_sp}/..., {bo_pk_*}, {pk_*}, {ps_*}
+ * - catalogue: {category}, {product_info_block}, {accessory_block}
+ *
+ * We clone those Word table rows directly with PizZip. Runtime stays static and
+ * GitHub Pages compatible: no fs/path/sharp/server upload/API routes.
  */
 
 import PizZip from 'pizzip';
-import Docxtemplater from 'docxtemplater';
-import ImageModule from 'docxtemplater-image-module-free';
-import type { CalculatedQuote, Customer, ProductRecord, QuoteLine } from '@/types/models';
-import { buildFormat1Data, buildFormat2Data } from './buildQuoteData';
-import { TEMPLATE_FILES } from '@/types/placeholders';
+import type { CalculatedQuote, Customer, ProductRecord, ProductUnit, QuoteLine } from '@/types/models';
 import { downloadBlob } from '@/utils/download';
 import { formatSoVND } from '@/utils/format';
 import { getImageDataUrlByPath } from '@/utils/imagePaths';
-import { buildCatalogueBlockRows } from '@/lib/catalogue/catalogueRows';
+import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue/catalogueRows';
+import { tinhDong, tinhTongBaoGia, tinhTongLamTron } from '@/features/quote/quoteCalc';
 
 import tplBaoGiaUrl from '@/assets/templates/Template_Bao_Gia.docx?url';
 import tplBangGiaUrl from '@/assets/templates/Template_Bang_Gia.docx?url';
 
-/** dataURL base64 (bất kỳ mime) → ArrayBuffer (kiểu image-module yêu cầu). */
-function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
-  const comma = dataUrl.indexOf(',');
-  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const PX_TO_EMU = 9525;
+
+type XmlRowMatch = { row: string; index: number; end: number };
+type ImageEmbedder = (path: string | null | undefined, options?: { widthPx?: number; heightPx?: number }) => Promise<string | null>;
+
+async function fetchTemplateZip(url: string): Promise<PizZip> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Không tải được template: ${url}`);
+  return new PizZip(await response.arrayBuffer());
 }
 
-/** 1×1 PNG trong suốt — dùng cho ô ảnh rỗng (dòng phụ kiện) để module không lỗi. */
-const TRANSPARENT_PNG =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-
-async function fetchTemplate(url: string): Promise<ArrayBuffer> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Không tải được template: ${url}`);
-  return res.arrayBuffer();
+function generateDocxBlob(zip: PizZip): Blob {
+  return zip.generate({ type: 'blob', mimeType: DOCX_MIME });
 }
 
 function dateParts(value?: string | Date | null) {
@@ -61,6 +50,13 @@ function unitLabel(unit: string): string {
   if (unit === 'BO') return 'Bộ';
   if (unit === 'METER') return 'md';
   return 'm²';
+}
+
+function normalizeUnit(value: unknown): ProductUnit {
+  const unit = String(value || '').trim().toUpperCase();
+  if (unit === 'BO' || unit === 'BỘ') return 'BO';
+  if (unit === 'METER' || unit === 'MD') return 'METER';
+  return 'M2';
 }
 
 function formatDecimal(value: number | null | undefined): string {
@@ -80,324 +76,518 @@ function parseJsonMaybe<T>(value: unknown, fallback: T): T {
   }
 }
 
-function accessoryItemText(name: unknown, quantity: unknown): string {
-  const text = String(name || '').trim();
-  if (!text) return '';
-  const qty = Number(quantity ?? 0);
-  return qty > 1 ? `${text} x${qty}` : text;
+function xmlEscape(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
-function buildQuoteWordAccessoryRows(item: CalculatedQuote['items'][number]) {
-  const rows: Array<Record<string, string | number | boolean>> = [];
-  const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
-  if (fixed) {
-    const quantity = Number(fixed.packageQuantity ?? fixed.quantity ?? 1) || 1;
-    const unitPrice = Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) || 0;
-    const entries = Array.isArray(fixed.items) ? fixed.items : [];
-    rows.push({
-      stt: '',
-      ma: '',
-      mo_ta: [
-        `${String(fixed.name || 'Bộ phụ kiện đi kèm').trim()}:`,
-        ...entries
-          .map((entry) => {
-            const row = entry as Record<string, unknown>;
-            return accessoryItemText(row.name, row.quantity);
-          })
-          .filter(Boolean)
-          .map((line) => `- ${line}`),
-      ].join('\n'),
-      dvt: 'Bộ',
-      rong: '',
-      cao: '',
-      sl: formatDecimal(quantity),
-      khoi_luong: formatDecimal(quantity),
-      don_gia: formatSoVND(unitPrice),
-      thanh_tien: formatSoVND(quantity * unitPrice),
-      is_sp: false,
-      is_pk: true,
+function repairSplitEmailToken(xml: string): string {
+  return xml.replace(
+    /\{<\/w:t><\/w:r>(?:<w:proofErr\b[^>]*\/>)*<w:r\b[^>]*>(?:<w:rPr>[\s\S]*?<\/w:rPr>)?<w:t[^>]*>email\}/g,
+    '{email}',
+  );
+}
+
+function replaceToken(xml: string, token: string, value: unknown): string {
+  return xml.split(token).join(xmlEscape(value));
+}
+
+function replaceTokens(xml: string, values: Record<string, unknown>): string {
+  let next = repairSplitEmailToken(xml);
+  for (const [token, value] of Object.entries(values)) {
+    next = replaceToken(next, token, value);
+  }
+  return next;
+}
+
+function multilineRunContent(text: string): string {
+  return String(text || '')
+    .split(/\r?\n/)
+    .map((line, index) => {
+      const escaped = xmlEscape(line);
+      return index === 0
+        ? `<w:t xml:space="preserve">${escaped}</w:t>`
+        : `<w:br/><w:t xml:space="preserve">${escaped}</w:t>`;
+    })
+    .join('');
+}
+
+function replaceMultilineToken(rowXml: string, token: string, text: string): string {
+  const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const singleRunPattern = new RegExp(
+    `(<w:r\\b[^>]*>(?:<w:rPr>[\\s\\S]*?</w:rPr>)?)<w:t([^>]*)>${escapedToken}</w:t>(</w:r>)`,
+  );
+  if (singleRunPattern.test(rowXml)) {
+    return rowXml.replace(singleRunPattern, (_match, runOpen) => `${runOpen}${multilineRunContent(text)}</w:r>`);
+  }
+  return rowXml.split(token).join(xmlEscape(text).replace(/\r?\n/g, '<w:br/>'));
+}
+
+function removeLeftoverTokens(xml: string): string {
+  return repairSplitEmailToken(xml)
+    .replace(/\{[a-zA-Z0-9_./%-]+\}/g, '')
+    .replace(/undefined(?=<\/w:tr>)/g, '');
+}
+
+function rowMatches(documentXml: string): XmlRowMatch[] {
+  return [...documentXml.matchAll(/<w:tr\b[\s\S]*?<\/w:tr>/g)].map((match) => ({
+    row: match[0],
+    index: match.index || 0,
+    end: (match.index || 0) + match[0].length,
+  }));
+}
+
+function dataUrlToUint8Array(dataUrl: string): Uint8Array {
+  const comma = dataUrl.indexOf(',');
+  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function imageInfoFromDataUrl(dataUrl: string): { ext: string; contentType: string } {
+  const contentType = dataUrl.match(/^data:([^;]+);base64,/i)?.[1]?.toLowerCase() || 'image/png';
+  if (contentType.includes('jpeg') || contentType.includes('jpg')) return { ext: 'jpg', contentType: 'image/jpeg' };
+  if (contentType.includes('webp')) return { ext: 'webp', contentType: 'image/webp' };
+  if (contentType.includes('gif')) return { ext: 'gif', contentType: 'image/gif' };
+  return { ext: 'png', contentType: 'image/png' };
+}
+
+function ensureContentType(zip: PizZip, ext: string, contentType: string): void {
+  const entry = zip.file('[Content_Types].xml');
+  if (!entry) return;
+  let xml = entry.asText();
+  if (new RegExp(`<Default\\s+Extension="${ext}"(?:\\s|/)`).test(xml)) return;
+  xml = xml.replace('</Types>', `<Default Extension="${ext}" ContentType="${contentType}"/></Types>`);
+  zip.file('[Content_Types].xml', xml);
+}
+
+function ensureDocumentRels(zip: PizZip): string {
+  return zip.file('word/_rels/document.xml.rels')?.asText()
+    || '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+}
+
+function createImageEmbedder(zip: PizZip): ImageEmbedder {
+  let relsXml = ensureDocumentRels(zip);
+  const relIds = [...relsXml.matchAll(/Id="rId(\d+)"/g)].map((match) => Number(match[1]));
+  let nextRelId = Math.max(0, ...relIds) + 1;
+  let nextDocPrId = 5000;
+  let nextImageId = 1;
+
+  return async (path, options = {}) => {
+    const dataUrl = await getImageDataUrlByPath(path);
+    if (!dataUrl) return null;
+    const { ext, contentType } = imageInfoFromDataUrl(dataUrl);
+    const imageName = `owin-browser-${nextImageId++}.${ext}`;
+    const relId = `rId${nextRelId++}`;
+    const docPrId = nextDocPrId++;
+    const widthPx = options.widthPx ?? 112;
+    const heightPx = options.heightPx ?? 82;
+    const cx = Math.round(widthPx * PX_TO_EMU);
+    const cy = Math.round(heightPx * PX_TO_EMU);
+
+    zip.file(`word/media/${imageName}`, dataUrlToUint8Array(dataUrl));
+    ensureContentType(zip, ext, contentType);
+    relsXml = relsXml.replace(
+      '</Relationships>',
+      `<Relationship Id="${relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${imageName}"/></Relationships>`,
+    );
+    zip.file('word/_rels/document.xml.rels', relsXml);
+
+    return (
+      `<w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ` +
+      `xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
+      `xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" ` +
+      `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" distT="0" distB="0" distL="0" distR="0">` +
+      `<wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${docPrId}" name="OWIN image ${docPrId}"/>` +
+      `<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>` +
+      `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+      `<pic:pic><pic:nvPicPr><pic:cNvPr id="${docPrId}" name="${xmlEscape(imageName)}"/><pic:cNvPicPr/></pic:nvPicPr>` +
+      `<pic:blipFill><a:blip r:embed="${relId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+      `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
+      `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 8000"/></a:avLst></a:prstGeom>` +
+      `</pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`
+    );
+  };
+}
+
+function fillImageToken(rowXml: string, token: string, drawingXml: string | null): string {
+  const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const runWithToken = new RegExp(
+    `<w:r\\b[^>]*>(?:(?!</w:r>)[\\s\\S])*?<w:t[^>]*>${escapedToken}</w:t>(?:(?!</w:r>)[\\s\\S])*?</w:r>`,
+  );
+  if (drawingXml) {
+    if (runWithToken.test(rowXml)) return rowXml.replace(runWithToken, `<w:r>${drawingXml}</w:r>`);
+    return rowXml.split(token).join(drawingXml);
+  }
+  return rowXml.split(token).join('');
+}
+
+function quoteDescription(item: CalculatedQuote['items'][number], lineDescription?: string | null): string {
+  return [
+    item.itemName,
+    item.description,
+    lineDescription,
+    ...(item.specs || []).filter((spec) => spec.value).map((spec) => `- ${spec.key}: ${spec.value}`),
+  ].filter(Boolean).join('\n');
+}
+
+function findQuoteTemplateRows(documentXml: string) {
+  const rows = rowMatches(documentXml);
+  const group = rows.find((entry) => entry.row.includes('{nhom}'));
+  const product = rows.find((entry) => entry.row.includes('{stt}') && entry.row.includes('{ma_sp}'));
+  const fixedSet = rows.find((entry) => entry.row.includes('{bo_pk_ten}'));
+  const fixedItem = rows.find((entry) => entry.row.includes('{pk_ten}'));
+  const extra = rows.find((entry) => entry.row.includes('{ps_ten}'));
+  const matches = [group, product, fixedSet, fixedItem, extra].filter((entry): entry is XmlRowMatch => Boolean(entry));
+  if (!product || matches.length === 0) throw new Error('Template báo giá thiếu dòng placeholder sản phẩm.');
+  return { group, product, fixedSet, fixedItem, extra, matches };
+}
+
+function renderQuoteGroupRow(template: string, groupName: string): string {
+  return removeLeftoverTokens(replaceToken(template, '{nhom}', groupName));
+}
+
+function renderQuoteProductRow(
+  template: string,
+  item: CalculatedQuote['items'][number],
+  line: CalculatedQuote['items'][number]['dimensions'][number],
+  rowMeta: { stt: string; code: string; drawingXml: string | null; includeDescription: boolean },
+): string {
+  let xml = template;
+  xml = replaceToken(xml, '{stt}', rowMeta.stt);
+  xml = replaceToken(xml, '{ma_sp}', rowMeta.code);
+  xml = fillImageToken(xml, '{anh_sp}', rowMeta.drawingXml);
+  xml = replaceMultilineToken(xml, '{mo_ta}', rowMeta.includeDescription ? quoteDescription(item, line.description) : '');
+  xml = replaceToken(xml, '{dv}', unitLabel(line.unit));
+  xml = replaceToken(xml, '{rong}', line.unit === 'BO' ? '' : formatDecimal(line.widthM));
+  xml = replaceToken(xml, '{cao}', line.unit === 'BO' ? '' : formatDecimal(line.heightM));
+  xml = replaceToken(xml, '{sl}', formatDecimal(line.quantity));
+  xml = replaceToken(xml, '{kl}', formatDecimal(line.calculatedQty));
+  xml = replaceToken(xml, '{dg}', formatSoVND(line.unitPriceVnd));
+  xml = replaceToken(xml, '{tt}', formatSoVND(line.lineTotalVnd));
+  return removeLeftoverTokens(xml);
+}
+
+function renderQuoteFixedSetRow(template: string, fixed: Record<string, unknown>): string {
+  const quantity = Number(fixed.packageQuantity ?? fixed.quantity ?? 1) || 1;
+  const unitPrice = Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) || 0;
+  let xml = template;
+  xml = replaceToken(xml, '{bo_pk_ten}', String(fixed.name || 'Bộ phụ kiện đi kèm'));
+  xml = replaceToken(xml, '{bo_pk_dv}', 'Bộ');
+  xml = replaceToken(xml, '{bo_pk_sl}', formatDecimal(quantity));
+  xml = replaceToken(xml, '{bo_pk_dg}', formatSoVND(unitPrice));
+  xml = replaceToken(xml, '{bo_pk_tt}', formatSoVND(quantity * unitPrice));
+  return removeLeftoverTokens(xml);
+}
+
+function renderQuoteFixedItemRow(template: string, name: unknown, quantity: unknown): string {
+  let xml = template;
+  xml = replaceToken(xml, '{pk_ten}', String(name || '').trim());
+  xml = replaceToken(xml, '{pk_sl_item}', Number(quantity ?? 0) > 0 ? formatDecimal(Number(quantity)) : '');
+  return removeLeftoverTokens(xml);
+}
+
+function renderQuoteExtraRow(template: string, extra: Record<string, unknown>): string {
+  const unit = normalizeUnit(extra.unit);
+  const quantity = Number(extra.quantity ?? extra.quantityPerSet ?? 1) || 1;
+  const weight = unit === 'BO' ? quantity : Number(extra.weight ?? extra.kl ?? 0) || 0;
+  const unitPrice = Number(extra.unitPrice ?? extra.unitPriceVnd ?? 0) || 0;
+  let xml = template;
+  xml = replaceToken(xml, '{ps_ten}', String(extra.name || 'Phụ kiện phát sinh').trim());
+  xml = replaceToken(xml, '{ps_dv}', unitLabel(unit));
+  xml = replaceToken(xml, '{ps_sl}', formatDecimal(unit === 'BO' ? quantity : weight));
+  xml = replaceToken(xml, '{ps_dg}', formatSoVND(unitPrice));
+  xml = replaceToken(xml, '{ps_tt}', formatSoVND((unit === 'BO' ? quantity : weight) * unitPrice));
+  return removeLeftoverTokens(xml);
+}
+
+function renderLegacyAccessoryAsFixed(template: string, accessory: CalculatedQuote['items'][number]['accessories'][number]): string {
+  return renderQuoteFixedSetRow(template, {
+    name: accessory.name,
+    packageQuantity: accessory.totalSet || accessory.quantityPerSet,
+    unitPrice: accessory.unitPriceVnd,
+  });
+}
+
+export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote): Promise<string> {
+  const documentFile = zip.file('word/document.xml');
+  if (!documentFile) throw new Error('Template báo giá không có word/document.xml.');
+
+  let documentXml = repairSplitEmailToken(documentFile.asText());
+  const templates = findQuoteTemplateRows(documentXml);
+  const blockStart = Math.min(...templates.matches.map((match) => match.index));
+  const blockEnd = Math.max(...templates.matches.map((match) => match.end));
+  const embedImage = createImageEmbedder(zip);
+  const rows: string[] = [];
+  let previousGroup = '';
+
+  for (const [itemIndex, item] of quote.items.entries()) {
+    const groupName = item.groupName || item.category || '';
+    if (templates.group && groupName && groupName !== previousGroup) {
+      rows.push(renderQuoteGroupRow(templates.group.row, groupName));
+      previousGroup = groupName;
+    }
+
+    const imageXml = await embedImage(item.image || item.coverImagePath, { widthPx: 112, heightPx: 82 });
+    item.dimensions.forEach((line, lineIndex) => {
+      rows.push(renderQuoteProductRow(templates.product.row, item, line, {
+        stt: lineIndex === 0 ? String(itemIndex + 1) : '',
+        code: lineIndex === 0 ? item.quoteItemCode || item.productCode : '',
+        drawingXml: lineIndex === 0 ? imageXml : null,
+        includeDescription: lineIndex === 0,
+      }));
     });
+
+    const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
+    if (fixed && templates.fixedSet) {
+      rows.push(renderQuoteFixedSetRow(templates.fixedSet.row, fixed));
+      if (templates.fixedItem && Array.isArray(fixed.items)) {
+        fixed.items
+          .map((entry) => entry as Record<string, unknown>)
+          .filter((entry) => String(entry.name || '').trim())
+          .forEach((entry) => rows.push(renderQuoteFixedItemRow(templates.fixedItem!.row, entry.name, entry.quantity)));
+      }
+    } else if (templates.fixedSet) {
+      item.accessories
+        .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
+        .forEach((accessory) => {
+          rows.push(renderLegacyAccessoryAsFixed(templates.fixedSet!.row, accessory));
+          if (templates.fixedItem && accessory.note) {
+            accessory.note
+              .split(/\r?\n|,/)
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .forEach((line) => rows.push(renderQuoteFixedItemRow(templates.fixedItem!.row, line, '')));
+          }
+        });
+    }
+
+    const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
+    if (templates.extra && Array.isArray(extras)) {
+      extras
+        .map((entry) => entry as Record<string, unknown>)
+        .filter((entry) => String(entry.name || '').trim())
+        .forEach((entry) => rows.push(renderQuoteExtraRow(templates.extra!.row, entry)));
+    }
   }
 
-  const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
-  extras
-    .filter((entry) => entry && String((entry as Record<string, unknown>).name || '').trim())
-    .forEach((entry) => {
-      const extra = entry as Record<string, unknown>;
-      const unit = extra.unit === 'M2' || extra.unit === 'METER' || extra.unit === 'BO'
-        ? extra.unit
-        : 'BO';
-      const quantity = Number(extra.quantity ?? extra.quantityPerSet ?? 1) || 1;
-      const weight = unit === 'BO' ? 0 : Number(extra.weight ?? extra.kl ?? 0) || 0;
-      const unitPrice = Number(extra.unitPrice ?? extra.unitPriceVnd ?? 0) || 0;
-      const basis = unit === 'BO' ? quantity : weight;
-      rows.push({
-        stt: '',
-        ma: '',
-        mo_ta: String(extra.name || 'Phụ kiện phát sinh').trim(),
-        dvt: unitLabel(unit),
-        rong: '',
-        cao: '',
-        sl: unit === 'BO' ? formatDecimal(quantity) : '',
-        khoi_luong: unit === 'BO' ? '' : formatDecimal(weight),
-        don_gia: formatSoVND(unitPrice),
-        thanh_tien: formatSoVND(basis * unitPrice),
-        is_sp: false,
-        is_pk: true,
-      });
-    });
-
-  if (rows.length > 0) return rows;
-  return item.accessories
-    .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
-    .map((accessory) => ({
-      stt: '',
-      ma: '',
-      mo_ta: [accessory.name, accessory.note].filter(Boolean).join('\n'),
-      dvt: 'Bộ',
-      rong: '',
-      cao: '',
-      sl: formatDecimal(accessory.quantityPerSet),
-      khoi_luong: formatDecimal(accessory.totalSet),
-      don_gia: formatSoVND(accessory.unitPriceVnd),
-      thanh_tien: formatSoVND(accessory.lineTotalVnd),
-      is_sp: false,
-      is_pk: true,
-    }));
+  documentXml = documentXml.slice(0, blockStart) + rows.join('') + documentXml.slice(blockEnd);
+  documentXml = replaceTokens(documentXml, buildQuoteWordData(quote));
+  return removeLeftoverTokens(documentXml);
 }
 
-export function buildQuoteWordData(quote: CalculatedQuote) {
-  const items: Array<Record<string, string | number | boolean>> = [];
-  let stt = 0;
-
-  quote.items.forEach((item) => {
-    stt += 1;
-    item.dimensions.forEach((line, lineIndex) => {
-      const first = lineIndex === 0;
-      const specLines = first
-        ? (item.specs || []).filter((spec) => spec.value).map((spec) => `- ${spec.key}: ${spec.value}`)
-        : [];
-      items.push({
-        stt: first ? stt : '',
-        ma: first ? item.quoteItemCode || item.productCode : '',
-        mo_ta: [
-          first ? item.itemName : line.description || '',
-          first ? item.description || '' : '',
-          ...specLines,
-        ].filter(Boolean).join('\n'),
-        dvt: unitLabel(line.unit),
-        rong: line.unit === 'BO' ? '' : line.widthM ?? '',
-        cao: line.unit === 'BO' ? '' : line.heightM ?? '',
-        sl: line.quantity,
-        khoi_luong: line.unit === 'BO' ? line.quantity : formatDecimal(line.calculatedQty),
-        don_gia: formatSoVND(line.unitPriceVnd),
-        thanh_tien: formatSoVND(line.lineTotalVnd),
-        is_sp: true,
-        is_pk: false,
-      });
-    });
-
-    items.push(...buildQuoteWordAccessoryRows(item));
-  });
-
+export function buildQuoteWordData(quote: CalculatedQuote): Record<string, string> {
   const d = dateParts(quote.quoteDate);
   return {
-    ten_kh: quote.customerName,
-    dia_chi: quote.customerAddress,
-    sdt: quote.customerPhone,
-    email: quote.customerEmail || '',
-    ngay: d.ngay,
-    thang: d.thang,
-    nam: d.nam,
-    tong_tien: formatSoVND(quote.summary.totalVnd),
-    lam_tron: formatSoVND(quote.summary.roundedTotalVnd),
-    tam_ung: formatSoVND(quote.summary.depositVnd),
-    con_lai: formatSoVND(quote.summary.balanceVnd),
-    can_thanh_toan: formatSoVND(quote.summary.balanceVnd),
-    items,
+    '{ten_kh}': quote.customerName,
+    '{dia_chi}': quote.customerAddress,
+    '{sdt}': quote.customerPhone,
+    '{email}': quote.customerEmail || '',
+    '{ngay}': d.ngay,
+    '{thang}': d.thang,
+    '{nam}': d.nam,
+    '{tong_tien}': formatSoVND(quote.summary.totalVnd),
+    '{lam_tron}': formatSoVND(quote.summary.roundedTotalVnd),
+    '{tam_ung}': formatSoVND(quote.summary.depositVnd),
+    '{can_thanh_toan}': formatSoVND(quote.summary.balanceVnd),
   };
 }
 
 export async function exportQuoteWord(quote: CalculatedQuote, quoteCode: string): Promise<string> {
-  const content = await fetchTemplate(tplBaoGiaUrl);
-  const zip = new PizZip(content);
-  const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
-  doc.render(buildQuoteWordData(quote));
-  const blob = doc.toBlob();
+  const zip = await fetchTemplateZip(tplBaoGiaUrl);
+  const documentXml = await renderQuoteDocumentXml(zip, quote);
+  zip.file('word/document.xml', documentXml);
   const fileName = `Bao_gia_${quoteCode}.docx`;
-  downloadBlob(blob, fileName);
+  downloadBlob(generateDocxBlob(zip), fileName);
   return fileName;
 }
 
-export async function buildBangGiaWordData(products: ProductRecord[]) {
+function findCatalogueTemplateRows(documentXml: string) {
+  const rows = rowMatches(documentXml);
+  const category = rows.find((entry) => entry.row.includes('{category}'));
+  const product = rows.find((entry) => entry.row.includes('{product_info_block}'));
+  const accessory = rows.find((entry) => entry.row.includes('{accessory_block}'));
+  if (!category || !product || !accessory) {
+    throw new Error('Template bảng giá thiếu row placeholder {category}/{product_info_block}/{accessory_block}.');
+  }
+  return { category, product, accessory };
+}
+
+function renderCatalogueCategoryRow(template: string, row: CatalogueBlockRow): string {
+  return removeLeftoverTokens(replaceMultilineToken(template, '{category}', row.categoryName || row.description));
+}
+
+function money(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '';
+  return formatSoVND(value);
+}
+
+function renderCatalogueProductRow(template: string, row: CatalogueBlockRow, imageXml: string | null): string {
+  let xml = template;
+  xml = replaceToken(xml, '{stt}', row.stt);
+  xml = fillImageToken(xml, '{image}', imageXml);
+  xml = replaceMultilineToken(xml, '{product_info_block}', row.description);
+  xml = replaceToken(xml, '{dv}', row.unit);
+  xml = replaceToken(xml, '{rong}', row.width);
+  xml = replaceToken(xml, '{cao}', row.height);
+  xml = replaceToken(xml, '{kl}', row.weight);
+  xml = replaceToken(xml, '{don_gia}', money(row.unitPriceVnd));
+  xml = replaceToken(xml, '{thanh_tien}', money(row.amountVnd));
+  xml = replaceToken(xml, '{tong_tien}', money(row.completedTotalVnd));
+  return removeLeftoverTokens(xml);
+}
+
+function renderCatalogueAccessoryRow(template: string, row: CatalogueBlockRow): string {
+  let xml = template;
+  xml = replaceMultilineToken(xml, '{accessory_block}', row.description);
+  xml = replaceToken(xml, '{pk_dv}', row.unit);
+  xml = replaceToken(xml, '{pk_kl}', row.weight);
+  xml = replaceToken(xml, '{pk_don_gia}', money(row.unitPriceVnd));
+  xml = replaceToken(xml, '{pk_thanh_tien}', money(row.amountVnd));
+  return removeLeftoverTokens(xml);
+}
+
+export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRecord[]): Promise<string> {
+  const documentFile = zip.file('word/document.xml');
+  if (!documentFile) throw new Error('Template bảng giá không có word/document.xml.');
+
+  let documentXml = documentFile.asText();
+  const templates = findCatalogueTemplateRows(documentXml);
+  const blockStart = Math.min(templates.category.index, templates.product.index, templates.accessory.index);
+  const blockEnd = Math.max(templates.category.end, templates.product.end, templates.accessory.end);
   const rows = buildCatalogueBlockRows(products);
-  const items: Array<Record<string, string | number | boolean>> = [];
-  const imageValues: string[] = [];
+  const embedImage = createImageEmbedder(zip);
+  const imageCache = new Map<string, string | null>();
+  const renderedRows: string[] = [];
 
   for (const row of rows) {
-    let image = '';
-    if (row.rowType === 'product') {
-      image = (await getImageDataUrlByPath(row.imagePath)) || '';
-      if (image) imageValues.push(image);
-    }
-
     if (row.rowType === 'category') {
-      items.push({
-        stt: '',
-        ma: '',
-        mo_ta: row.categoryName,
-        kich_thuoc: '',
-        dvt: '',
-        sl: '',
-        khoi_luong: '',
-        don_gia: '',
-        thanh_tien: '',
-        image: '',
-        is_sp: false,
-        is_pk: true,
-      });
-      continue;
+      renderedRows.push(renderCatalogueCategoryRow(templates.category.row, row));
+    } else if (row.rowType === 'product') {
+      let imageXml = imageCache.get(row.imagePath);
+      if (!imageCache.has(row.imagePath)) {
+        imageXml = await embedImage(row.imagePath, { widthPx: 142, heightPx: 108 });
+        imageCache.set(row.imagePath, imageXml);
+      }
+      renderedRows.push(renderCatalogueProductRow(templates.product.row, row, imageXml || null));
+    } else {
+      renderedRows.push(renderCatalogueAccessoryRow(templates.accessory.row, row));
     }
-
-    items.push({
-      stt: row.stt,
-      ma: row.productCode,
-      mo_ta: row.description,
-      kich_thuoc: [row.width, row.height].filter(Boolean).join(' × '),
-      dvt: row.unit,
-      sl: row.weight,
-      khoi_luong: row.weight,
-      don_gia: row.unitPriceVnd ? formatSoVND(row.unitPriceVnd) : '',
-      thanh_tien: row.amountVnd ? formatSoVND(row.amountVnd) : '',
-      image,
-      is_sp: row.rowType === 'product',
-      is_pk: row.rowType !== 'product',
-    });
   }
 
-  const d = dateParts();
-  const total = rows.reduce((sum, row) => sum + (row.rowType === 'product' ? row.completedTotalVnd || 0 : 0), 0);
+  documentXml = documentXml.slice(0, blockStart) + renderedRows.join('') + documentXml.slice(blockEnd);
+  return removeLeftoverTokens(documentXml);
+}
+
+export async function buildBangGiaWordData(products: ProductRecord[]) {
   return {
-    data: {
-      ten_kh: 'HOÀNG ANH OWIN',
-      dia_chi: 'Tiên Điền - Nghi Xuân - Hà Tĩnh',
-      sdt: '0799040616',
-      email: '',
-      ngay: d.ngay,
-      thang: d.thang,
-      nam: d.nam,
-      tong_tien: formatSoVND(total),
-      lam_tron: formatSoVND(total),
-      tam_ung: '0',
-      con_lai: formatSoVND(total),
-      can_thanh_toan: formatSoVND(total),
-      items,
-    },
-    imageValues,
+    rows: buildCatalogueBlockRows(products),
+    totalVnd: buildCatalogueBlockRows(products)
+      .filter((row) => row.rowType === 'product')
+      .reduce((sum, row) => sum + (row.completedTotalVnd || 0), 0),
   };
 }
 
 export async function exportBangGiaWord(products: ProductRecord[]): Promise<string> {
-  // Browser-safe DOCX export: keep PizZip/docxtemplater only, no fs/path/sharp/server APIs.
-  // Data rows mirror the REFERENCE catalogue block model; exact XML vMerge belongs to the server renderer.
-  const content = await fetchTemplate(tplBangGiaUrl);
-  const { data, imageValues } = await buildBangGiaWordData(products);
-  const sizeMap = await buildSizeMap(imageValues);
-  const imageModule = new ImageModule({
-    centered: false,
-    fileType: 'docx',
-    getImage: (tagValue: string) => dataUrlToArrayBuffer(tagValue || TRANSPARENT_PNG),
-    getSize: (_img: ArrayBuffer, tagValue: string): [number, number] =>
-      tagValue ? sizeMap.get(tagValue) ?? [110, 80] : [1, 1],
-  });
-  const zip = new PizZip(content);
-  const doc = new Docxtemplater(zip, {
-    modules: [imageModule],
-    paragraphLoop: true,
-    linebreaks: true,
-  });
-  doc.render(data);
-  const blob = doc.toBlob();
+  const zip = await fetchTemplateZip(tplBangGiaUrl);
+  const documentXml = await renderBangGiaDocumentXml(zip, products);
+  zip.file('word/document.xml', documentXml);
   const fileName = `Bang_gia_OWIN_${new Date().toISOString().slice(0, 10)}.docx`;
-  downloadBlob(blob, fileName);
+  downloadBlob(generateDocxBlob(zip), fileName);
   return fileName;
 }
 
-/** Tính [w,h] giữ tỉ lệ, cạnh rộng ≤ maxW (px → docxtemplater dùng px). */
-function computeSize(natW: number, natH: number, maxW = 110): [number, number] {
-  if (!natW || !natH) return [maxW, Math.round(maxW * 0.75)];
-  const ratio = natH / natW;
-  const w = Math.min(natW, maxW);
-  return [Math.round(w), Math.round(w * ratio)];
+function legacyQuoteToCalculated(customer: Customer, lines: QuoteLine[], tamUng = 0): CalculatedQuote {
+  const items = lines.map((line, index) => {
+    const calc = tinhDong(line);
+    const unit: ProductUnit = line.dvt === 'Bộ' ? 'BO' : line.dvt === 'md' ? 'METER' : 'M2';
+    const quantity =
+      unit === 'M2'
+        ? Number(((line.rong || 0) * (line.cao || 0) * line.sl).toFixed(3))
+        : unit === 'METER'
+          ? Number((((line.rong || 0) + (line.cao || 0)) * line.sl).toFixed(3))
+          : line.sl;
+    return {
+      sourceType: 'CUSTOM' as const,
+      productId: line.productId,
+      productCode: line.ma,
+      quoteItemCode: line.ma,
+      itemName: line.ten,
+      productName: line.ten,
+      category: null,
+      groupName: null,
+      coverImagePath: line.imageId || null,
+      image: line.imageId || null,
+      unit,
+      description: line.moTa || null,
+      unitPriceVnd: line.donGia,
+      specs: [],
+      dimensions: [{
+        unit,
+        widthM: line.rong ?? null,
+        heightM: line.cao ?? null,
+        quantity: line.sl,
+        calculatedQty: quantity,
+        unitPriceVnd: line.donGia,
+        lineTotalVnd: calc.tienChinh,
+        description: null,
+      }],
+      accessories: line.accessories.filter((item) => item.enabled).map((item) => ({
+        enabled: true,
+        isEnabled: true,
+        name: item.ten,
+        quantityPerSet: item.sl,
+        totalSet: item.sl,
+        unitPriceVnd: item.donGia,
+        lineTotalVnd: item.sl * item.donGia,
+        note: null,
+      })),
+      fixedAccessoryPackage: null,
+      extraAccessories: null,
+      productSubtotalVnd: calc.tienChinh,
+      accessorySubtotalVnd: calc.tienPhuKien,
+      itemTotalVnd: calc.tongDong,
+      mainTotal: calc.tienChinh,
+      accessoryTotal: calc.tienPhuKien,
+      itemTotal: calc.tongDong,
+      sortOrder: index + 1,
+      numericId: null,
+    };
+  });
+  const totalVnd = tinhTongBaoGia(lines);
+  const roundedTotalVnd = tinhTongLamTron(lines);
+  return {
+    customerId: null,
+    customerName: customer.ten,
+    customerPhone: customer.sdt,
+    customerEmail: customer.email,
+    customerAddress: customer.diaChi,
+    quoteDate: new Date(),
+    depositVnd: tamUng,
+    items,
+    summary: {
+      subtotalProductVnd: items.reduce((sum, item) => sum + item.productSubtotalVnd, 0),
+      subtotalAccessoryVnd: items.reduce((sum, item) => sum + item.accessorySubtotalVnd, 0),
+      totalVnd,
+      roundedTotalVnd,
+      depositVnd: tamUng,
+      balanceVnd: Math.max(0, roundedTotalVnd - tamUng),
+    },
+  };
 }
 
-/** Đọc kích thước thật của mỗi dataURL (async) để getSize (sync) tra cứu. */
-async function buildSizeMap(dataUrls: string[]): Promise<Map<string, [number, number]>> {
-  const map = new Map<string, [number, number]>();
-  await Promise.all(
-    dataUrls.map(
-      (durl) =>
-        new Promise<void>((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            map.set(durl, computeSize(img.naturalWidth, img.naturalHeight));
-            resolve();
-          };
-          img.onerror = () => {
-            map.set(durl, [110, 80]);
-            resolve();
-          };
-          img.src = durl;
-        }),
-    ),
-  );
-  return map;
-}
-
-/** FORMAT 1 — Báo giá công trình (không ảnh). */
+/** Legacy compatibility export kept for old callers. */
 export async function exportFormat1(customer: Customer, lines: QuoteLine[], tamUng = 0): Promise<void> {
-  const content = await fetchTemplate(tplBaoGiaUrl);
-  const zip = new PizZip(content);
-  const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
-  doc.render(buildFormat1Data(customer, lines, tamUng));
-  const blob = doc.toBlob();
-  downloadBlob(blob, TEMPLATE_FILES.format1.replace('Template_', 'BaoGia_'));
+  await exportQuoteWord(legacyQuoteToCalculated(customer, lines, tamUng), `OWIN-${Date.now()}`);
 }
 
-/** FORMAT 2 — Bảng giá hoàn thiện (có ảnh, BR-4 chỉ giỏ đã chọn). */
-export async function exportFormat2(
-  customer: Customer,
-  lines: QuoteLine[],
-  imageMap: Record<string, string>,
-  tamUng = 0,
-): Promise<void> {
-  const content = await fetchTemplate(tplBangGiaUrl);
-  const data = buildFormat2Data(customer, lines, imageMap, tamUng);
-
-  // Pre-compute size cho mọi dataURL ảnh thật.
-  const realUrls = Object.values(imageMap).filter(Boolean);
-  const sizeMap = await buildSizeMap(realUrls);
-
-  const imageModule = new ImageModule({
-    centered: false,
-    fileType: 'docx',
-    getImage: (tagValue: string) => {
-      const durl = tagValue && tagValue.length > 0 ? tagValue : TRANSPARENT_PNG;
-      return dataUrlToArrayBuffer(durl);
-    },
-    getSize: (_img: ArrayBuffer, tagValue: string): [number, number] => {
-      if (!tagValue) return [1, 1]; // ô ảnh rỗng (dòng phụ kiện) → ẩn
-      return sizeMap.get(tagValue) ?? [110, 80];
-    },
-  });
-
-  const zip = new PizZip(content);
-  const doc = new Docxtemplater(zip, {
-    modules: [imageModule],
-    paragraphLoop: true,
-    linebreaks: true,
-  });
-  doc.render(data);
-  const blob = doc.toBlob();
-  downloadBlob(blob, TEMPLATE_FILES.format2.replace('Template_', 'BangGia_'));
+/** Legacy compatibility export kept for old callers. */
+export async function exportFormat2(customer: Customer, lines: QuoteLine[], _imageMap: Record<string, string>, tamUng = 0): Promise<void> {
+  await exportQuoteWord(legacyQuoteToCalculated(customer, lines, tamUng), `OWIN-${Date.now()}`);
 }

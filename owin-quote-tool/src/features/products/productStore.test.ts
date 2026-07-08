@@ -19,21 +19,23 @@ beforeEach(async () => {
 });
 
 describe('seed dữ liệu mẫu', () => {
-  it('seedIfEmpty nạp 5 sản phẩm mẫu, chỉ chạy 1 lần', async () => {
+  it('seedIfEmpty nạp bộ sản phẩm reference, chỉ chạy 1 lần', async () => {
     await seedIfEmpty();
-    expect((await getAllProducts()).length).toBe(5);
+    expect((await getAllProducts()).length).toBe(19);
     expect((await getAllProductsRaw())[0]).toEqual(
       expect.objectContaining({
         code: expect.any(String),
         name: expect.any(String),
         unit: expect.stringMatching(/^(BO|M2|METER)$/),
         unitPriceVnd: expect.any(Number),
-        category: 'Khác',
+        category: expect.any(String),
+        rawSizeText: expect.any(String),
+        fixedAccessoryPackage: expect.any(String),
       }),
     );
     // gọi lần 2 không nhân đôi
     await seedIfEmpty();
-    expect((await getAllProducts()).length).toBe(5);
+    expect((await getAllProducts()).length).toBe(19);
   });
 });
 

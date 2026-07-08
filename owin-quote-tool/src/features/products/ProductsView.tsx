@@ -12,6 +12,7 @@ const PRODUCT_SUGGESTION_TYPES = [
   'accessory_package_name',
   'category',
   'product_name',
+  'spec_label',
   'spec_value',
   'spec_value_color',
   'spec_value_frame',
@@ -95,7 +96,10 @@ export function ProductsView() {
         ...(seededSuggestions.product_name ?? []),
         ...productRecords.map((p) => p.name).filter(Boolean),
       ],
-      specKey: productRecords.flatMap((p) => p.specs.map((s) => s.key)).filter(Boolean),
+      specKey: [
+        ...(seededSuggestions.spec_label ?? []),
+        ...productRecords.flatMap((p) => p.specs.map((s) => s.key)).filter(Boolean),
+      ],
       specValue: [
         ...(seededSuggestions.spec_value ?? []),
         ...productRecords.flatMap((p) => p.specs.map((s) => s.value)).filter(Boolean),

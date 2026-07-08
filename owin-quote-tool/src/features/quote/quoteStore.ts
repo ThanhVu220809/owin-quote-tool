@@ -5,6 +5,7 @@ import type {
   QuoteSnapshotData,
   QuoteStatus,
 } from '@/types/models';
+import importedQuotes from '@/data/imported/quotes.json';
 
 const quoteStore = localforage.createInstance({
   name: 'owin-quote-tool',
@@ -14,6 +15,7 @@ const quoteStore = localforage.createInstance({
 });
 
 type QuoteInput = Partial<QuoteRecord>;
+const REFERENCE_QUOTE_SEED_FLAG = '__reference_quotes_seed_v1__';
 
 const COMPANY_DEFAULT = {
   name: 'HOÀNG ANH OWIN',
@@ -191,11 +193,37 @@ export function normalizeQuoteRecord(input: QuoteInput): QuoteRecord {
 }
 
 export async function getAllQuotesRaw(): Promise<QuoteRecord[]> {
+  await seedImportedQuotesIfNeeded();
   const out: QuoteRecord[] = [];
-  await quoteStore.iterate<QuoteInput, void>((value) => {
-    if (value) out.push(normalizeQuoteRecord(value));
+  await quoteStore.iterate<QuoteInput | boolean, void>((value, key) => {
+    if (key === REFERENCE_QUOTE_SEED_FLAG || !value || typeof value === 'boolean') return;
+    out.push(normalizeQuoteRecord(value));
   });
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+async function seedImportedQuotesIfNeeded(): Promise<void> {
+  if ((importedQuotes as QuoteInput[]).length === 0) return;
+  const seeded = await quoteStore.getItem<boolean>(REFERENCE_QUOTE_SEED_FLAG);
+  if (seeded) return;
+
+  const existingCodes = new Set<string>();
+  const existingIds = new Set<string>();
+  await quoteStore.iterate<QuoteInput | boolean, void>((value, key) => {
+    if (key === REFERENCE_QUOTE_SEED_FLAG || !value || typeof value === 'boolean') return;
+    const record = normalizeQuoteRecord(value);
+    existingIds.add(record.id);
+    existingCodes.add(record.code);
+  });
+
+  for (const input of importedQuotes as QuoteInput[]) {
+    const record = normalizeQuoteRecord(input);
+    if (existingIds.has(record.id) || existingCodes.has(record.code)) continue;
+    await quoteStore.setItem(record.id, record);
+    existingIds.add(record.id);
+    existingCodes.add(record.code);
+  }
+  await quoteStore.setItem(REFERENCE_QUOTE_SEED_FLAG, true);
 }
 
 export async function getAllQuotes(): Promise<QuoteRecord[]> {

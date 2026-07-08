@@ -56,7 +56,9 @@ describe('transferEngine - chuyển dữ liệu tài khoản Google khác', () =
       expect.objectContaining({
         schemaVersion: 2,
         products: [expect.objectContaining({ id: saved.id, coverImagePath: 'legacy-images/img-local' })],
-        quotes: [],
+        quotes: expect.arrayContaining([
+          expect.objectContaining({ code: 'OWIN-BG-20260707-0001' }),
+        ]),
       }),
       'other-token',
     );

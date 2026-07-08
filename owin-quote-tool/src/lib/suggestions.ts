@@ -1,5 +1,6 @@
 import localforage from 'localforage';
 import type { ProductRecord, QuoteInput, SuggestionRecord } from '@/types/models';
+import importedSuggestions from '@/data/imported/suggestions.json';
 
 export const SUGGESTION_TYPES = [
   'accessory_name',
@@ -16,6 +17,7 @@ export const SUGGESTION_TYPES = [
   'product_type',
   'protection_bar',
   'sash',
+  'spec_label',
   'spec_value_color',
   'spec_value_frame',
   'spec_value_glass',
@@ -73,6 +75,20 @@ export async function seedSuggestionsIfEmpty(): Promise<void> {
         type,
         value: text,
         usedCount: 1,
+        createdAt,
+        updatedAt: createdAt,
+      });
+    }
+  }
+  for (const [type, values] of Object.entries(importedSuggestions as Record<string, string[]>)) {
+    for (const value of values || []) {
+      const text = normalizeValue(value);
+      if (!type || !text) continue;
+      await suggestionStore.setItem<SuggestionRecord>(suggestionId(type, text), {
+        id: suggestionId(type, text),
+        type,
+        value: text,
+        usedCount: 2,
         createdAt,
         updatedAt: createdAt,
       });
