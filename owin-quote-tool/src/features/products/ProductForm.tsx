@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type {
   ProductAccessoryRecord,
@@ -7,12 +7,19 @@ import type {
   ProductUnit,
 } from '@/types/models';
 import { AutoSuggestInput } from '@/components/AutoSuggestInput';
+import { CurrencyInput } from '@/components/CurrencyInput';
+import { ExtraAccessoriesEditor, FixedAccessoryPackageEditor } from '@/components/AccessoryEditors';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Switch } from '@/components/Switch';
-import { formatVND } from '@/utils/format';
 import { getImage, saveImage } from '@/utils/imageStorage';
 import { productCoverPath } from '@/utils/imagePaths';
+import {
+  parseExtraAccessoriesJson,
+  parseFixedAccessoriesJson,
+  serializeExtraAccessoriesJson,
+  serializeFixedAccessoriesJson,
+} from '@/lib/quote/accessoryDrafts';
 
 type SaveProductInput = Parameters<typeof import('@/features/products/productStore').saveProduct>[0];
 
@@ -21,7 +28,15 @@ interface Suggestions {
   productName: string[];
   specKey: string[];
   specValue: string[];
+  specValueColor?: string[];
+  specValueFrame?: string[];
+  specValueSash?: string[];
+  specValueThickness?: string[];
+  specValueGlass?: string[];
+  specValueMolding?: string[];
+  specValueProtectionBar?: string[];
   accessoryName: string[];
+  accessoryPackageName?: string[];
 }
 
 interface Props {
@@ -29,22 +44,6 @@ interface Props {
   suggestions: Suggestions;
   onSave: (p: SaveProductInput) => Promise<unknown>;
   onCancel: () => void;
-}
-
-interface FixedAccessoryPackageForm {
-  name: string;
-  items: Array<{ name: string; quantity: number }>;
-  packageQuantity: number;
-  unitPriceVnd: number;
-}
-
-interface ExtraAccessoryForm {
-  id: string;
-  name: string;
-  unit: ProductUnit;
-  quantity: number;
-  weight: number;
-  unitPrice: number;
 }
 
 const UNIT_OPTIONS: { label: string; value: ProductUnit }[] = [
@@ -62,27 +61,6 @@ const DEFAULT_SPEC_KEYS = [
   'Phào',
   'Song Nhôm Bảo Vệ',
 ];
-
-const DEFAULT_FIXED_PACKAGE: FixedAccessoryPackageForm = {
-  name: 'Bộ phụ kiện đi kèm',
-  items: [
-    { name: 'Khóa', quantity: 0 },
-    { name: 'Bản lề', quantity: 4 },
-    { name: 'Tay nắm', quantity: 0 },
-    { name: 'Vật tư phụ', quantity: 0 },
-  ],
-  packageQuantity: 1,
-  unitPriceVnd: 0,
-};
-
-function parseJson<T>(value: string | null | undefined, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 function legacyImageId(path: string | null): string | undefined {
   const prefix = 'legacy-images/';
@@ -107,53 +85,16 @@ async function coverPathFromImageId(
   return existingPath || null;
 }
 
-function calculateExtraAmount(acc: ExtraAccessoryForm): number {
-  const basis = acc.unit === 'BO' ? Number(acc.quantity || 0) : Number(acc.weight || 0);
-  return Math.round(basis * Number(acc.unitPrice || 0));
-}
-
-function normalizeFixedPackage(editing: ProductRecord | null): FixedAccessoryPackageForm {
-  const parsed = parseJson<Record<string, unknown> | null>(editing?.fixedAccessoryPackage, null);
-  if (!parsed) return { ...DEFAULT_FIXED_PACKAGE, items: [...DEFAULT_FIXED_PACKAGE.items] };
-  const items = Array.isArray(parsed.items)
-    ? parsed.items.map((item) => {
-        const row = item as { name?: unknown; quantity?: unknown };
-        return { name: String(row.name || ''), quantity: Number(row.quantity || 0) };
-      })
-    : [];
-  const packageQuantity = Number(parsed.packageQuantity ?? parsed.quantity ?? 1) || 1;
-  const unitPriceVnd = Number(parsed.unitPriceVnd ?? parsed.unitPrice ?? 0) || 0;
-  return {
-    name: String(parsed.name || DEFAULT_FIXED_PACKAGE.name),
-    items,
-    packageQuantity,
-    unitPriceVnd,
-  };
-}
-
-function normalizeExtraAccessories(editing: ProductRecord | null): ExtraAccessoryForm[] {
-  const parsed = parseJson<unknown[]>(editing?.extraAccessories, []);
-  return Array.isArray(parsed)
-    ? parsed.map((item) => {
-        const row = item as Record<string, unknown>;
-        const unit = row.unit === 'M2' || row.unit === 'METER' || row.unit === 'BO'
-          ? row.unit
-          : 'BO';
-        return {
-          id: String(row.id || crypto.randomUUID()),
-          name: String(row.name || ''),
-          unit,
-          quantity: Number(row.quantity || 1),
-          weight: Number(row.weight ?? row.kl ?? 0),
-          unitPrice: Number(row.unitPrice ?? row.unitPriceVnd ?? 0),
-        };
-      })
-    : [];
-}
-
 function normalizeSpecs(editing: ProductRecord | null): ProductSpecRecord[] {
   if (editing?.specs?.length) return editing.specs.map((spec) => ({ ...spec }));
   return DEFAULT_SPEC_KEYS.map((key, sortOrder) => ({ key, value: '', sortOrder }));
+}
+
+function normalizeSpecKey(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 }
 
 export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
@@ -172,21 +113,15 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const [accessories, setAccessories] = useState<ProductAccessoryRecord[]>(() =>
     editing?.accessories?.map((item) => ({ ...item })) ?? [],
   );
-  const [fixedPackage, setFixedPackage] = useState<FixedAccessoryPackageForm>(() =>
-    normalizeFixedPackage(editing),
+  const [fixedPackage, setFixedPackage] = useState(() =>
+    parseFixedAccessoriesJson(editing?.fixedAccessoryPackage, 1),
   );
-  const [extraAccessories, setExtraAccessories] = useState<ExtraAccessoryForm[]>(() =>
-    normalizeExtraAccessories(editing),
+  const [extraAccessories, setExtraAccessories] = useState(() =>
+    parseExtraAccessoriesJson(editing?.extraAccessories),
   );
   const [isFeatured, setIsFeatured] = useState(Boolean(editing?.isFeatured));
   const [isPublic, setIsPublic] = useState(editing?.isPublic !== false);
   const [saving, setSaving] = useState(false);
-
-  const fixedPackageTotal = fixedPackage.packageQuantity * fixedPackage.unitPriceVnd;
-  const extraTotal = useMemo(
-    () => extraAccessories.reduce((sum, item) => sum + calculateExtraAmount(item), 0),
-    [extraAccessories],
-  );
 
   const canSave = name.trim() !== '' && code.trim() !== '';
 
@@ -196,8 +131,22 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const updateAccessory = (index: number, patch: Partial<ProductAccessoryRecord>) =>
     setAccessories((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
-  const updateExtra = (index: number, patch: Partial<ExtraAccessoryForm>) =>
-    setExtraAccessories((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const specValueSuggestions = (key: string) => {
+    const normalized = normalizeSpecKey(key);
+    const specific = (() => {
+      if (normalized.includes('mau')) return suggestions.specValueColor ?? [];
+      if (normalized.includes('khung')) return suggestions.specValueFrame ?? [];
+      if (normalized.includes('canh')) return suggestions.specValueSash ?? [];
+      if (normalized.includes('day')) return suggestions.specValueThickness ?? [];
+      if (normalized.includes('kinh')) return suggestions.specValueGlass ?? [];
+      if (normalized.includes('phao')) return suggestions.specValueMolding ?? [];
+      if (normalized.includes('song') || normalized.includes('bao ve')) {
+        return suggestions.specValueProtectionBar ?? [];
+      }
+      return [];
+    })();
+    return [...specific, ...suggestions.specValue];
+  };
 
   const save = async () => {
     if (!canSave) return;
@@ -219,34 +168,8 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
           sortOrder,
         }))
         .filter((item) => item.name);
-      const fixedAccessoryPackage = JSON.stringify({
-        name: fixedPackage.name.trim() || DEFAULT_FIXED_PACKAGE.name,
-        items: fixedPackage.items.filter((item) => item.name.trim()),
-        packageQuantity: Number(fixedPackage.packageQuantity || 1),
-        unit: 'BO',
-        unitPrice: Number(fixedPackage.unitPriceVnd || 0),
-        unitPriceVnd: Number(fixedPackage.unitPriceVnd || 0),
-        total: fixedPackageTotal,
-        totalVnd: fixedPackageTotal,
-      });
-      const extraAccessoriesJson = JSON.stringify(
-        extraAccessories
-          .filter((item) => item.name.trim())
-          .map((item, sortOrder) => {
-            const amount = calculateExtraAmount(item);
-            return {
-              id: item.id,
-              name: item.name.trim(),
-              unit: item.unit,
-              quantity: Number(item.quantity || 1),
-              weight: Number(item.weight || 0),
-              unitPrice: Number(item.unitPrice || 0),
-              amount,
-              total: amount,
-              sortOrder,
-            };
-          }),
-      );
+      const fixedAccessoryPackage = serializeFixedAccessoriesJson(fixedPackage);
+      const extraAccessoriesJson = serializeExtraAccessoriesJson(extraAccessories) ?? '[]';
 
       const normalizedCode = code.trim().toUpperCase();
       const normalizedName = name.trim();
@@ -311,13 +234,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
           </div>
           <div className="field">
             <label>Đơn giá</label>
-            <input
-              className="input"
-              type="number"
-              inputMode="numeric"
-              value={unitPriceVnd || ''}
-              onChange={(e) => setUnitPriceVnd(Number(e.target.value) || 0)}
-            />
+            <CurrencyInput value={unitPriceVnd} onChange={setUnitPriceVnd} placeholder="0" />
           </div>
           <div className="two-col" style={{ gap: 12 }}>
             <div className="field">
@@ -381,7 +298,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                   label="Giá trị"
                   value={spec.value}
                   onChange={(value) => updateSpec(index, { value })}
-                  suggestions={suggestions.specValue}
+                  suggestions={specValueSuggestions(spec.key)}
                 />
                 <button className="icon-btn danger" type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))}>
                   <Trash2 size={16} />
@@ -390,7 +307,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
             ))}
           </div>
 
-          <SectionHeader title="Phụ kiện legacy" onAdd={() => setAccessories([...accessories, { name: '', quantityPerSet: 1, unitPriceVnd: 0, note: null }])} />
+          <SectionHeader title="Phụ kiện đi kèm cũ" onAdd={() => setAccessories([...accessories, { name: '', quantityPerSet: 1, unitPriceVnd: 0, note: null }])} />
           <div className="stack">
             {accessories.map((item, index) => (
               <div key={index} className="switch-row" style={{ alignItems: 'flex-end' }}>
@@ -406,7 +323,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                 </div>
                 <div className="field">
                   <label>Đơn giá</label>
-                  <input className="input" type="number" value={item.unitPriceVnd || ''} onChange={(e) => updateAccessory(index, { unitPriceVnd: Number(e.target.value) || 0 })} />
+                  <CurrencyInput value={item.unitPriceVnd || 0} onChange={(unitPriceVnd) => updateAccessory(index, { unitPriceVnd })} />
                 </div>
                 <button className="icon-btn danger" type="button" onClick={() => setAccessories(accessories.filter((_, i) => i !== index))}>
                   <Trash2 size={16} />
@@ -418,113 +335,19 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
       </div>
 
       <div className="two-col" style={{ marginTop: 16 }}>
-        <div>
-          <SectionHeader
-            title="Bộ phụ kiện cố định"
-            onAdd={() => setFixedPackage({ ...fixedPackage, items: [...fixedPackage.items, { name: '', quantity: 0 }] })}
-          />
-          <AutoSuggestInput
-            label="Tên bộ phụ kiện"
-            value={fixedPackage.name}
-            onChange={(value) => setFixedPackage({ ...fixedPackage, name: value })}
-            suggestions={suggestions.accessoryName}
-          />
-          <div className="two-col" style={{ gap: 12 }}>
-            <div className="field">
-              <label>Số lượng bộ</label>
-              <input className="input" type="number" value={fixedPackage.packageQuantity || ''} onChange={(e) => setFixedPackage({ ...fixedPackage, packageQuantity: Number(e.target.value) || 1 })} />
-            </div>
-            <div className="field">
-              <label>Đơn giá bộ</label>
-              <input className="input" type="number" value={fixedPackage.unitPriceVnd || ''} onChange={(e) => setFixedPackage({ ...fixedPackage, unitPriceVnd: Number(e.target.value) || 0 })} />
-            </div>
-          </div>
-          {fixedPackage.items.map((item, index) => (
-            <div key={index} className="switch-row" style={{ alignItems: 'flex-end' }}>
-              <AutoSuggestInput
-                label="Món"
-                value={item.name}
-                onChange={(value) => {
-                  const items = [...fixedPackage.items];
-                  items[index] = { ...items[index], name: value };
-                  setFixedPackage({ ...fixedPackage, items });
-                }}
-                suggestions={suggestions.accessoryName}
-              />
-              <div className="field">
-                <label>SL</label>
-                <input
-                  className="input"
-                  type="number"
-                  value={item.quantity}
-                  onChange={(e) => {
-                    const items = [...fixedPackage.items];
-                    items[index] = { ...items[index], quantity: Number(e.target.value) || 0 };
-                    setFixedPackage({ ...fixedPackage, items });
-                  }}
-                />
-              </div>
-              <button className="icon-btn danger" type="button" onClick={() => setFixedPackage({ ...fixedPackage, items: fixedPackage.items.filter((_, i) => i !== index) })}>
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
-          <div className="product-sub">Thành tiền bộ: {formatVND(fixedPackageTotal)}</div>
-        </div>
-
-        <div>
-          <SectionHeader
-            title="Phụ kiện phát sinh"
-            onAdd={() =>
-              setExtraAccessories([
-                ...extraAccessories,
-                { id: crypto.randomUUID(), name: '', unit: 'BO', quantity: 1, weight: 0, unitPrice: 0 },
-              ])
-            }
-          />
-          {extraAccessories.map((item, index) => (
-            <div key={item.id} className="stack" style={{ borderBottom: '1px solid var(--ios-separator)', paddingBottom: 8, marginBottom: 8 }}>
-              <div className="switch-row" style={{ alignItems: 'flex-end' }}>
-                <AutoSuggestInput
-                  label="Tên"
-                  value={item.name}
-                  onChange={(value) => updateExtra(index, { name: value })}
-                  suggestions={suggestions.accessoryName}
-                />
-                <div className="field">
-                  <label>DV</label>
-                  <select className="input" value={item.unit} onChange={(e) => updateExtra(index, { unit: e.target.value as ProductUnit })}>
-                    <option value="BO">Bộ</option>
-                    <option value="M2">m²</option>
-                    <option value="METER">md</option>
-                  </select>
-                </div>
-                <button className="icon-btn danger" type="button" onClick={() => setExtraAccessories(extraAccessories.filter((_, i) => i !== index))}>
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              <div className="two-col" style={{ gap: 12 }}>
-                <div className="field">
-                  <label>Số lượng</label>
-                  <input className="input" type="number" value={item.quantity || ''} onChange={(e) => updateExtra(index, { quantity: Number(e.target.value) || 1 })} />
-                </div>
-                <div className="field">
-                  <label>KL</label>
-                  <input className="input" type="number" step="0.001" value={item.weight || ''} onChange={(e) => updateExtra(index, { weight: Number(e.target.value) || 0 })} />
-                </div>
-                <div className="field">
-                  <label>Đơn giá</label>
-                  <input className="input" type="number" value={item.unitPrice || ''} onChange={(e) => updateExtra(index, { unitPrice: Number(e.target.value) || 0 })} />
-                </div>
-                <div className="field">
-                  <label>Thành tiền</label>
-                  <div className="input" style={{ color: 'var(--ios-gray1)' }}>{formatVND(calculateExtraAmount(item))}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-          <div className="product-sub">Tổng phụ kiện phát sinh: {formatVND(extraTotal)}</div>
-        </div>
+        <FixedAccessoryPackageEditor
+          value={fixedPackage}
+          onChange={setFixedPackage}
+          suggestions={{
+            accessoryName: suggestions.accessoryName,
+            packageName: suggestions.accessoryPackageName,
+          }}
+        />
+        <ExtraAccessoriesEditor
+          value={extraAccessories}
+          onChange={setExtraAccessories}
+          suggestions={{ accessoryName: suggestions.accessoryName }}
+        />
       </div>
 
       <div className="toolbar" style={{ marginTop: 16, marginBottom: 0 }}>

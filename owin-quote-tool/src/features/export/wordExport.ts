@@ -70,6 +70,102 @@ function formatDecimal(value: number | null | undefined): string {
   return n.toFixed(3).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
 }
 
+function parseJsonMaybe<T>(value: unknown, fallback: T): T {
+  if (!value) return fallback;
+  if (typeof value !== 'string') return value as T;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function accessoryItemText(name: unknown, quantity: unknown): string {
+  const text = String(name || '').trim();
+  if (!text) return '';
+  const qty = Number(quantity ?? 0);
+  return qty > 1 ? `${text} x${qty}` : text;
+}
+
+function buildQuoteWordAccessoryRows(item: CalculatedQuote['items'][number]) {
+  const rows: Array<Record<string, string | number | boolean>> = [];
+  const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
+  if (fixed) {
+    const quantity = Number(fixed.packageQuantity ?? fixed.quantity ?? 1) || 1;
+    const unitPrice = Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) || 0;
+    const entries = Array.isArray(fixed.items) ? fixed.items : [];
+    rows.push({
+      stt: '',
+      ma: '',
+      mo_ta: [
+        `${String(fixed.name || 'Bộ phụ kiện đi kèm').trim()}:`,
+        ...entries
+          .map((entry) => {
+            const row = entry as Record<string, unknown>;
+            return accessoryItemText(row.name, row.quantity);
+          })
+          .filter(Boolean)
+          .map((line) => `- ${line}`),
+      ].join('\n'),
+      dvt: 'Bộ',
+      rong: '',
+      cao: '',
+      sl: formatDecimal(quantity),
+      khoi_luong: formatDecimal(quantity),
+      don_gia: formatSoVND(unitPrice),
+      thanh_tien: formatSoVND(quantity * unitPrice),
+      is_sp: false,
+      is_pk: true,
+    });
+  }
+
+  const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
+  extras
+    .filter((entry) => entry && String((entry as Record<string, unknown>).name || '').trim())
+    .forEach((entry) => {
+      const extra = entry as Record<string, unknown>;
+      const unit = extra.unit === 'M2' || extra.unit === 'METER' || extra.unit === 'BO'
+        ? extra.unit
+        : 'BO';
+      const quantity = Number(extra.quantity ?? extra.quantityPerSet ?? 1) || 1;
+      const weight = unit === 'BO' ? 0 : Number(extra.weight ?? extra.kl ?? 0) || 0;
+      const unitPrice = Number(extra.unitPrice ?? extra.unitPriceVnd ?? 0) || 0;
+      const basis = unit === 'BO' ? quantity : weight;
+      rows.push({
+        stt: '',
+        ma: '',
+        mo_ta: String(extra.name || 'Phụ kiện phát sinh').trim(),
+        dvt: unitLabel(unit),
+        rong: '',
+        cao: '',
+        sl: unit === 'BO' ? formatDecimal(quantity) : '',
+        khoi_luong: unit === 'BO' ? '' : formatDecimal(weight),
+        don_gia: formatSoVND(unitPrice),
+        thanh_tien: formatSoVND(basis * unitPrice),
+        is_sp: false,
+        is_pk: true,
+      });
+    });
+
+  if (rows.length > 0) return rows;
+  return item.accessories
+    .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
+    .map((accessory) => ({
+      stt: '',
+      ma: '',
+      mo_ta: [accessory.name, accessory.note].filter(Boolean).join('\n'),
+      dvt: 'Bộ',
+      rong: '',
+      cao: '',
+      sl: formatDecimal(accessory.quantityPerSet),
+      khoi_luong: formatDecimal(accessory.totalSet),
+      don_gia: formatSoVND(accessory.unitPriceVnd),
+      thanh_tien: formatSoVND(accessory.lineTotalVnd),
+      is_sp: false,
+      is_pk: true,
+    }));
+}
+
 export function buildQuoteWordData(quote: CalculatedQuote) {
   const items: Array<Record<string, string | number | boolean>> = [];
   let stt = 0;
@@ -101,24 +197,7 @@ export function buildQuoteWordData(quote: CalculatedQuote) {
       });
     });
 
-    item.accessories
-      .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
-      .forEach((accessory) => {
-        items.push({
-          stt: '',
-          ma: '',
-          mo_ta: [accessory.name, accessory.note].filter(Boolean).join('\n'),
-          dvt: 'Bộ',
-          rong: '',
-          cao: '',
-          sl: formatDecimal(accessory.quantityPerSet),
-          khoi_luong: formatDecimal(accessory.totalSet),
-          don_gia: formatSoVND(accessory.unitPriceVnd),
-          thanh_tien: formatSoVND(accessory.lineTotalVnd),
-          is_sp: false,
-          is_pk: true,
-        });
-      });
+    items.push(...buildQuoteWordAccessoryRows(item));
   });
 
   const d = dateParts(quote.quoteDate);
@@ -219,9 +298,8 @@ export async function buildBangGiaWordData(products: ProductRecord[]) {
 }
 
 export async function exportBangGiaWord(products: ProductRecord[]): Promise<string> {
-  // TODO: Port the REFERENCE row-cloning DOCX renderer if exact vertical merges and
-  // reference placeholders are required in-browser. This browser-safe version uses
-  // TARGET's loop template so GitHub Pages builds stay static.
+  // Browser-safe DOCX export: keep PizZip/docxtemplater only, no fs/path/sharp/server APIs.
+  // Data rows mirror the REFERENCE catalogue block model; exact XML vMerge belongs to the server renderer.
   const content = await fetchTemplate(tplBangGiaUrl);
   const { data, imageValues } = await buildBangGiaWordData(products);
   const sizeMap = await buildSizeMap(imageValues);

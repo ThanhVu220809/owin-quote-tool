@@ -47,8 +47,9 @@ function normalizeExtraAccessoriesJson(raw: string | null | undefined): string |
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return null;
-    return JSON.stringify(
-      parsed.map((acc, index) => {
+    const normalized = parsed
+      .filter((acc) => acc && String(acc.name || '').trim())
+      .map((acc, index) => {
         const unit = normalizeUnit(acc.unit || 'BO');
         const quantity = Number(acc.quantity || 1);
         const weight = roundQuantity3(Number(acc.weight ?? acc.kl ?? 0));
@@ -70,8 +71,8 @@ function normalizeExtraAccessoriesJson(raw: string | null | undefined): string |
           total: amount,
           sortOrder: Number(acc.sortOrder ?? index),
         };
-      }),
-    );
+      });
+    return normalized.length > 0 ? JSON.stringify(normalized) : null;
   } catch {
     return null;
   }

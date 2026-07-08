@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Copy, FileDown, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import type {
   AccessoryInput,
@@ -10,6 +10,9 @@ import type {
 } from '@/types/models';
 import { useProducts } from '@/features/products/useProducts';
 import { formatVND } from '@/utils/format';
+import { AutoSuggestInput } from '@/components/AutoSuggestInput';
+import { CurrencyInput } from '@/components/CurrencyInput';
+import { ExtraAccessoriesEditor, FixedAccessoryPackageEditor } from '@/components/AccessoryEditors';
 import { calculateQuote } from '@/lib/quote/quoteCalculator';
 import { generateQuoteCode } from '@/lib/quote/quoteCode';
 import { generateSnapshot } from '@/lib/quote/quoteSnapshot';
@@ -18,6 +21,12 @@ import { rememberQuoteSuggestions } from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
 import { exportQuotePDF } from '@/features/export/pdfExport';
 import { ProductThumb } from '@/features/products/ProductThumb';
+import {
+  parseExtraAccessoriesJson,
+  parseFixedAccessoriesJson,
+  serializeExtraAccessoriesJson,
+  serializeFixedAccessoriesJson,
+} from '@/lib/quote/accessoryDrafts';
 import { getAllQuotes, saveQuoteRecord } from './quoteStore';
 
 const QUOTE_SUGGESTION_TYPES = [
@@ -26,6 +35,7 @@ const QUOTE_SUGGESTION_TYPES = [
   'item_name',
   'category',
   'accessory_name',
+  'accessory_package_name',
 ] as const;
 
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
@@ -341,7 +351,7 @@ export function QuoteView() {
             </div>
             <div className="field">
               <label>Tạm ứng</label>
-              <input className="input" type="number" value={depositVnd || ''} onChange={(e) => setDepositVnd(Number(e.target.value) || 0)} />
+              <CurrencyInput value={depositVnd} onChange={setDepositVnd} placeholder="0" />
             </div>
           </div>
           <div className="product-sub">
@@ -383,10 +393,11 @@ export function QuoteView() {
         </div>
         <div className="pick-grid">
           {filteredProducts.map((product) => (
-            <button key={product.id} className="pick-card" onClick={() => addProduct(product.id)}>
+            <button key={product.id} className="pick-card product-pick-card" onClick={() => addProduct(product.id)}>
+              <ProductThumb imagePath={product.coverImagePath} fill />
               <div className="nm">{product.name}</div>
               <div className="cd">{product.code} · {product.category}</div>
-              <div className="cd">{formatVND(product.unitPriceVnd)}/{unitLabel(product.unit)}</div>
+              <div className="pick-price">{formatVND(product.unitPriceVnd)}/{unitLabel(product.unit)}</div>
             </button>
           ))}
         </div>
@@ -471,16 +482,20 @@ function Field({
   onChange: (value: string) => void;
   suggestions?: string[];
 }) {
-  const listId = useId();
+  if (suggestions.length > 0) {
+    return (
+      <AutoSuggestInput
+        label={label}
+        value={value}
+        onChange={onChange}
+        suggestions={suggestions}
+      />
+    );
+  }
   return (
     <div className="field">
       <label>{label}</label>
-      <input className="input" list={listId} value={value} onChange={(e) => onChange(e.target.value)} />
-      <datalist id={listId}>
-        {Array.from(new Set(suggestions.filter(Boolean))).map((item) => (
-          <option key={item} value={item} />
-        ))}
-      </datalist>
+      <input className="input" value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }
@@ -492,6 +507,100 @@ function TotalLine({ label, value, strong }: { label: string; value: number; str
       <span style={{ fontWeight: strong ? 800 : 600 }}>{formatVND(value)}</span>
     </div>
   );
+}
+
+function parseJsonMaybe<T>(value: unknown, fallback: T): T {
+  if (!value) return fallback;
+  if (typeof value !== 'string') return value as T;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function compactNumber(value: unknown): string {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed === 0) return '';
+  return Number.isInteger(parsed)
+    ? String(parsed)
+    : parsed.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function accessoryItemText(name: unknown, quantity: unknown): string {
+  const text = String(name || '').trim();
+  if (!text) return '';
+  const qty = Number(quantity ?? 0);
+  return qty > 1 ? `${text} x${qty}` : text;
+}
+
+interface QuotePrintAccessoryRow {
+  descriptionLines: string[];
+  unit: string;
+  quantity: string;
+  weight: string;
+  unitPriceVnd: number;
+  amountVnd: number;
+}
+
+function buildQuotePrintAccessoryRows(item: ReturnType<typeof calculateQuote>['items'][number]): QuotePrintAccessoryRow[] {
+  const rows: QuotePrintAccessoryRow[] = [];
+  const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
+  if (fixed) {
+    const quantity = Number(fixed.packageQuantity ?? fixed.quantity ?? 1) || 1;
+    const unitPrice = Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) || 0;
+    const items = Array.isArray(fixed.items) ? fixed.items : [];
+    rows.push({
+      descriptionLines: [
+        `${String(fixed.name || 'Bộ phụ kiện đi kèm').trim()}:`,
+        ...items
+          .map((entry) => {
+            const row = entry as Record<string, unknown>;
+            return accessoryItemText(row.name, row.quantity);
+          })
+          .filter(Boolean)
+          .map((line) => `- ${line}`),
+      ],
+      unit: 'Bộ',
+      quantity: compactNumber(quantity),
+      weight: compactNumber(quantity),
+      unitPriceVnd: unitPrice,
+      amountVnd: Math.round(quantity * unitPrice),
+    });
+  }
+
+  const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
+  extras
+    .filter((entry) => entry && String((entry as Record<string, unknown>).name || '').trim())
+    .forEach((entry) => {
+      const extra = entry as Record<string, unknown>;
+      const unit = String(extra.unit || 'BO') as ProductUnit;
+      const normalizedUnit = unit === 'M2' || unit === 'METER' || unit === 'BO' ? unit : 'BO';
+      const quantity = Number(extra.quantity ?? extra.quantityPerSet ?? 1) || 1;
+      const weight = normalizedUnit === 'BO' ? 0 : Number(extra.weight ?? extra.kl ?? 0) || 0;
+      const unitPrice = Number(extra.unitPrice ?? extra.unitPriceVnd ?? 0) || 0;
+      const basis = normalizedUnit === 'BO' ? quantity : weight;
+      rows.push({
+        descriptionLines: [String(extra.name || 'Phụ kiện phát sinh').trim()],
+        unit: unitLabel(normalizedUnit),
+        quantity: normalizedUnit === 'BO' ? compactNumber(quantity) : '',
+        weight: normalizedUnit === 'BO' ? '' : compactNumber(weight),
+        unitPriceVnd: unitPrice,
+        amountVnd: Math.round(basis * unitPrice),
+      });
+    });
+
+  if (rows.length > 0) return rows;
+  return item.accessories
+    .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
+    .map((accessory) => ({
+      descriptionLines: [accessory.name, accessory.note].filter(Boolean) as string[],
+      unit: 'Bộ',
+      quantity: compactNumber(accessory.quantityPerSet),
+      weight: compactNumber(accessory.totalSet),
+      unitPriceVnd: accessory.unitPriceVnd,
+      amountVnd: accessory.lineTotalVnd,
+    }));
 }
 
 function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote> }) {
@@ -524,7 +633,7 @@ function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote
           </tr>
         </thead>
         {quote.items.map((item, index) => {
-          const visibleAccessories = item.accessories.filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0);
+          const visibleAccessories = buildQuotePrintAccessoryRows(item);
           const rowSpan = Math.max(1, item.dimensions.length + visibleAccessories.length);
           return (
             <tbody key={`${item.productCode}-${index}`} className="quote-item-block">
@@ -556,15 +665,15 @@ function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote
               {visibleAccessories.map((accessory, accIndex) => (
                 <tr key={`a-${accIndex}`} className="pk-row">
                   <td className="description-cell">
-                    {[accessory.name, accessory.note].filter(Boolean).map((lineText, i) => <div key={i}>{lineText}</div>)}
+                    {accessory.descriptionLines.map((lineText, i) => <div key={i}>{lineText}</div>)}
                   </td>
-                  <td>Bộ</td>
+                  <td>{accessory.unit}</td>
                   <td>—</td>
                   <td>—</td>
-                  <td>{accessory.quantityPerSet}</td>
-                  <td>{accessory.totalSet}</td>
+                  <td>{accessory.quantity || '—'}</td>
+                  <td>{accessory.weight || '—'}</td>
                   <td className="num">{formatVND(accessory.unitPriceVnd)}</td>
-                  <td className="num">{formatVND(accessory.lineTotalVnd)}</td>
+                  <td className="num">{formatVND(accessory.amountVnd)}</td>
                 </tr>
               ))}
             </tbody>
@@ -610,7 +719,9 @@ function QuoteItemCard({
   onMoveDown: () => void;
   onDelete: () => void;
 }) {
-  const accessoryListId = useId();
+  const fixedDraft = parseFixedAccessoriesJson(item.fixedAccessoryPackage, 1);
+  const extraDraft = parseExtraAccessoriesJson(item.extraAccessories);
+  const usesPackageAccessories = Boolean(item.fixedAccessoryPackage || extraDraft.length > 0);
   return (
     <div className="card" style={{ marginBottom: 12, boxShadow: 'none' }}>
       <div className="toolbar" style={{ margin: 0 }}>
@@ -648,54 +759,106 @@ function QuoteItemCard({
         <div className="spacer" />
         <button className="icon-btn" onClick={onAddDimension} aria-label="Thêm kích thước"><Plus size={16} /></button>
       </div>
-      {item.dimensions.map((line, lineIndex) => (
-        <div key={lineIndex} className="quote-table" style={{ display: 'grid', gridTemplateColumns: '80px repeat(5, minmax(72px, 1fr)) 44px', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <select className="input" value={line.unit || item.unit} onChange={(e) => onDimension(lineIndex, { unit: e.target.value as ProductUnit })}>
-            <option value="M2">m²</option>
-            <option value="BO">Bộ</option>
-            <option value="METER">md</option>
-          </select>
-          <input className="input" type="number" step="0.001" value={line.widthM ?? ''} onChange={(e) => onDimension(lineIndex, { widthM: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Rộng" />
-          <input className="input" type="number" step="0.001" value={line.heightM ?? ''} onChange={(e) => onDimension(lineIndex, { heightM: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Cao" />
-          <input className="input" type="number" value={line.quantity || ''} onChange={(e) => onDimension(lineIndex, { quantity: Number(e.target.value) || 0 })} placeholder="SL" />
-          <input className="input" type="number" value={line.unitPriceVnd ?? item.unitPriceVnd} onChange={(e) => onDimension(lineIndex, { unitPriceVnd: Number(e.target.value) || 0 })} placeholder="Đơn giá" />
-          <input className="input" value={line.description || ''} onChange={(e) => onDimension(lineIndex, { description: e.target.value })} placeholder="Ghi chú" />
-          <button className="icon-btn danger" onClick={() => onUpdate({ dimensions: item.dimensions.filter((_, i) => i !== lineIndex) })} aria-label="Xóa kích thước"><Trash2 size={16} /></button>
+      <div className="quote-lines-editor">
+        <div className="quote-lines-head">
+          <span>DV</span>
+          <span>Rộng</span>
+          <span>Cao</span>
+          <span>SL</span>
+          <span>KL</span>
+          <span>Đơn giá</span>
+          <span>Thành tiền</span>
+          <span>Ghi chú</span>
+          <span />
         </div>
-      ))}
-
-      <div className="toolbar" style={{ margin: '10px 0 6px' }}>
-        <div className="section-label" style={{ margin: 0 }}>Phụ kiện</div>
-        <div className="spacer" />
-        <button className="icon-btn" onClick={onAddAccessory} aria-label="Thêm phụ kiện"><Plus size={16} /></button>
+        {item.dimensions.map((line, lineIndex) => {
+          const calculatedLine = calculated?.dimensions[lineIndex];
+          return (
+            <div key={lineIndex} className="quote-line-row">
+              <select className="input" value={line.unit || item.unit} onChange={(e) => onDimension(lineIndex, { unit: e.target.value as ProductUnit })}>
+                <option value="M2">m²</option>
+                <option value="BO">Bộ</option>
+                <option value="METER">md</option>
+              </select>
+              <input className="input" type="number" step="0.001" value={line.widthM ?? ''} onChange={(e) => onDimension(lineIndex, { widthM: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Rộng" />
+              <input className="input" type="number" step="0.001" value={line.heightM ?? ''} onChange={(e) => onDimension(lineIndex, { heightM: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Cao" />
+              <input className="input" type="number" min={1} value={line.quantity || ''} onChange={(e) => onDimension(lineIndex, { quantity: Number(e.target.value) || 1 })} placeholder="SL" />
+              <div className="readonly-money muted-money">{calculatedLine?.calculatedQty?.toFixed(3) ?? '0.000'}</div>
+              <CurrencyInput value={Number(line.unitPriceVnd ?? item.unitPriceVnd ?? 0)} onChange={(unitPriceVnd) => onDimension(lineIndex, { unitPriceVnd })} placeholder="Đơn giá" />
+              <div className="readonly-money">{formatVND(calculatedLine?.lineTotalVnd ?? 0)}</div>
+              <input className="input" value={line.description || ''} onChange={(e) => onDimension(lineIndex, { description: e.target.value })} placeholder="Ghi chú" />
+              <button className="icon-btn danger" onClick={() => onUpdate({ dimensions: item.dimensions.filter((_, i) => i !== lineIndex) })} aria-label="Xóa kích thước"><Trash2 size={16} /></button>
+            </div>
+          );
+        })}
       </div>
-      {item.accessories.map((accessory, accIndex) => (
-        <div key={accIndex} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 120px 90px 44px', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <input className="input" list={accessoryListId} value={accessory.name} onChange={(e) => onAccessory(accIndex, { name: e.target.value })} placeholder="Tên phụ kiện" />
-          <input className="input" type="number" value={accessory.quantityPerSet || ''} onChange={(e) => onAccessory(accIndex, { quantityPerSet: Number(e.target.value) || 0 })} />
-          <input className="input" type="number" value={accessory.unitPriceVnd || ''} onChange={(e) => onAccessory(accIndex, { unitPriceVnd: Number(e.target.value) || 0 })} />
-          <select className="input" value={accessory.isEnabled === false ? 'off' : 'on'} onChange={(e) => onAccessory(accIndex, { isEnabled: e.target.value === 'on' })}>
-            <option value="on">Bật</option>
-            <option value="off">Tắt</option>
-          </select>
-          <button className="icon-btn danger" onClick={() => onUpdate({ accessories: item.accessories.filter((_, i) => i !== accIndex) })} aria-label="Xóa phụ kiện"><Trash2 size={16} /></button>
-        </div>
-      ))}
-      <datalist id={accessoryListId}>
-        {Array.from(new Set((suggestions.accessory_name ?? []).filter(Boolean))).map((item) => (
-          <option key={item} value={item} />
-        ))}
-      </datalist>
 
-      <div className="two-col" style={{ gap: 12 }}>
-        <div className="field">
-          <label>Bộ phụ kiện cố định JSON</label>
-          <textarea className="input" value={item.fixedAccessoryPackage || ''} onChange={(e) => onUpdate({ fixedAccessoryPackage: e.target.value || null })} rows={3} />
-        </div>
-        <div className="field">
-          <label>Phụ kiện phát sinh JSON</label>
-          <textarea className="input" value={item.extraAccessories || ''} onChange={(e) => onUpdate({ extraAccessories: e.target.value || null })} rows={3} />
-        </div>
+      {!usesPackageAccessories && (
+        <>
+          <div className="toolbar" style={{ margin: '10px 0 6px' }}>
+            <div className="section-label" style={{ margin: 0 }}>Phụ kiện đi kèm cũ</div>
+            <div className="spacer" />
+            <button className="icon-btn" onClick={onAddAccessory} aria-label="Thêm phụ kiện"><Plus size={16} /></button>
+          </div>
+          {item.accessories.map((accessory, accIndex) => (
+            <div key={accIndex} className="legacy-accessory-row">
+              <AutoSuggestInput
+                label="Tên"
+                value={accessory.name}
+                onChange={(name) => onAccessory(accIndex, { name })}
+                suggestions={suggestions.accessory_name ?? []}
+                placeholder="Tên phụ kiện"
+              />
+              <div className="field">
+                <label>SL/Bộ</label>
+                <input className="input" type="number" value={accessory.quantityPerSet || ''} onChange={(e) => onAccessory(accIndex, { quantityPerSet: Number(e.target.value) || 0 })} />
+              </div>
+              <div className="field">
+                <label>Đơn giá</label>
+                <CurrencyInput value={accessory.unitPriceVnd || 0} onChange={(unitPriceVnd) => onAccessory(accIndex, { unitPriceVnd })} />
+              </div>
+              <div className="field">
+                <label>Trạng thái</label>
+                <select className="input" value={accessory.isEnabled === false ? 'off' : 'on'} onChange={(e) => onAccessory(accIndex, { isEnabled: e.target.value === 'on' })}>
+                  <option value="on">Bật</option>
+                  <option value="off">Tắt</option>
+                </select>
+              </div>
+              <button className="icon-btn danger" onClick={() => onUpdate({ accessories: item.accessories.filter((_, i) => i !== accIndex) })} aria-label="Xóa phụ kiện"><Trash2 size={16} /></button>
+            </div>
+          ))}
+        </>
+      )}
+
+      <div className="two-col" style={{ gap: 12, marginTop: 14 }}>
+        {item.fixedAccessoryPackage ? (
+          <FixedAccessoryPackageEditor
+            value={fixedDraft}
+            onChange={(draft) => onUpdate({ fixedAccessoryPackage: serializeFixedAccessoriesJson(draft) })}
+            suggestions={{
+              accessoryName: suggestions.accessory_name ?? [],
+              packageName: suggestions.accessory_package_name ?? [],
+            }}
+          />
+        ) : (
+          <div className="editor-panel">
+            <div className="section-label">Bộ phụ kiện cố định</div>
+            <div className="empty-line">Item này chưa dùng bộ phụ kiện cố định.</div>
+            <button
+              className="btn-link"
+              type="button"
+              onClick={() => onUpdate({ fixedAccessoryPackage: serializeFixedAccessoriesJson(fixedDraft) })}
+            >
+              <Plus size={15} /> Thêm bộ phụ kiện
+            </button>
+          </div>
+        )}
+        <ExtraAccessoriesEditor
+          value={extraDraft}
+          onChange={(drafts) => onUpdate({ extraAccessories: serializeExtraAccessoriesJson(drafts) })}
+          suggestions={{ accessoryName: suggestions.accessory_name ?? [] }}
+          title="Phụ kiện phát sinh riêng"
+        />
       </div>
     </div>
   );

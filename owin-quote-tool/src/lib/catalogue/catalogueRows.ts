@@ -27,6 +27,16 @@ export interface CatalogueBlockRow {
 }
 
 const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+const SPEC_ORDER = [
+  { label: 'Màu', keys: ['mau', 'màu'] },
+  { label: 'Khung Bao', keys: ['khung bao'] },
+  { label: 'Bản Cánh', keys: ['ban canh', 'bản cánh', 'canh', 'cánh'] },
+  { label: 'Độ Dày', keys: ['do day', 'độ dày'] },
+  { label: 'Loại Kính', keys: ['loai kinh', 'loại kính', 'kinh', 'kính'] },
+  { label: 'Phào', keys: ['phao', 'phào'] },
+  { label: 'Song Nhôm Bảo Vệ', keys: ['song nhom bao ve', 'song nhôm bảo vệ', 'bao ve', 'bảo vệ'] },
+  { label: 'Ghi Chú', keys: ['ghi chu', 'ghi chú', 'note'] },
+] as const;
 
 function titleCase(value: string): string {
   return value
@@ -36,6 +46,19 @@ function titleCase(value: string): string {
     .join(' ');
 }
 
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function specMatches(key: string, candidates: readonly string[]): boolean {
+  const normalized = normalizeText(key);
+  return candidates.some((candidate) => normalized === normalizeText(candidate));
+}
+
 function unitLabel(unit: string): string {
   if (unit === 'BO') return 'Bộ';
   if (unit === 'METER') return 'md';
@@ -43,12 +66,25 @@ function unitLabel(unit: string): string {
 }
 
 function productDescription(product: ProductRecord): string[] {
-  return [
-    titleCase(product.name),
-    ...product.specs
-      .filter((spec) => spec.key.trim() && spec.value.trim())
-      .map((spec) => `- ${spec.key}: ${spec.value}`),
-  ];
+  const specs = product.specs
+    .map((spec, originalIndex) => ({ ...spec, originalIndex }))
+    .filter((spec) => spec.key.trim() && spec.value.trim());
+  const used = new Set<number>();
+  const lines = [titleCase(product.name)];
+
+  SPEC_ORDER.forEach((rule) => {
+    const match = specs.find((spec) => !used.has(spec.originalIndex) && specMatches(spec.key, rule.keys));
+    if (!match) return;
+    lines.push(`- ${rule.label}: ${titleCase(match.value)}`);
+    used.add(match.originalIndex);
+  });
+
+  specs.forEach((spec) => {
+    if (!used.has(spec.originalIndex)) lines.push(`- ${titleCase(spec.key)}: ${titleCase(spec.value)}`);
+  });
+
+  if (product.shortDesc?.trim()) lines.push(`- Ghi Chú: ${titleCase(product.shortDesc)}`);
+  return lines;
 }
 
 function fixedAccessoryDescription(product: ProductRecord): string[] {
@@ -61,7 +97,7 @@ function fixedAccessoryDescription(product: ProductRecord): string[] {
       return [
         `${fixed.name || 'Bộ phụ kiện đi kèm'}:`,
         ...(fixed.items || []).map((item) =>
-          Number(item.quantity || 0) > 1 ? `- ${item.name} x${item.quantity}` : `- ${item.name || ''}`,
+          Number(item.quantity || 0) > 1 ? `- ${titleCase(item.name || '')} x${item.quantity}` : `- ${titleCase(item.name || '')}`,
         ),
       ].filter((line) => line.trim());
     } catch {
@@ -72,14 +108,14 @@ function fixedAccessoryDescription(product: ProductRecord): string[] {
   return [
     'Bộ Phụ Kiện Đi Kèm:',
     ...product.accessories.map((item) =>
-      item.quantityPerSet > 1 ? `- ${item.name} x${item.quantityPerSet}` : `- ${item.name}`,
+      item.quantityPerSet > 1 ? `- ${titleCase(item.name)} x${item.quantityPerSet}` : `- ${titleCase(item.name)}`,
     ),
   ];
 }
 
 function extraAccessoryDescription(item: { name?: unknown }): string[] {
   const name = String(item.name || '').trim();
-  return name ? [`- ${name}`] : [];
+  return name ? [titleCase(name)] : [];
 }
 
 function formatCategoryHeading(categoryName: string, index: number): string {

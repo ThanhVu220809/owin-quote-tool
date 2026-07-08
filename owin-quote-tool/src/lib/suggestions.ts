@@ -136,6 +136,36 @@ function suggestionTypeForSpecKey(key: string): SuggestionType {
   return 'spec_value';
 }
 
+function collectAccessorySuggestionEntries(
+  fixedAccessoryPackage: string | null | undefined,
+  extraAccessories: string | null | undefined,
+): Array<[SuggestionType, unknown]> {
+  const entries: Array<[SuggestionType, unknown]> = [];
+  if (fixedAccessoryPackage) {
+    try {
+      const fixed = JSON.parse(fixedAccessoryPackage) as {
+        name?: unknown;
+        items?: Array<{ name?: unknown }>;
+      };
+      entries.push(['accessory_package_name', fixed.name]);
+      fixed.items?.forEach((item) => entries.push(['accessory_name', item.name]));
+    } catch {
+      // Malformed JSON should not block suggestion learning.
+    }
+  }
+  if (extraAccessories) {
+    try {
+      const extras = JSON.parse(extraAccessories) as Array<{ name?: unknown }>;
+      if (Array.isArray(extras)) {
+        extras.forEach((item) => entries.push(['accessory_name', item.name]));
+      }
+    } catch {
+      // Malformed JSON should not block suggestion learning.
+    }
+  }
+  return entries;
+}
+
 export async function rememberProductSuggestions(product: ProductRecord): Promise<void> {
   const entries: Array<[SuggestionType, unknown]> = [
     ['category', product.category],
@@ -147,18 +177,7 @@ export async function rememberProductSuggestions(product: ProductRecord): Promis
     entries.push([suggestionTypeForSpecKey(spec.key), spec.value]);
   });
   product.accessories.forEach((accessory) => entries.push(['accessory_name', accessory.name]));
-  if (product.fixedAccessoryPackage) {
-    try {
-      const fixed = JSON.parse(product.fixedAccessoryPackage) as {
-        name?: unknown;
-        items?: Array<{ name?: unknown }>;
-      };
-      entries.push(['accessory_package_name', fixed.name]);
-      fixed.items?.forEach((item) => entries.push(['accessory_name', item.name]));
-    } catch {
-      // Keep malformed fixed package from breaking product save.
-    }
-  }
+  entries.push(...collectAccessorySuggestionEntries(product.fixedAccessoryPackage, product.extraAccessories));
   await rememberSuggestions(entries);
 }
 
@@ -172,6 +191,7 @@ export async function rememberQuoteSuggestions(quote: QuoteInput): Promise<void>
     entries.push(['category', item.category || item.groupName]);
     item.accessories.forEach((accessory) => entries.push(['accessory_name', accessory.name]));
     item.specs?.forEach((spec) => entries.push([suggestionTypeForSpecKey(spec.key), spec.value]));
+    entries.push(...collectAccessorySuggestionEntries(item.fixedAccessoryPackage, item.extraAccessories));
   });
   await rememberSuggestions(entries);
 }

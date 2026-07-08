@@ -109,8 +109,13 @@ export function calculateQuoteItem(item: QuoteItemInput, sortOrder: number): Cal
 
   let calculatedAccessories: CalculatedAccessory[] = [];
   let accessorySubtotalVnd = 0;
+  const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
+  const hasExtraAccessories = Array.isArray(extras) && extras.some((extra) => {
+    const acc = extra as Record<string, unknown>;
+    return String(acc?.name || '').trim();
+  });
 
-  if (fixedAccessoryPackage || item.extraAccessories) {
+  if (fixedAccessoryPackage || hasExtraAccessories) {
     const fixed = parseJsonMaybe<Record<string, unknown> | null>(fixedAccessoryPackage, null);
     if (fixed) {
       const qty = parseQuoteNumber(
@@ -147,7 +152,6 @@ export function calculateQuoteItem(item: QuoteItemInput, sortOrder: number): Cal
       });
     }
 
-    const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
     if (Array.isArray(extras)) {
       extras.forEach((extra) => {
         const acc = extra as Record<string, unknown>;
