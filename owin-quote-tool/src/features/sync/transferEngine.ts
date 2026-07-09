@@ -1,11 +1,22 @@
-import type { OwinDB, ProductRecord, QuoteRecord, SuggestionRecord } from '@/types/models';
+import type {
+  AluminumCalculationRecord,
+  OwinDB,
+  ProductRecord,
+  QuoteRecord,
+  SuggestionRecord,
+} from '@/types/models';
 import { getAllProductsRaw, bulkPut, normalizeProductRecord } from '@/features/products/productStore';
 import { bulkPutQuotes, getAllQuotesRaw } from '@/features/quote/quoteStore';
 import { bulkPutSuggestions, getAllSuggestionRecords } from '@/lib/suggestions';
+import {
+  bulkPutAluminumCalculations,
+  getAllAluminumCalculationsRaw,
+  normalizeAluminumCalculationRecord,
+} from '@/features/aluminum/aluminumEstimatorStorage';
 import { notifyProductsChanged } from '@/features/products/productEvents';
-import { getImage, saveImage } from '@/utils/imageStorage';
-import { downloadDB, downloadImage, uploadDB, uploadImage } from './driveSync';
+import { downloadDB, uploadDB } from './driveSync';
 import { mergeEntities, type Conflict } from './merge';
+import { downloadReferencedImages, uploadReferencedImages } from './imageSync';
 
 const SCHEMA_VERSION = 2;
 
@@ -20,6 +31,8 @@ export interface TransferConflictContext {
   remoteQuotes: QuoteRecord[];
   localSuggestions: SuggestionRecord[];
   remoteSuggestions: SuggestionRecord[];
+  localAluminum: AluminumCalculationRecord[];
+  remoteAluminum: AluminumCalculationRecord[];
 }
 
 export type TransferStatus =
@@ -52,8 +65,15 @@ export async function finishTransfer(
   finalProducts: ProductRecord[],
 ): Promise<TransferStatus> {
   if (context.mode === 'push-other') {
-    const { count, errors } = await uploadLocalImages(finalProducts, context.local, context.token);
-    await uploadDB(buildDB(finalProducts, context.localQuotes, context.localSuggestions), context.token);
+    const { count, errors } = await uploadReferencedImages(
+      finalProducts,
+      context.localQuotes,
+      context.token,
+    );
+    await uploadDB(
+      buildDB(finalProducts, context.localQuotes, context.localSuggestions, context.localAluminum),
+      context.token,
+    );
     return {
       state: 'done',
       mode: context.mode,
@@ -66,7 +86,12 @@ export async function finishTransfer(
   await bulkPut(finalProducts);
   await bulkPutQuotes(context.remoteQuotes);
   await bulkPutSuggestions(context.remoteSuggestions);
-  const { count, errors } = await downloadRemoteImages(finalProducts, context.remote, context.token);
+  await bulkPutAluminumCalculations(context.remoteAluminum);
+  const { count, errors } = await downloadReferencedImages(
+    finalProducts,
+    context.remoteQuotes,
+    context.token,
+  );
   notifyProductsChanged();
   return {
     state: 'done',
@@ -81,6 +106,7 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
   const local = await getAllProductsRaw();
   const localQuotes = await getAllQuotesRaw();
   const localSuggestions = await getAllSuggestionRecords();
+  const localAluminum = await getAllAluminumCalculationsRaw();
   const remoteDB = await downloadDB(token);
   if (mode === 'pull-other' && !remoteDB) return { state: 'empty-remote', mode };
 
@@ -89,6 +115,7 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
   );
   const remoteQuotes = remoteDB?.quotes ?? [];
   const remoteSuggestions = remoteDB?.suggestions ?? [];
+  const remoteAluminum = normalizeRemoteAluminum(remoteDB?.aluminumCalculations);
   // Giao dịch giữa 2 tài khoản ĐỘC LẬP: KHÔNG dùng base của owner (vô nghĩa với tài
   // khoản kia, dễ nuốt thầm). base rỗng → mọi khác biệt cùng mã đều thành conflict cho
   // người chọn (đúng ý "gộp thông minh").
@@ -102,6 +129,8 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
     remoteQuotes,
     localSuggestions,
     remoteSuggestions,
+    localAluminum,
+    remoteAluminum,
   };
 
   if (conflicts.length > 0) {
@@ -110,62 +139,25 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
   return finishTransfer(context, merged);
 }
 
-function buildDB(products: ProductRecord[], quotes: QuoteRecord[], suggestions: SuggestionRecord[]): OwinDB {
-  return { schemaVersion: SCHEMA_VERSION, systems: [], products, quotes, suggestions };
+function normalizeRemoteAluminum(records: unknown): AluminumCalculationRecord[] {
+  if (!Array.isArray(records)) return [];
+  return records
+    .map((record) => normalizeAluminumCalculationRecord(record))
+    .filter((record): record is AluminumCalculationRecord => record !== null);
 }
 
-function imageSyncId(path: string): string {
-  const legacyPrefix = 'legacy-images/';
-  return path.startsWith(legacyPrefix) ? path.slice(legacyPrefix.length) : path;
-}
-
-function collectImageIdsFromSource(finalProducts: ProductRecord[], sourceProducts: ProductRecord[]): string[] {
-  const finalById = new Map(finalProducts.map((product) => [product.id, product]));
-  const ids = new Set<string>();
-
-  for (const source of sourceProducts) {
-    const final = finalById.get(source.id);
-    if (final === source && source.coverImagePath) ids.add(imageSyncId(source.coverImagePath));
-  }
-  return [...ids];
-}
-
-async function uploadLocalImages(
-  finalProducts: ProductRecord[],
-  localProducts: ProductRecord[],
-  token: string,
-): Promise<{ count: number; errors: number }> {
-  let count = 0;
-  let errors = 0;
-  for (const imageId of collectImageIdsFromSource(finalProducts, localProducts)) {
-    try {
-      const blob = await getImage(imageId);
-      if (!blob) continue;
-      await uploadImage(imageId, blob, token);
-      count += 1;
-    } catch {
-      errors += 1;
-    }
-  }
-  return { count, errors };
-}
-
-async function downloadRemoteImages(
-  finalProducts: ProductRecord[],
-  remoteProducts: ProductRecord[],
-  token: string,
-): Promise<{ count: number; errors: number }> {
-  let count = 0;
-  let errors = 0;
-  for (const imageId of collectImageIdsFromSource(finalProducts, remoteProducts)) {
-    try {
-      const blob = await downloadImage(imageId, token);
-      if (!blob) continue;
-      await saveImage(imageId, blob);
-      count += 1;
-    } catch {
-      errors += 1;
-    }
-  }
-  return { count, errors };
+function buildDB(
+  products: ProductRecord[],
+  quotes: QuoteRecord[],
+  suggestions: SuggestionRecord[],
+  aluminumCalculations: AluminumCalculationRecord[],
+): OwinDB {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    systems: [],
+    products,
+    quotes,
+    suggestions,
+    aluminumCalculations,
+  };
 }
