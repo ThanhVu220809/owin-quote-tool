@@ -158,6 +158,28 @@ function imageInfoFromDataUrl(dataUrl: string): { ext: string; contentType: stri
   return { ext: 'png', contentType: 'image/png' };
 }
 
+async function fitImageDataUrlToBox(
+  dataUrl: string,
+  maxWidthPx: number,
+  maxHeightPx: number,
+): Promise<{ widthPx: number; heightPx: number }> {
+  if (typeof Image === 'undefined') return { widthPx: maxWidthPx, heightPx: maxHeightPx };
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const width = image.naturalWidth || maxWidthPx;
+      const height = image.naturalHeight || maxHeightPx;
+      const scale = Math.min(maxWidthPx / width, maxHeightPx / height, 1);
+      resolve({
+        widthPx: Math.max(1, Math.round(width * scale)),
+        heightPx: Math.max(1, Math.round(height * scale)),
+      });
+    };
+    image.onerror = () => resolve({ widthPx: maxWidthPx, heightPx: maxHeightPx });
+    image.src = dataUrl;
+  });
+}
+
 function ensureContentType(zip: PizZip, ext: string, contentType: string): void {
   const entry = zip.file('[Content_Types].xml');
   if (!entry) return;
@@ -186,8 +208,9 @@ function createImageEmbedder(zip: PizZip): ImageEmbedder {
     const imageName = `owin-browser-${nextImageId++}.${ext}`;
     const relId = `rId${nextRelId++}`;
     const docPrId = nextDocPrId++;
-    const widthPx = options.widthPx ?? 112;
-    const heightPx = options.heightPx ?? 82;
+    const fitted = await fitImageDataUrlToBox(dataUrl, options.widthPx ?? 112, options.heightPx ?? 82);
+    const widthPx = fitted.widthPx;
+    const heightPx = fitted.heightPx;
     const cx = Math.round(widthPx * PX_TO_EMU);
     const cy = Math.round(heightPx * PX_TO_EMU);
 
@@ -257,7 +280,6 @@ function applyQuoteIdentityMerge(rowXml: string, mode: 'restart' | 'continue'): 
 function quoteDescription(item: CalculatedQuote['items'][number], lineDescription?: string | null): string {
   return [
     item.itemName,
-    item.description,
     lineDescription,
     ...(item.specs || []).filter((spec) => spec.value).map((spec) => `- ${spec.key}: ${spec.value}`),
   ].filter(Boolean).join('\n');
@@ -361,7 +383,7 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
     }
 
     const itemRows: string[] = [];
-    const imageXml = await embedImage(item.image || item.coverImagePath, { widthPx: 150, heightPx: 112 });
+    const imageXml = await embedImage(item.image || item.coverImagePath, { widthPx: 190, heightPx: 160 });
     item.dimensions.forEach((line, lineIndex) => {
       itemRows.push(renderQuoteProductRow(templates.product.row, item, line, {
         stt: lineIndex === 0 ? String(itemIndex + 1) : '',
@@ -504,7 +526,7 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
     } else if (row.rowType === 'product') {
       let imageXml = imageCache.get(row.imagePath);
       if (!imageCache.has(row.imagePath)) {
-        imageXml = await embedImage(row.imagePath, { widthPx: 160, heightPx: 142 });
+        imageXml = await embedImage(row.imagePath, { widthPx: 190, heightPx: 270 });
         imageCache.set(row.imagePath, imageXml);
       }
       renderedRows.push(renderCatalogueProductRow(templates.product.row, row, imageXml || null));
