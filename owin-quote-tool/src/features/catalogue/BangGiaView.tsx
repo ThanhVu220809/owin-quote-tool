@@ -156,7 +156,9 @@ function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
       {isProduct && <td rowSpan={row.sttRowSpan}>{row.stt}</td>}
         {isProduct && (
           <td rowSpan={row.imageRowSpan} className="image-cell">
-            <ProductThumb imagePath={row.imagePath} fill />
+            <div className="bang-gia-image-frame">
+              <ProductThumb imagePath={row.imagePath} fill />
+            </div>
           </td>
         )}
       <td className="description-cell"><Lines text={row.description} /></td>

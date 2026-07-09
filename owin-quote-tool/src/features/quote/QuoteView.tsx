@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Copy, Eye, FileDown, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, FileDown, Package, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
+  ProductRecord,
   ProductUnit,
   QuoteExportRecord,
   QuoteInput,
@@ -123,6 +124,7 @@ export function QuoteView() {
   const [items, setItems] = useState<QuoteItemInput[]>([]);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteStatusFilter, setQuoteStatusFilter] = useState<QuoteRecord['status'] | ''>('');
   const [message, setMessage] = useState('');
@@ -207,6 +209,7 @@ export function QuoteView() {
     const product = productRecords.find((item) => item.id === productId);
     if (!product) return;
     setItems((current) => [...current, createQuoteItemFromProduct(product, makeItemCode(current.length))]);
+    setProductPickerOpen(false);
   };
 
   const addCustom = () => setItems((current) => [...current, createCustomQuoteItem(makeItemCode(current.length))]);
@@ -551,36 +554,18 @@ export function QuoteView() {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="toolbar" style={{ margin: 0 }}>
-          <div className="section-label" style={{ margin: 0 }}>Chọn sản phẩm</div>
-          <div className="spacer" />
+      <div className="card quote-add-products-card" style={{ marginTop: 16 }}>
+        <div>
+          <div className="section-label">Chọn sản phẩm</div>
+          <div className="product-sub">Mở kho sản phẩm để chọn nhanh bằng hình ảnh, hoặc thêm hạng mục tùy chỉnh.</div>
+        </div>
+        <div className="quote-add-actions">
+          <button className="btn btn-primary" onClick={() => setProductPickerOpen(true)}>
+            <Package size={17} style={{ verticalAlign: '-3px' }} /> Chọn sản phẩm từ kho
+          </button>
           <button className="btn btn-ghost" onClick={addCustom}>
             <Plus size={16} style={{ verticalAlign: '-3px' }} /> Hạng mục tùy chỉnh
           </button>
-        </div>
-        <div className="two-col">
-          <div className="field">
-            <label><Search size={14} style={{ verticalAlign: '-2px' }} /> Tìm sản phẩm</label>
-            <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Danh mục</label>
-            <select className="input" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-              <option value="">Tất cả</option>
-              {categories.map((category) => <option key={category} value={category}>{category}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="pick-grid">
-          {filteredProducts.map((product) => (
-            <button key={product.id} className="pick-card product-pick-card" onClick={() => addProduct(product.id)}>
-              <ProductThumb imagePath={product.coverImagePath} fill />
-              <div className="nm">{product.name}</div>
-              <div className="cd">{product.code} · {product.category}</div>
-              <div className="pick-price">{formatVND(product.unitPriceVnd)}/{unitLabel(product.unit)}</div>
-            </button>
-          ))}
         </div>
       </div>
 
@@ -624,7 +609,120 @@ export function QuoteView() {
       </div>
 
       <QuotePrintDocument quote={calculated} />
+      <ProductPickerModal
+        isOpen={productPickerOpen}
+        search={search}
+        categoryFilter={categoryFilter}
+        categories={categories}
+        filteredProducts={filteredProducts}
+        productCount={productRecords.length}
+        onSearch={setSearch}
+        onCategoryFilter={setCategoryFilter}
+        onSelect={(productId) => addProduct(productId)}
+        onClose={() => setProductPickerOpen(false)}
+      />
     </section>
+  );
+}
+
+function ProductPickerModal({
+  isOpen,
+  search,
+  categoryFilter,
+  categories,
+  filteredProducts,
+  productCount,
+  onSearch,
+  onCategoryFilter,
+  onSelect,
+  onClose,
+}: {
+  isOpen: boolean;
+  search: string;
+  categoryFilter: string;
+  categories: string[];
+  filteredProducts: ProductRecord[];
+  productCount: number;
+  onSearch: (value: string) => void;
+  onCategoryFilter: (value: string) => void;
+  onSelect: (productId: string) => void;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="quote-picker-backdrop" role="presentation" onClick={onClose}>
+      <div className="quote-picker-modal" role="dialog" aria-modal="true" aria-label="Chọn sản phẩm" onClick={(event) => event.stopPropagation()}>
+        <div className="quote-picker-header">
+          <div className="quote-picker-title">
+            <div className="quote-picker-icon"><Package size={20} /></div>
+            <div>
+              <h2>Chọn sản phẩm nhôm kính</h2>
+              <p>{productCount} sản phẩm trong kho · chọn bằng ảnh hoặc nút Chọn</p>
+            </div>
+          </div>
+          <button className="icon-btn" onClick={onClose} aria-label="Đóng chọn sản phẩm">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="quote-picker-search">
+          <Search size={16} />
+          <input
+            value={search}
+            onChange={(event) => {
+              onSearch(event.target.value);
+              onCategoryFilter('');
+            }}
+            placeholder="Tìm theo tên, mã sản phẩm hoặc nhóm..."
+            autoFocus
+          />
+        </div>
+
+        <div className="quote-picker-categories">
+          <button className={!categoryFilter ? 'active' : ''} onClick={() => onCategoryFilter('')} type="button">
+            Tất cả ({productCount})
+          </button>
+          {categories.map((category) => (
+            <button
+              key={category}
+              className={categoryFilter === category ? 'active' : ''}
+              onClick={() => onCategoryFilter(category)}
+              type="button"
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+
+        <div className="quote-picker-results">
+          {filteredProducts.length === 0 ? (
+            <div className="empty-line">Không tìm thấy sản phẩm phù hợp.</div>
+          ) : (
+            <div className="quote-picker-grid">
+              {filteredProducts.map((product) => (
+                <button
+                  key={product.id}
+                  className="quote-picker-card"
+                  type="button"
+                  onClick={() => onSelect(product.id)}
+                >
+                  <div className="quote-picker-thumb">
+                    <ProductThumb imagePath={product.coverImagePath} fill />
+                  </div>
+                  <div className="quote-picker-card-body">
+                    <strong>{product.name}</strong>
+                    <span>{product.code} · {product.category}</span>
+                    <b>{formatVND(product.unitPriceVnd)}/{unitLabel(product.unit)}</b>
+                  </div>
+                  <span className="quote-picker-choose">Chọn</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1119,42 +1217,54 @@ function QuoteItemCard({
   const extraDraft = parseExtraAccessoriesJson(item.extraAccessories);
   const usesPackageAccessories = Boolean(item.fixedAccessoryPackage || extraDraft.length > 0);
   return (
-    <div className="card" style={{ marginBottom: 12, boxShadow: 'none' }}>
-      <div className="toolbar" style={{ margin: 0 }}>
-        <div>
-          <div className="section-label" style={{ margin: 0 }}>#{index + 1} · {item.productCode}</div>
-          <div className="product-sub">{formatVND(calculated?.itemTotalVnd ?? 0)}</div>
+    <div className="card quote-item-card">
+      <div className="quote-item-card-header">
+        <div className="quote-item-thumb">
+          <ProductThumb imagePath={item.coverImagePath || item.image || null} fill />
         </div>
-        <div className="spacer" />
-        <button className="icon-btn" onClick={onMoveUp} aria-label="Lên"><ChevronUp size={16} /></button>
-        <button className="icon-btn" onClick={onMoveDown} aria-label="Xuống"><ChevronDown size={16} /></button>
-        <button className="icon-btn" onClick={onDuplicate} aria-label="Nhân bản"><Copy size={16} /></button>
-        <button className="icon-btn danger" onClick={onDelete} aria-label="Xóa"><Trash2 size={16} /></button>
+        <div className="quote-item-card-main">
+          <div className="quote-item-titleline">
+            <div>
+              <div className="section-label" style={{ margin: 0 }}>#{index + 1} · {item.productCode}</div>
+              <div className="product-sub">Tổng hạng mục {formatVND(calculated?.itemTotalVnd ?? 0)}</div>
+            </div>
+            <div className="quote-item-actions">
+              <button className="icon-btn" onClick={onMoveUp} aria-label="Lên"><ChevronUp size={16} /></button>
+              <button className="icon-btn" onClick={onMoveDown} aria-label="Xuống"><ChevronDown size={16} /></button>
+              <button className="icon-btn" onClick={onDuplicate} aria-label="Nhân bản"><Copy size={16} /></button>
+              <button className="icon-btn danger" onClick={onDelete} aria-label="Xóa"><Trash2 size={16} /></button>
+            </div>
+          </div>
+
+          <div className="quote-item-basic-grid">
+            <Field label="Mã SP" value={item.productCode} onChange={(value) => onUpdate({ productCode: value, quoteItemCode: value })} />
+            <Field label="Tên hạng mục" value={item.itemName} onChange={(value) => onUpdate({ itemName: value })} suggestions={suggestions.item_name} />
+          </div>
+
+          <div className="quote-item-meta-grid">
+            <Field label="Nhóm" value={item.category || ''} onChange={(value) => onUpdate({ category: value, groupName: value })} suggestions={suggestions.category} />
+            <div className="field">
+              <label>ĐVT chính</label>
+              <select className="input" value={item.unit} onChange={(e) => onUpdate({ unit: e.target.value as ProductUnit })}>
+                <option value="M2">m²</option>
+                <option value="BO">Bộ</option>
+                <option value="METER">md</option>
+              </select>
+            </div>
+            <div className="field quote-item-description">
+              <label>Mô tả</label>
+              <textarea className="input" value={item.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} rows={2} />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="two-col">
-        <Field label="Mã hạng mục" value={item.productCode} onChange={(value) => onUpdate({ productCode: value, quoteItemCode: value })} />
-        <Field label="Tên hạng mục" value={item.itemName} onChange={(value) => onUpdate({ itemName: value })} suggestions={suggestions.item_name} />
-        <Field label="Nhóm" value={item.category || ''} onChange={(value) => onUpdate({ category: value, groupName: value })} suggestions={suggestions.category} />
-        <div className="field">
-          <label>ĐVT chính</label>
-          <select className="input" value={item.unit} onChange={(e) => onUpdate({ unit: e.target.value as ProductUnit })}>
-            <option value="M2">m²</option>
-            <option value="BO">Bộ</option>
-            <option value="METER">md</option>
-          </select>
+      <div className="quote-card-section">
+        <div className="toolbar" style={{ margin: '0 0 8px' }}>
+          <div className="section-label" style={{ margin: 0 }}>Kích thước</div>
+          <div className="spacer" />
+          <button className="icon-btn" onClick={onAddDimension} aria-label="Thêm kích thước"><Plus size={16} /></button>
         </div>
-      </div>
-      <div className="field">
-        <label>Mô tả</label>
-        <textarea className="input" value={item.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} rows={2} />
-      </div>
-
-      <div className="toolbar" style={{ margin: '10px 0 6px' }}>
-        <div className="section-label" style={{ margin: 0 }}>Kích thước</div>
-        <div className="spacer" />
-        <button className="icon-btn" onClick={onAddDimension} aria-label="Thêm kích thước"><Plus size={16} /></button>
-      </div>
       <div className="quote-lines-editor">
         <div className="quote-lines-head">
           <span>DV</span>
@@ -1187,6 +1297,7 @@ function QuoteItemCard({
             </div>
           );
         })}
+      </div>
       </div>
 
       {!usesPackageAccessories && item.accessories.length > 0 && (
@@ -1226,7 +1337,7 @@ function QuoteItemCard({
         </>
       )}
 
-      <div className="two-col" style={{ gap: 12, marginTop: 14 }}>
+      <div className="quote-accessory-grid">
         {item.fixedAccessoryPackage ? (
           <FixedAccessoryPackageEditor
             value={fixedDraft}
@@ -1256,6 +1367,21 @@ function QuoteItemCard({
           title="Phụ kiện phát sinh riêng"
         />
       </div>
+
+      <div className="quote-item-summary-strip">
+        <QuoteSummaryMetric label="Tiền sản phẩm" value={formatVND(calculated?.productSubtotalVnd ?? 0)} />
+        <QuoteSummaryMetric label="Tiền phụ kiện" value={formatVND(calculated?.accessorySubtotalVnd ?? 0)} />
+        <QuoteSummaryMetric label="Tổng hạng mục" value={formatVND(calculated?.itemTotalVnd ?? 0)} strong />
+      </div>
+    </div>
+  );
+}
+
+function QuoteSummaryMetric({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={strong ? 'summary-metric summary-metric-strong' : 'summary-metric'}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }

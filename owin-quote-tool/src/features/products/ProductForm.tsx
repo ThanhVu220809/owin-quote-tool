@@ -14,7 +14,9 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { Switch } from '@/components/Switch';
 import { getImage, saveImage } from '@/utils/imageStorage';
 import { productCoverPath } from '@/utils/imagePaths';
+import { formatVND } from '@/utils/format';
 import {
+  calculateFixedAccessoryDraftTotal,
   parseExtraAccessoriesJson,
   parseFixedAccessoriesJson,
   serializeExtraAccessoriesJson,
@@ -120,6 +122,14 @@ function buildRawSizeText(width: string, height: string): string | null {
   return `${widthM.toFixed(2)} x ${heightM.toFixed(2)}`;
 }
 
+function calculateSampleQuantity(unit: ProductUnit, width: string, height: string): number {
+  const widthValue = parseDecimalText(width);
+  const heightValue = parseDecimalText(height);
+  if (unit === 'M2') return Math.round(widthValue * heightValue * 1000) / 1000;
+  if (unit === 'METER') return Math.round((widthValue + heightValue) * 1000) / 1000;
+  return 1;
+}
+
 function generateProductCode(): string {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, '0');
@@ -148,7 +158,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
     legacyImageId(editing?.coverImagePath ?? null),
   );
   const [specs, setSpecs] = useState<ProductSpecRecord[]>(() => normalizeSpecs(editing));
-  const [accessories, setAccessories] = useState<ProductAccessoryRecord[]>(() =>
+  const [accessories] = useState<ProductAccessoryRecord[]>(() =>
     editing?.accessories?.map((item) => ({ ...item })) ?? [],
   );
   const [fixedPackage, setFixedPackage] = useState(() =>
@@ -162,12 +172,15 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
 
   const canSave = name.trim() !== '';
+  const sampleQuantity = calculateSampleQuantity(unit, widthM, heightM);
+  const sampleProductTotal = Math.round(sampleQuantity * Number(unitPriceVnd || 0));
+  const fixedPackageTotal = calculateFixedAccessoryDraftTotal(fixedPackage);
+  const extraAccessoriesTotal = extraAccessories.reduce((sum, item) => sum + item.amount, 0);
+  const estimatedTotal = sampleProductTotal + fixedPackageTotal + extraAccessoriesTotal;
+  const sampleUnitLabel = unit === 'BO' ? 'bộ' : unit === 'METER' ? 'md' : 'm²';
 
   const updateSpec = (index: number, patch: Partial<ProductSpecRecord>) =>
     setSpecs((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-
-  const updateAccessory = (index: number, patch: Partial<ProductAccessoryRecord>) =>
-    setAccessories((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
   const specValueSuggestions = (key: string) => {
     const normalized = normalizeSpecKey(key);
@@ -246,36 +259,37 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   };
 
   return (
-    <div className="card">
-      <div className="two-col">
-        <div>
-          <AutoSuggestInput
-            label="Danh mục"
-            value={category}
-            onChange={setCategory}
-            suggestions={suggestions.category}
-            placeholder="Cửa chính"
+    <div className="card product-editor-card">
+      <div className="product-editor-top">
+        <div className="product-image-panel">
+          <label>Hình ảnh</label>
+          <ImageDropzone
+            imageId={coverImageId}
+            imagePath={editing?.coverImagePath ?? null}
+            onImageStored={setCoverImageId}
           />
-          <AutoSuggestInput
-            label="Tên sản phẩm"
-            value={name}
-            onChange={setName}
-            suggestions={suggestions.productName}
-            placeholder="Cửa đi mở quay 2 cánh"
-          />
-          <div className="field">
-            <label>Mã sản phẩm</label>
-            <input className="input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-          </div>
-          <div className="field">
-            <label>Đơn vị tính</label>
-            <SegmentedControl options={UNIT_OPTIONS} value={unit} onChange={setUnit} />
-          </div>
-          <div className="field">
-            <label>Đơn giá</label>
-            <CurrencyInput value={unitPriceVnd} onChange={setUnitPriceVnd} placeholder="0" />
-          </div>
-          <div className="two-col" style={{ gap: 12 }}>
+        </div>
+
+        <div className="product-basic-panel">
+          <div className="product-basic-grid">
+            <AutoSuggestInput
+              label="Nhóm sản phẩm"
+              value={category}
+              onChange={setCategory}
+              suggestions={suggestions.category}
+              placeholder="Cửa chính"
+            />
+            <AutoSuggestInput
+              label="Tên sản phẩm"
+              value={name}
+              onChange={setName}
+              suggestions={suggestions.productName}
+              placeholder="Cửa đi mở quay 2 cánh"
+            />
+            <div className="field">
+              <label>Đơn vị tính</label>
+              <SegmentedControl options={UNIT_OPTIONS} value={unit} onChange={setUnit} />
+            </div>
             <div className="field">
               <label>Rộng mẫu (m)</label>
               <input
@@ -296,48 +310,61 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                 placeholder="2.20"
               />
             </div>
+            <div className="field">
+              <label>Đơn giá</label>
+              <CurrencyInput value={unitPriceVnd} onChange={setUnitPriceVnd} placeholder="0" />
+            </div>
+            <div className="field">
+              <label>Mã sản phẩm</label>
+              <input className="input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+            </div>
           </div>
-          <div className="field">
-            <label>Giá gốc mô tả</label>
+
+          <div className="product-note-grid">
+            <div className="field">
+              <label>Giá gốc mô tả</label>
               <input
                 className="input"
                 value={rawPriceText}
                 onChange={(e) => setRawPriceText(e.target.value)}
                 placeholder="Theo bảng giá OWIN"
               />
+            </div>
+            <div className="field">
+              <label>Mô tả ngắn</label>
+              <textarea
+                className="input"
+                value={shortDesc}
+                onChange={(e) => setShortDesc(e.target.value)}
+                rows={2}
+              />
+            </div>
           </div>
-          <div className="field">
-            <label>Mô tả ngắn</label>
-            <textarea
-              className="input"
-              value={shortDesc}
-              onChange={(e) => setShortDesc(e.target.value)}
-              rows={3}
-            />
-          </div>
-          <div className="field">
-            <label>Ảnh bìa</label>
-            <ImageDropzone
-              imageId={coverImageId}
-              imagePath={editing?.coverImagePath ?? null}
-              onImageStored={setCoverImageId}
-            />
-          </div>
-          <div className="switch-row">
-            <span>Công khai</span>
-            <Switch checked={isPublic} onChange={setIsPublic} aria-label="Công khai sản phẩm" />
-          </div>
-          <div className="switch-row">
-            <span>Nổi bật</span>
-            <Switch checked={isFeatured} onChange={setIsFeatured} aria-label="Sản phẩm nổi bật" />
+
+          <div className="product-editor-flags">
+            <div className="switch-row">
+              <span>Công khai</span>
+              <Switch checked={isPublic} onChange={setIsPublic} aria-label="Công khai sản phẩm" />
+            </div>
+            <div className="switch-row">
+              <span>Nổi bật</span>
+              <Switch checked={isFeatured} onChange={setIsFeatured} aria-label="Sản phẩm nổi bật" />
+            </div>
           </div>
         </div>
+      </div>
 
-        <div>
+      <div className="product-editor-section-grid">
+        <div className="editor-panel product-spec-panel">
           <SectionHeader title="Thông số kỹ thuật" onAdd={() => setSpecs([...specs, { key: '', value: '', sortOrder: specs.length }])} />
-          <div className="stack">
+          <div className="spec-table-head">
+            <span>Tên thông số</span>
+            <span>Giá trị</span>
+            <span />
+          </div>
+          <div className="spec-row-list">
             {specs.map((spec, index) => (
-              <div key={index} className="switch-row" style={{ alignItems: 'flex-end' }}>
+              <div key={index} className="spec-editor-row">
                 <AutoSuggestInput
                   label="Tên"
                   value={spec.key}
@@ -350,45 +377,14 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                   onChange={(value) => updateSpec(index, { value })}
                   suggestions={specValueSuggestions(spec.key)}
                 />
-                <button className="icon-btn danger" type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))}>
+                <button className="icon-btn danger" type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} aria-label="Xóa thông số">
                   <Trash2 size={16} />
                 </button>
               </div>
             ))}
           </div>
-
-          {accessories.length > 0 && (
-            <>
-              <SectionHeader title="Phụ kiện đi kèm cũ" onAdd={() => setAccessories([...accessories, { name: '', quantityPerSet: 1, unitPriceVnd: 0, note: null }])} />
-              <div className="stack">
-                {accessories.map((item, index) => (
-                  <div key={index} className="switch-row" style={{ alignItems: 'flex-end' }}>
-                    <AutoSuggestInput
-                      label="Tên"
-                      value={item.name}
-                      onChange={(value) => updateAccessory(index, { name: value })}
-                      suggestions={suggestions.accessoryName}
-                    />
-                    <div className="field">
-                      <label>SL/Bộ</label>
-                      <input className="input" type="number" value={item.quantityPerSet || ''} onChange={(e) => updateAccessory(index, { quantityPerSet: Number(e.target.value) || 0 })} />
-                    </div>
-                    <div className="field">
-                      <label>Đơn giá</label>
-                      <CurrencyInput value={item.unitPriceVnd || 0} onChange={(unitPriceVnd) => updateAccessory(index, { unitPriceVnd })} />
-                    </div>
-                    <button className="icon-btn danger" type="button" onClick={() => setAccessories(accessories.filter((_, i) => i !== index))}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
         </div>
-      </div>
 
-      <div className="two-col" style={{ marginTop: 16 }}>
         <FixedAccessoryPackageEditor
           value={fixedPackage}
           onChange={setFixedPackage}
@@ -397,20 +393,45 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
             packageName: suggestions.accessoryPackageName,
           }}
         />
+      </div>
+
+      <div className="product-editor-extra">
         <ExtraAccessoriesEditor
           value={extraAccessories}
           onChange={setExtraAccessories}
           suggestions={{ accessoryName: suggestions.accessoryName }}
+          title="Phụ kiện phát sinh thêm"
         />
       </div>
 
-      <div className="toolbar" style={{ marginTop: 16, marginBottom: 0 }}>
+      <div className="product-summary-strip">
+        <SummaryMetric
+          label="Giá sản phẩm mẫu"
+          value={formatVND(sampleProductTotal)}
+          note={`${sampleQuantity.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')} ${sampleUnitLabel}`}
+        />
+        <SummaryMetric label="Giá phụ kiện mẫu" value={formatVND(fixedPackageTotal)} />
+        <SummaryMetric label="Phụ kiện phát sinh" value={formatVND(extraAccessoriesTotal)} />
+        <SummaryMetric label="Tổng cộng ước tính" value={formatVND(estimatedTotal)} strong />
+      </div>
+
+      <div className="toolbar product-editor-actions">
         <div className="spacer" />
         <button type="button" className="btn btn-ghost" onClick={onCancel}>Huỷ</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={!canSave || saving}>
           {saving ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : 'Thêm sản phẩm'}
         </button>
       </div>
+    </div>
+  );
+}
+
+function SummaryMetric({ label, value, note, strong }: { label: string; value: string; note?: string; strong?: boolean }) {
+  return (
+    <div className={strong ? 'summary-metric summary-metric-strong' : 'summary-metric'}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {note && <small>{note}</small>}
     </div>
   );
 }
