@@ -18,6 +18,7 @@ import type {
 } from '@/types/models';
 import initialData from '@/data/initialData.json';
 import importedProducts from '@/data/imported/products.json';
+import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
 
 const productStore = localforage.createInstance({
   name: 'owin-quote-tool',
@@ -124,6 +125,12 @@ function normalizeJsonString(value: unknown, fallback: string): string {
   }
 }
 
+function normalizeFixedAccessoryPackage(value: unknown): string | null {
+  const text = normalizeNullableString(value);
+  if (!text) return null;
+  return serializeFixedAccessoriesJson(parseFixedAccessoriesJson(text, 1));
+}
+
 function rawSizeFromLegacy(input: ProductInput): string | null {
   if (hasText(input.rawSizeText)) return input.rawSizeText.trim();
   const width = normalizeNumber(input.rongMacDinh, 0);
@@ -178,7 +185,7 @@ function normalizeAccessories(input: ProductInput): ProductAccessoryRecord[] {
       if (!name) return null;
       return {
         name,
-        quantityPerSet: normalizeNumber(raw.quantityPerSet ?? raw.sl, 1) || 1,
+        quantityPerSet: normalizeNumber(raw.quantityPerSet ?? raw.sl, 0),
         unitPriceVnd: normalizeNumber(raw.unitPriceVnd ?? raw.donGia, 0),
         note: normalizeNullableString(raw.note),
         sortOrder: normalizeNumber(raw.sortOrder, index),
@@ -233,7 +240,7 @@ export function normalizeProductRecord(input: ProductInput, numericIdFallback = 
     rawPriceText: normalizeNullableString(input.rawPriceText),
     specs: specsFromLegacy(input),
     accessories: normalizeAccessories(input),
-    fixedAccessoryPackage: normalizeNullableString(input.fixedAccessoryPackage),
+    fixedAccessoryPackage: normalizeFixedAccessoryPackage(input.fixedAccessoryPackage),
     extraAccessories: normalizeJsonString(input.extraAccessories, '[]'),
     isFeatured: Boolean(input.isFeatured),
     isPublic: input.isPublic !== false,

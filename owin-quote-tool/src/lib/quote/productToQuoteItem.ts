@@ -1,5 +1,6 @@
 import type { ProductRecord, ProductUnit, QuoteItemInput } from '@/types/models';
 import { calculateExtraAccessoryLineTotal, normalizeUnit, roundQuantity3 } from '@/lib/quote-engine';
+import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from './accessoryDrafts';
 
 export function parseProductSizeText(rawSizeText: string | null | undefined): {
   width: number | null;
@@ -114,12 +115,14 @@ export function createQuoteItemFromProduct(
     ],
     accessories: product.accessories.map((accessory) => ({
       name: accessory.name,
-      quantityPerSet: Number(accessory.quantityPerSet || 1),
+      quantityPerSet: Number(accessory.quantityPerSet || 0),
       unitPriceVnd: Number(accessory.unitPriceVnd || 0),
       note: accessory.note,
       isEnabled: true,
     })),
-    fixedAccessoryPackage: product.fixedAccessoryPackage || null,
+    fixedAccessoryPackage: product.fixedAccessoryPackage
+      ? serializeFixedAccessoriesJson(parseFixedAccessoriesJson(product.fixedAccessoryPackage, 1))
+      : null,
     extraAccessories: normalizeExtraAccessoriesJson(product.extraAccessories),
     numericId: product.numericId,
   };

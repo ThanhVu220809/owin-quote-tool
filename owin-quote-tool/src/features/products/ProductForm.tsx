@@ -11,7 +11,6 @@ import { CurrencyInput } from '@/components/CurrencyInput';
 import { ExtraAccessoriesEditor, FixedAccessoryPackageEditor } from '@/components/AccessoryEditors';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { SegmentedControl } from '@/components/SegmentedControl';
-import { Switch } from '@/components/Switch';
 import { getImage, saveImage } from '@/utils/imageStorage';
 import { productCoverPath } from '@/utils/imagePaths';
 import { formatVND } from '@/utils/format';
@@ -146,14 +145,11 @@ function generateProductCode(): string {
 export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const initialSize = parseRawSizeText(editing?.rawSizeText);
   const [name, setName] = useState(editing?.name ?? '');
-  const [code, setCode] = useState(editing?.code ?? '');
   const [category, setCategory] = useState(editing?.category ?? 'Khác');
   const [unit, setUnit] = useState<ProductUnit>(editing?.unit ?? 'M2');
   const [unitPriceVnd, setUnitPriceVnd] = useState(editing?.unitPriceVnd ?? 0);
   const [widthM, setWidthM] = useState(initialSize.width);
   const [heightM, setHeightM] = useState(initialSize.height);
-  const [rawPriceText, setRawPriceText] = useState(editing?.rawPriceText ?? '');
-  const [shortDesc, setShortDesc] = useState(editing?.shortDesc ?? '');
   const [coverImageId, setCoverImageId] = useState<string | undefined>(() =>
     legacyImageId(editing?.coverImagePath ?? null),
   );
@@ -167,8 +163,6 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const [extraAccessories, setExtraAccessories] = useState(() =>
     parseExtraAccessoriesJson(editing?.extraAccessories),
   );
-  const [isFeatured, setIsFeatured] = useState(Boolean(editing?.isFeatured));
-  const [isPublic, setIsPublic] = useState(editing?.isPublic !== false);
   const [saving, setSaving] = useState(false);
 
   const canSave = name.trim() !== '';
@@ -223,7 +217,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
       const extraAccessoriesJson = serializeExtraAccessoriesJson(extraAccessories) ?? '[]';
       const rawSizeText = buildRawSizeText(widthM, heightM) ?? editing?.rawSizeText ?? null;
 
-      const normalizedCode = (code.trim() || generateProductCode()).toUpperCase();
+      const normalizedCode = (editing?.code || generateProductCode()).toUpperCase();
       const normalizedName = name.trim();
       await onSave({
         id: editing?.id,
@@ -233,7 +227,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
         category: category.trim() || 'Khác',
         unit,
         unitPriceVnd: Number(unitPriceVnd || 0),
-        shortDesc: shortDesc.trim() || null,
+        shortDesc: editing?.shortDesc ?? null,
         coverImagePath: await coverPathFromImageId(
           coverImageId,
           normalizedCode,
@@ -242,13 +236,13 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
         ),
         gallery: editing?.gallery ?? [],
         rawSizeText,
-        rawPriceText: rawPriceText.trim() || null,
+        rawPriceText: editing?.rawPriceText ?? null,
         specs: cleanSpecs,
         accessories: cleanAccessories,
         fixedAccessoryPackage,
         extraAccessories: extraAccessoriesJson,
-        isFeatured,
-        isPublic,
+        isFeatured: editing?.isFeatured ?? false,
+        isPublic: editing?.isPublic ?? true,
         folderPath: editing?.folderPath ?? null,
         createdAt: editing?.createdAt,
       });
@@ -314,42 +308,6 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
               <label>Đơn giá</label>
               <CurrencyInput value={unitPriceVnd} onChange={setUnitPriceVnd} placeholder="0" />
             </div>
-            <div className="field">
-              <label>Mã sản phẩm</label>
-              <input className="input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-            </div>
-          </div>
-
-          <div className="product-note-grid">
-            <div className="field">
-              <label>Giá gốc mô tả</label>
-              <input
-                className="input"
-                value={rawPriceText}
-                onChange={(e) => setRawPriceText(e.target.value)}
-                placeholder="Theo bảng giá OWIN"
-              />
-            </div>
-            <div className="field">
-              <label>Mô tả ngắn</label>
-              <textarea
-                className="input"
-                value={shortDesc}
-                onChange={(e) => setShortDesc(e.target.value)}
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <div className="product-editor-flags">
-            <div className="switch-row">
-              <span>Công khai</span>
-              <Switch checked={isPublic} onChange={setIsPublic} aria-label="Công khai sản phẩm" />
-            </div>
-            <div className="switch-row">
-              <span>Nổi bật</span>
-              <Switch checked={isFeatured} onChange={setIsFeatured} aria-label="Sản phẩm nổi bật" />
-            </div>
           </div>
         </div>
       </div>
@@ -369,7 +327,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                   label="Tên"
                   value={spec.key}
                   onChange={(value) => updateSpec(index, { key: value })}
-                  suggestions={suggestions.specKey}
+                  suggestions={[...DEFAULT_SPEC_KEYS, ...suggestions.specKey]}
                 />
                 <AutoSuggestInput
                   label="Giá trị"

@@ -17,3 +17,37 @@ Baseline captured on 2026-07-08.
 | Suggestions | Smart field-specific inputs backed by shared suggestions | Ranked autosuggest with keyboard navigation, per-field hide, seeded/live data, and learning from saved products/quotes | None obvious for current fields | Spec labels/product types/units/accessories/customer fields learn into IndexedDB | `src/lib/suggestions.ts`, `src/lib/suggestionEngine.ts`, `src/components/AutoSuggestInput.tsx` | fixed |
 | Images | SafeImage, `/api/images` in reference, fit/contain rules | Static imported assets, IndexedDB images, and aluminum public profile images resolve with Vite base path | Server `/api/images` omitted by design | Contain/fallback behavior verified in catalogue and aluminum table screenshots | `src/utils/imagePaths.ts`, image components, `public/aluminum-profiles/*` | fixed |
 | Aluminum estimator | Full calculator: systems, rows, summaries, copy/CSV/Word/print | Full tabbed estimator with 6 systems, profile images, IndexedDB temp storage, copy/CSV/Word/browser print | Direct PDF generator and embedded Word images omitted like reference limitations | Quantity × unit price logic, totals, clear/copy/export, and legacy localStorage migration implemented | `src/features/aluminum/*`, `src/lib/aluminum-estimator*`, `public/aluminum-profiles/*` | fixed |
+
+## Final corrective pass - 2026-07-09
+
+### Fixed in this pass
+
+- Product create/edit UI now hides manual `Mã SP`, raw price text, short description, public flag, and featured flag. Product code remains generated/saved internally.
+- Product form keeps the focused reference order: image, group, name, unit, sample size, price, specs, fixed package, extra accessories, total estimate.
+- Spec suggestions now combine default spec keys with imported/reference/live suggestion records, and quote spec values use field-specific pools where possible.
+- Fixed accessory default item quantities now start at `0`, and imported placeholder packages where every item quantity was `1` normalize to `0` without changing package quantity/price totals.
+- Quote list actions are reduced to view, edit, duplicate, and delete; export remains in quote create/detail.
+- Quote picker is a modal with search, category pills, large image cards, and whole-card selection.
+- Quote item editor removes normal workflow JSON/description textareas and adds compact specs + fixed package columns with extra accessories below.
+- Bảng giá image frames render product images at about 95% of the available image cell with contain fit and rounded corners.
+- Quote/Bảng giá Word image embedding now fits images to the target box without distortion; quote descriptions are generated from item/spec data instead of manual description text.
+
+### Screenshots
+
+- `review-screenshots/target-after-final-pass/product-form.png`
+- `review-screenshots/target-after-final-pass/quote-picker-modal.png`
+- `review-screenshots/target-after-final-pass/quote-item-card.png`
+- `review-screenshots/target-after-final-pass/bang-gia.png`
+- `review-screenshots/target-after-final-pass/quote-list.png`
+
+### Verification
+
+- `npm test`: passed, 11 files / 58 tests.
+- `npm run build`: passed; existing Vite large chunk warning remains.
+- Forbidden runtime search: only matched the guardrail comment in `src/features/export/wordExport.ts`; no Next.js, Prisma, SQLite, API routes, `/api/images`, `fs/path/sharp`, or server upload runtime usage found.
+
+### Remaining limitations
+
+- Browser print/PDF remains browser print by design.
+- DOCX visual inspection inside desktop Word was not available in-browser; export row/image logic is verified through source review, build, and automated tests.
+- Browser-safe DOCX output keeps closest merge/row behavior supported by the current template renderer rather than server-side Word automation.

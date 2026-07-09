@@ -29,7 +29,7 @@ export interface ExtraAccessoryDraft {
 
 export const DEFAULT_FIXED_ACCESSORY_ITEMS: FixedAccessoryItemDraft[] = [
   { name: 'Khóa', quantity: 0 },
-  { name: 'Bản lề', quantity: 4 },
+  { name: 'Bản lề', quantity: 0 },
   { name: 'Tay nắm', quantity: 0 },
   { name: 'Chốt cánh phụ', quantity: 0 },
   { name: 'Thanh chuyển động', quantity: 0 },
@@ -91,12 +91,17 @@ export function parseFixedAccessoriesJson(
   if (!parsed || typeof parsed !== 'object') return fallback;
 
   const rawItems = Array.isArray(parsed.items) ? parsed.items : parseFixedItemsText(parsed.itemsText);
-  const items = rawItems
+  const parsedItems = rawItems
     .map((item) => {
       const row = item as Record<string, unknown>;
       return { name: String(row.name || '').trim(), quantity: numberOr(row.quantity, 0) };
     })
     .filter((item) => item.name);
+  const hasOnlyPlaceholderOneQuantities =
+    parsedItems.length > 1 && parsedItems.every((item) => item.quantity === 1);
+  const items = hasOnlyPlaceholderOneQuantities
+    ? parsedItems.map((item) => ({ ...item, quantity: 0 }))
+    : parsedItems;
   const packageQuantity = numberOr(parsed.packageQuantity ?? parsed.quantity, fallbackQuantity);
   const unitPrice = numberOr(parsed.unitPrice ?? parsed.unitPriceVnd, 0);
   return {

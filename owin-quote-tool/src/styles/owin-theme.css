@@ -955,10 +955,10 @@
 .quote-lines-head,
 .quote-line-row {
   display: grid;
-  grid-template-columns: 80px 82px 82px 70px 92px minmax(130px, 1fr) minmax(140px, 1fr) minmax(120px, 1fr) 40px;
+  grid-template-columns: 76px 76px 76px 64px 86px minmax(124px, 0.8fr) minmax(128px, 0.8fr) 36px;
   gap: 8px;
   align-items: center;
-  min-width: 940px;
+  min-width: 720px;
 }
 .quote-lines-head {
   color: var(--owin-ink-muted);
@@ -1158,17 +1158,17 @@
 .quote-picker-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .quote-picker-card {
-  align-items: center;
   background: #fff;
   border: 1px solid var(--owin-border);
   border-radius: 16px;
   cursor: pointer;
   display: grid;
-  gap: 12px;
-  grid-template-columns: 148px minmax(0, 1fr) auto;
+  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
   padding: 10px;
   text-align: left;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
@@ -1179,11 +1179,12 @@
   transform: translateY(-1px);
 }
 .quote-picker-thumb {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1.35 / 1;
   background: var(--owin-bg);
   border: 1px solid var(--owin-border);
   border-radius: 12px;
   overflow: hidden;
+  width: 100%;
 }
 .quote-picker-thumb .ph {
   height: 100%;
@@ -1194,6 +1195,7 @@
   display: grid;
   gap: 4px;
   min-width: 0;
+  padding: 0 2px 2px;
 }
 .quote-picker-card-body strong {
   color: var(--owin-ink);
@@ -1289,10 +1291,7 @@
 .quote-item-meta-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(160px, 0.8fr) 116px minmax(240px, 1.2fr);
-}
-.quote-item-description textarea {
-  min-height: 40px;
+  grid-template-columns: minmax(160px, 1fr) 116px;
 }
 .quote-card-section {
   background: rgba(245, 245, 247, 0.45);
@@ -1302,11 +1301,15 @@
   overflow: hidden;
   padding: 12px;
 }
-.quote-accessory-grid {
+.quote-accessory-grid,
+.quote-item-config-grid {
   align-items: start;
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.quote-item-extra {
+  min-width: 0;
 }
 .quote-item-summary-strip {
   border: 1px solid var(--owin-border);
@@ -1317,14 +1320,12 @@
 }
 @media (max-width: 980px) {
   .quote-picker-grid,
-  .quote-accessory-grid {
+  .quote-accessory-grid,
+  .quote-item-config-grid {
     grid-template-columns: 1fr;
   }
   .quote-item-meta-grid {
     grid-template-columns: 1fr 120px;
-  }
-  .quote-item-description {
-    grid-column: 1 / -1;
   }
 }
 @media (max-width: 760px) {
@@ -1344,11 +1345,7 @@
     padding: 10px;
   }
   .quote-picker-card {
-    grid-template-columns: 92px minmax(0, 1fr);
-  }
-  .quote-picker-choose {
-    grid-column: 1 / -1;
-    text-align: center;
+    grid-template-columns: 1fr;
   }
   .quote-item-card-header,
   .quote-item-basic-grid,

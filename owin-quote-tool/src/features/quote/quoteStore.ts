@@ -6,6 +6,7 @@ import type {
   QuoteStatus,
 } from '@/types/models';
 import importedQuotes from '@/data/imported/quotes.json';
+import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
 
 const quoteStore = localforage.createInstance({
   name: 'owin-quote-tool',
@@ -63,6 +64,11 @@ function quoteFolderPath(code: string): string | null {
   return `quotes/${datePart.slice(0, 4)}/${datePart.slice(4, 6)}/${code}`;
 }
 
+function normalizeFixedAccessoryPackage(value: unknown): string | null {
+  if (!value || typeof value !== 'string') return null;
+  return serializeFixedAccessoriesJson(parseFixedAccessoriesJson(value, 1));
+}
+
 function snapshotItemAliases(item: CalculatedQuoteItem): CalculatedQuoteItem {
   return {
     ...item,
@@ -74,15 +80,23 @@ function snapshotItemAliases(item: CalculatedQuoteItem): CalculatedQuoteItem {
     categoryImagePath: item.categoryImagePath || item.categoryImage || null,
     categoryImage: item.categoryImage || item.categoryImagePath || null,
     companyLogo: item.companyLogo || null,
+    fixedAccessoryPackage: normalizeFixedAccessoryPackage(item.fixedAccessoryPackage),
     mainTotal: item.productSubtotalVnd,
     accessoryTotal: item.accessorySubtotalVnd,
     itemTotal: item.itemTotalVnd,
   };
 }
 
+function normalizeQuoteSnapshotData(snapshot: QuoteSnapshotData): QuoteSnapshotData {
+  return {
+    ...snapshot,
+    items: snapshot.items.map(snapshotItemAliases),
+  };
+}
+
 export function hydrateQuoteSnapshot(input: QuoteInput): QuoteSnapshotData {
   const existing = parseSnapshot(input.snapshot) ?? parseSnapshot(input.snapshotJson);
-  if (existing) return existing;
+  if (existing) return normalizeQuoteSnapshotData(existing);
 
   const code = safeString(input.code, 'OWIN-BG-DRAFT');
   const createdAt = safeString(input.createdAt, nowIso());
@@ -182,7 +196,12 @@ export function normalizeQuoteRecord(input: QuoteInput): QuoteRecord {
     status: (input.status as QuoteStatus | undefined) ?? 'SAVED',
     snapshot,
     snapshotJson: JSON.stringify(snapshot),
-    items: Array.isArray(input.items) ? input.items : [],
+    items: Array.isArray(input.items)
+      ? input.items.map((item) => ({
+          ...item,
+          fixedAccessoryPackage: normalizeFixedAccessoryPackage(item.fixedAccessoryPackage),
+        }))
+      : [],
     exports: Array.isArray(input.exports) ? input.exports : [],
     folderPath: nullableString(input.folderPath) ?? quoteFolderPath(code),
     deletedAt: nullableString(input.deletedAt),

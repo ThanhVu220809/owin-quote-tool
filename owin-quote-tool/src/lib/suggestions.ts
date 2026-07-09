@@ -1,5 +1,7 @@
 import localforage from 'localforage';
 import type { ProductRecord, QuoteInput, SuggestionRecord } from '@/types/models';
+import importedProducts from '@/data/imported/products.json';
+import importedQuotes from '@/data/imported/quotes.json';
 import importedSuggestions from '@/data/imported/suggestions.json';
 import { normalizeSuggestionText, rankSuggestionCandidates } from './suggestionEngine';
 
@@ -41,6 +43,7 @@ const suggestionStore = localforage.createInstance({
 });
 
 const SEED_KEY = '__seeded__';
+const REFERENCE_SEED_KEY = '__reference_suggestions_seed_v2__';
 const seedModules = import.meta.glob('../data/suggestions/*.json', {
   eager: true,
   import: 'default',
@@ -60,6 +63,71 @@ function suggestionId(type: SuggestionType, value: string): string {
 
 function typeFromPath(path: string): string {
   return path.split('/').pop()?.replace(/\.json$/, '') || '';
+}
+
+function parseJsonMaybe<T>(value: unknown, fallback: T): T {
+  if (!value) return fallback;
+  if (typeof value !== 'string') return value as T;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function collectProductLikeSuggestionEntries(source: Record<string, unknown>): Array<[SuggestionType, unknown]> {
+  const entries: Array<[SuggestionType, unknown]> = [
+    ['category', source.category || source.groupName],
+    ['item_name', source.itemName || source.productName || source.name],
+    ['product_name', source.productName || source.name || source.itemName],
+    ['product_type', source.productType],
+    ['unit', source.unit],
+  ];
+
+  const specs = Array.isArray(source.specs) ? source.specs : [];
+  specs.forEach((entry) => {
+    const spec = entry as Record<string, unknown>;
+    const key = spec.key || spec.label;
+    entries.push(['spec_label', key]);
+    entries.push(['spec_value', spec.value]);
+    entries.push([suggestionTypeForSpecKey(String(key || '')), spec.value]);
+  });
+
+  const accessories = Array.isArray(source.accessories) ? source.accessories : [];
+  accessories.forEach((entry) => {
+    const accessory = entry as Record<string, unknown>;
+    entries.push(['accessory_name', accessory.name || accessory.ten]);
+  });
+
+  entries.push(...collectAccessorySuggestionEntries(
+    source.fixedAccessoryPackage as string | null | undefined,
+    source.extraAccessories as string | null | undefined,
+  ));
+
+  return entries;
+}
+
+function collectImportedQuoteSuggestionEntries(): Array<[SuggestionType, unknown]> {
+  const entries: Array<[SuggestionType, unknown]> = [];
+  (importedQuotes as unknown[]).forEach((quoteValue) => {
+    const quote = quoteValue as Record<string, unknown>;
+    entries.push(['customer_name', quote.customerName]);
+    entries.push(['customer_address', quote.customerAddress]);
+
+    const snapshot = (quote.snapshot as Record<string, unknown> | undefined)
+      || parseJsonMaybe<Record<string, unknown> | null>(quote.snapshotJson, null);
+    const snapshotItems = Array.isArray(snapshot?.items) ? snapshot.items : [];
+    snapshotItems.forEach((item) => entries.push(...collectProductLikeSuggestionEntries(item as Record<string, unknown>)));
+
+    const quoteItems = Array.isArray(quote.items) ? quote.items : [];
+    quoteItems.forEach((itemValue) => {
+      const item = itemValue as Record<string, unknown>;
+      entries.push(...collectProductLikeSuggestionEntries(item));
+      const itemSnapshot = parseJsonMaybe<Record<string, unknown> | null>(item.snapshotJson, null);
+      if (itemSnapshot) entries.push(...collectProductLikeSuggestionEntries(itemSnapshot));
+    });
+  });
+  return entries;
 }
 
 async function seedSuggestionValue(
@@ -83,8 +151,27 @@ async function seedSuggestionValue(
   });
 }
 
+async function seedSuggestionEntries(
+  entries: Array<[SuggestionType, unknown]>,
+  usedCount: number,
+  createdAt: string,
+  overwriteExisting: boolean,
+): Promise<void> {
+  const deduped = new Map<string, [SuggestionType, string]>();
+  for (const [type, value] of entries) {
+    const text = normalizeValue(value);
+    if (!type || !text) continue;
+    const id = suggestionId(type, text);
+    if (!deduped.has(id)) deduped.set(id, [type, text]);
+  }
+  for (const [type, value] of deduped.values()) {
+    await seedSuggestionValue(type, value, usedCount, createdAt, overwriteExisting);
+  }
+}
+
 export async function seedSuggestionsIfEmpty(): Promise<void> {
   const seeded = await suggestionStore.getItem<boolean>(SEED_KEY);
+  const referenceSeeded = await suggestionStore.getItem<boolean>(REFERENCE_SEED_KEY);
   const createdAt = nowIso();
   for (const [path, values] of Object.entries(seedModules)) {
     const type = typeFromPath(path);
@@ -97,6 +184,16 @@ export async function seedSuggestionsIfEmpty(): Promise<void> {
       await seedSuggestionValue(type, value, 2, createdAt, !seeded);
     }
   }
+  if (!referenceSeeded) {
+    const importedEntries: Array<[SuggestionType, unknown]> = [
+      ...(importedProducts as unknown[]).flatMap((product) =>
+        collectProductLikeSuggestionEntries(product as Record<string, unknown>),
+      ),
+      ...collectImportedQuoteSuggestionEntries(),
+    ];
+    await seedSuggestionEntries(importedEntries, 3, createdAt, !seeded);
+    await suggestionStore.setItem(REFERENCE_SEED_KEY, true);
+  }
   await suggestionStore.setItem(SEED_KEY, true);
 }
 
@@ -104,7 +201,7 @@ export async function getSuggestions(type: SuggestionType, query = ''): Promise<
   await seedSuggestionsIfEmpty();
   const out: SuggestionRecord[] = [];
   await suggestionStore.iterate<SuggestionRecord | boolean, void>((value, key) => {
-    if (key === SEED_KEY || !value || typeof value === 'boolean') return;
+    if (key === SEED_KEY || key === REFERENCE_SEED_KEY || !value || typeof value === 'boolean') return;
     if (value.type === type) out.push(value);
   });
   return rankSuggestionCandidates(query, out, 60).map((item) => item.value);
@@ -214,6 +311,7 @@ export async function rememberQuoteSuggestions(quote: QuoteInput): Promise<void>
     item.accessories.forEach((accessory) => entries.push(['accessory_name', accessory.name]));
     item.specs?.forEach((spec) => {
       entries.push(['spec_label', spec.key]);
+      entries.push(['spec_value', spec.value]);
       entries.push([suggestionTypeForSpecKey(spec.key), spec.value]);
     });
     entries.push(...collectAccessorySuggestionEntries(item.fixedAccessoryPackage, item.extraAccessories));
@@ -225,7 +323,7 @@ export async function getAllSuggestionRecords(): Promise<SuggestionRecord[]> {
   await seedSuggestionsIfEmpty();
   const out: SuggestionRecord[] = [];
   await suggestionStore.iterate<SuggestionRecord | boolean, void>((value, key) => {
-    if (key === SEED_KEY || !value || typeof value === 'boolean') return;
+    if (key === SEED_KEY || key === REFERENCE_SEED_KEY || !value || typeof value === 'boolean') return;
     out.push(value);
   });
   return out;

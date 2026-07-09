@@ -36,9 +36,28 @@ const QUOTE_SUGGESTION_TYPES = [
   'customer_address',
   'item_name',
   'category',
+  'spec_label',
+  'spec_value',
+  'spec_value_color',
+  'spec_value_frame',
+  'spec_value_glass',
+  'spec_value_molding',
+  'spec_value_protection_bar',
+  'spec_value_sash',
+  'spec_value_thickness',
   'accessory_name',
   'accessory_package_name',
 ] as const;
+
+const DEFAULT_SPEC_KEYS = [
+  'Màu',
+  'Khung Bao',
+  'Bản Cánh',
+  'Độ Dày',
+  'Loại Kính',
+  'Phào',
+  'Song Nhôm Bảo Vệ',
+];
 
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
 
@@ -463,7 +482,6 @@ export function QuoteView() {
         filteredHistory={filteredHistory}
         quoteSearch={quoteSearch}
         quoteStatusFilter={quoteStatusFilter}
-        saving={saving}
         message={message}
         onSearch={setQuoteSearch}
         onStatusFilter={setQuoteStatusFilter}
@@ -472,8 +490,6 @@ export function QuoteView() {
         onEdit={loadQuote}
         onDuplicate={(quote) => loadQuote(quote, true)}
         onDelete={(quote) => void deleteSavedQuote(quote)}
-        onExport={(quote) => void exportSavedQuote(quote)}
-        onExportExcel={(quote) => void exportSavedQuoteExcel(quote)}
       />
     );
   }
@@ -595,7 +611,7 @@ export function QuoteView() {
                 }
                 onAddAccessory={() =>
                   updateItem(index, {
-                    accessories: [...item.accessories, { name: '', quantityPerSet: 1, unitPriceVnd: 0, note: null, isEnabled: true }],
+                    accessories: [...item.accessories, { name: '', quantityPerSet: 0, unitPriceVnd: 0, note: null, isEnabled: true }],
                   })
                 }
                 onDuplicate={() => setItems((current) => [...current.slice(0, index + 1), { ...item, productCode: makeItemCode(current.length), quoteItemCode: makeItemCode(current.length) }, ...current.slice(index + 1)])}
@@ -658,7 +674,7 @@ function ProductPickerModal({
             <div className="quote-picker-icon"><Package size={20} /></div>
             <div>
               <h2>Chọn sản phẩm nhôm kính</h2>
-              <p>{productCount} sản phẩm trong kho · chọn bằng ảnh hoặc nút Chọn</p>
+              <p>{productCount} sản phẩm trong kho · chọn bằng ảnh hoặc thẻ sản phẩm</p>
             </div>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Đóng chọn sản phẩm">
@@ -712,10 +728,9 @@ function ProductPickerModal({
                   </div>
                   <div className="quote-picker-card-body">
                     <strong>{product.name}</strong>
-                    <span>{product.code} · {product.category}</span>
+                    <span>{product.category}</span>
                     <b>{formatVND(product.unitPriceVnd)}/{unitLabel(product.unit)}</b>
                   </div>
-                  <span className="quote-picker-choose">Chọn</span>
                 </button>
               ))}
             </div>
@@ -731,7 +746,6 @@ function QuoteListPanel({
   filteredHistory,
   quoteSearch,
   quoteStatusFilter,
-  saving,
   message,
   onSearch,
   onStatusFilter,
@@ -740,14 +754,11 @@ function QuoteListPanel({
   onEdit,
   onDuplicate,
   onDelete,
-  onExport,
-  onExportExcel,
 }: {
   history: QuoteRecord[];
   filteredHistory: QuoteRecord[];
   quoteSearch: string;
   quoteStatusFilter: QuoteRecord['status'] | '';
-  saving: boolean;
   message: string;
   onSearch: (value: string) => void;
   onStatusFilter: (value: QuoteRecord['status'] | '') => void;
@@ -756,8 +767,6 @@ function QuoteListPanel({
   onEdit: (quote: QuoteRecord) => void;
   onDuplicate: (quote: QuoteRecord) => void;
   onDelete: (quote: QuoteRecord) => void;
-  onExport: (quote: QuoteRecord) => void;
-  onExportExcel: (quote: QuoteRecord) => void;
 }) {
   return (
     <section className="admin-page quote-list-page">
@@ -851,10 +860,6 @@ function QuoteListPanel({
                       <button className="icon-btn" onClick={() => onDuplicate(quote)} aria-label="Nhân bản">
                         <Copy size={16} />
                       </button>
-                      <button className="icon-btn" disabled={saving} onClick={() => onExport(quote)} aria-label="Xuất Word">
-                        <FileDown size={16} />
-                      </button>
-                      <button className="btn btn-ghost" disabled={saving} onClick={() => onExportExcel(quote)}>Excel</button>
                       <button className="icon-btn danger" onClick={() => onDelete(quote)} aria-label="Xoá báo giá">
                         <Trash2 size={16} />
                       </button>
@@ -1021,6 +1026,30 @@ function compactNumber(value: unknown): string {
     : parsed.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 }
 
+function normalizeSpecKey(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function specValueSuggestionsForKey(key: string, suggestions: Record<string, string[]>): string[] {
+  const normalized = normalizeSpecKey(key);
+  const specific = (() => {
+    if (normalized.includes('mau')) return suggestions.spec_value_color ?? [];
+    if (normalized.includes('khung')) return suggestions.spec_value_frame ?? [];
+    if (normalized.includes('canh')) return suggestions.spec_value_sash ?? [];
+    if (normalized.includes('day')) return suggestions.spec_value_thickness ?? [];
+    if (normalized.includes('kinh')) return suggestions.spec_value_glass ?? [];
+    if (normalized.includes('phao')) return suggestions.spec_value_molding ?? [];
+    if (normalized.includes('song') || normalized.includes('bao ve')) {
+      return suggestions.spec_value_protection_bar ?? [];
+    }
+    return [];
+  })();
+  return [...specific, ...(suggestions.spec_value ?? [])];
+}
+
 function accessoryItemText(name: unknown, quantity: unknown): string {
   const text = String(name || '').trim();
   if (!text) return '';
@@ -1142,7 +1171,7 @@ function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote
                   )}
                   {lineIndex === 0 && (
                     <td rowSpan={Math.max(1, item.dimensions.length)} className="description-cell">
-                      {[item.itemName, item.description, ...(item.specs || []).map((spec) => `- ${spec.key}: ${spec.value}`)]
+                      {[item.itemName, ...(item.specs || []).map((spec) => `- ${spec.key}: ${spec.value}`)]
                         .filter(Boolean)
                         .map((lineText, i) => <div key={i}>{lineText}</div>)}
                     </td>
@@ -1216,6 +1245,14 @@ function QuoteItemCard({
   const fixedDraft = parseFixedAccessoriesJson(item.fixedAccessoryPackage, 1);
   const extraDraft = parseExtraAccessoriesJson(item.extraAccessories);
   const usesPackageAccessories = Boolean(item.fixedAccessoryPackage || extraDraft.length > 0);
+  const specs = item.specs ?? [];
+  const updateSpec = (specIndex: number, patch: { key?: string; value?: string }) => {
+    onUpdate({
+      specs: specs.map((spec, currentIndex) =>
+        currentIndex === specIndex ? { ...spec, ...patch, sortOrder: currentIndex } : spec,
+      ),
+    });
+  };
   return (
     <div className="card quote-item-card">
       <div className="quote-item-card-header">
@@ -1251,10 +1288,6 @@ function QuoteItemCard({
                 <option value="METER">md</option>
               </select>
             </div>
-            <div className="field quote-item-description">
-              <label>Mô tả</label>
-              <textarea className="input" value={item.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} rows={2} />
-            </div>
           </div>
         </div>
       </div>
@@ -1274,7 +1307,6 @@ function QuoteItemCard({
           <span>KL</span>
           <span>Đơn giá</span>
           <span>Thành tiền</span>
-          <span>Ghi chú</span>
           <span />
         </div>
         {item.dimensions.map((line, lineIndex) => {
@@ -1292,7 +1324,6 @@ function QuoteItemCard({
               <div className="readonly-money muted-money">{calculatedLine?.calculatedQty?.toFixed(3) ?? '0.000'}</div>
               <CurrencyInput value={Number(line.unitPriceVnd ?? item.unitPriceVnd ?? 0)} onChange={(unitPriceVnd) => onDimension(lineIndex, { unitPriceVnd })} placeholder="Đơn giá" />
               <div className="readonly-money">{formatVND(calculatedLine?.lineTotalVnd ?? 0)}</div>
-              <input className="input" value={line.description || ''} onChange={(e) => onDimension(lineIndex, { description: e.target.value })} placeholder="Ghi chú" />
               <button className="icon-btn danger" onClick={() => onUpdate({ dimensions: item.dimensions.filter((_, i) => i !== lineIndex) })} aria-label="Xóa kích thước"><Trash2 size={16} /></button>
             </div>
           );
@@ -1337,7 +1368,56 @@ function QuoteItemCard({
         </>
       )}
 
-      <div className="quote-accessory-grid">
+      <div className="quote-item-config-grid">
+        <div className="editor-panel quote-spec-panel">
+          <div className="toolbar editor-toolbar">
+            <div className="section-label">Thông số kỹ thuật</div>
+            <div className="spacer" />
+            <button
+              className="btn-link"
+              type="button"
+              onClick={() => onUpdate({ specs: [...specs, { key: '', value: '', sortOrder: specs.length }] })}
+            >
+              <Plus size={15} /> Thêm thông số
+            </button>
+          </div>
+          <div className="spec-table-head">
+            <span>Tên thông số</span>
+            <span>Giá trị</span>
+            <span />
+          </div>
+          <div className="spec-row-list">
+            {specs.length === 0 ? (
+              <div className="empty-line">Chưa có thông số kỹ thuật.</div>
+            ) : (
+              specs.map((spec, specIndex) => (
+                <div key={`${spec.key}-${specIndex}`} className="spec-editor-row">
+                  <AutoSuggestInput
+                    label="Tên"
+                    value={spec.key}
+                    onChange={(key) => updateSpec(specIndex, { key })}
+                    suggestions={[...DEFAULT_SPEC_KEYS, ...(suggestions.spec_label ?? [])]}
+                  />
+                  <AutoSuggestInput
+                    label="Giá trị"
+                    value={spec.value}
+                    onChange={(value) => updateSpec(specIndex, { value })}
+                    suggestions={specValueSuggestionsForKey(spec.key, suggestions)}
+                  />
+                  <button
+                    className="icon-btn danger"
+                    type="button"
+                    onClick={() => onUpdate({ specs: specs.filter((_, currentIndex) => currentIndex !== specIndex) })}
+                    aria-label="Xóa thông số"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {item.fixedAccessoryPackage ? (
           <FixedAccessoryPackageEditor
             value={fixedDraft}
@@ -1360,6 +1440,9 @@ function QuoteItemCard({
             </button>
           </div>
         )}
+      </div>
+
+      <div className="quote-item-extra">
         <ExtraAccessoriesEditor
           value={extraDraft}
           onChange={(drafts) => onUpdate({ extraAccessories: serializeExtraAccessoriesJson(drafts) })}
