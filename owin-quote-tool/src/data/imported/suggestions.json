@@ -15,6 +15,7 @@
     "Chốt Cánh Phụ",
     "Chốt Sập",
     "Góc Đồng Cá Chép",
+    "Hố Chốt Đồng",
     "Khóa",
     "Khóa Bi Ngang",
     "Khóa Đa Điểm",
@@ -32,7 +33,6 @@
     "Tay Đơn Điểm",
     "Tay Nắm",
     "Tay Nắm KOLN",
-    "Test Kl Round",
     "Thanh Chuyển Động Đa Điểm",
     "Vật Tư Phụ",
     "Vòm Kính"
@@ -67,7 +67,9 @@
     "Can Lộc , Hà Tĩnh",
     "Can Lộc, Hà Tĩnh",
     "Dia chi test autosave",
+    "Kì Anh, Hà Tĩnh",
     "Lộc Hà, Hà Tĩnh",
+    "Nghi Lộc, Hà Tĩnh",
     "Nghi Xuân, Hà Tĩnh",
     "Test address",
     "Tiên Điền, Nghi Xuân, Hà Tĩnh",
@@ -75,6 +77,7 @@
     "Yên Hòa, Tiên Điền, Hà Tĩnh"
   ],
   "customer_name": [
+    "A Công Nguyên",
     "A Thạch",
     "A Trí",
     "Anh Công",
@@ -83,6 +86,7 @@
     "Anh Nhân",
     "Anh Thạch",
     "Auto Save Test Updated 1781971740230",
+    "Mrs Oanh",
     "Mự Hoa Ưu",
     "Test_auto_export_delete_me"
   ],
@@ -118,6 +122,7 @@
     "Cửa Phòng Nhôm OWIN Tấm Tổ Ong",
     "Cửa Sổ Lùa Vip 2 Cánh Nhôm OWIN",
     "Cửa Sổ Lùa Vip 2 Cánh Nhôm OWIN Copy",
+    "Cửa Sổ Lùa Vip Nhôm OWIN",
     "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
     "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
     "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào Kép",
@@ -149,6 +154,7 @@
     "Cửa Phòng Nhôm OWIN Tấm Tổ Ong",
     "Cửa Sổ Lùa Vip 2 Cánh Nhôm OWIN",
     "Cửa Sổ Lùa Vip 2 Cánh Nhôm OWIN Copy",
+    "Cửa Sổ Lùa Vip Nhôm OWIN",
     "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
     "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
     "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào Kép",
@@ -165,6 +171,7 @@
     "60 X 180",
     "70",
     "76",
+    "87",
     "90"
   ],
   "spec_label": [
@@ -176,13 +183,16 @@
   ],
   "spec_value": [
     "1.1 - 1.2 mm",
+    "1.2 mm",
     "1.4 - 1.6 mm",
     "1.4 - 2 mm",
     "1.4 mm",
+    "1.6 mm",
     "100",
     "100 Liền Phào",
     "140",
     "150 Liền Phào",
+    "2 - 2.2 mm",
     "2 Mặt",
     "2 Mặt + Phào Trong Cánh",
     "2 mm",
@@ -192,6 +202,7 @@
     "60 X 180",
     "70",
     "76",
+    "87",
     "90",
     "Epdm",
     "Ghi",
@@ -207,6 +218,7 @@
     "Tấm Liền Nguyên Khối",
     "Tấm Liền Nguyên Khối + Fix Kính",
     "Trong Cánh",
+    "Tường Đơn",
     "Tường Kép 23",
     "Tường Kép Ôm Tường 17 - 25",
     "Tường Kép Ôm Tường 20 - 25",
@@ -249,20 +261,27 @@
     "60 X 180",
     "70",
     "76",
+    "87",
     "90"
   ],
   "spec_value_thickness": [
     "1.1 - 1.2 mm",
+    "1.2 mm",
     "1.4 - 1.6 mm",
     "1.4 - 2 mm",
     "1.4 mm",
+    "1.6 mm",
+    "2 - 2.2 mm",
     "2 mm"
   ],
   "thickness": [
     "1.1 - 1.2 mm",
+    "1.2 mm",
     "1.4 - 1.6 mm",
     "1.4 - 2 mm",
     "1.4 mm",
+    "1.6 mm",
+    "2 - 2.2 mm",
     "2 mm"
   ],
   "unit": [

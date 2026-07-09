@@ -41,7 +41,7 @@ export function BangGiaView() {
     <section className="admin-page catalogue-page">
       <div className="toolbar catalogue-toolbar no-print">
         <div>
-          <h1 className="app-title">Thư viện Catalogue</h1>
+          <h1 className="app-title">Bảng giá</h1>
           <p className="app-subtitle">BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN · {loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
         </div>
         <div className="spacer" />
@@ -70,7 +70,7 @@ export function BangGiaView() {
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? 'Đang xuất…' : 'Tải Excel (.xlsx)'}
         </button>
         <button className="btn btn-primary" onClick={() => window.print()}>
-          <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> Tải Catalogue PDF
+          <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> In / PDF
         </button>
       </div>
 

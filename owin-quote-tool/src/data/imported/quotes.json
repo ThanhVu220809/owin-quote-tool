@@ -1,5 +1,2096 @@
 [
   {
+    "id": "OWIN-BG-20260708-0001",
+    "code": "OWIN-BG-20260708-0001",
+    "customerId": null,
+    "customerName": "Mrs Oanh",
+    "customerPhone": "",
+    "customerEmail": null,
+    "customerAddress": "Kì Anh, Hà Tĩnh",
+    "quoteDate": "2026-07-08",
+    "depositVnd": 0,
+    "subtotalProductVnd": 202201000,
+    "subtotalAccessoryVnd": 51440000,
+    "totalVnd": 253641000,
+    "roundedTotalVnd": 253600000,
+    "balanceVnd": 253600000,
+    "status": "EXPORTED",
+    "snapshot": {
+      "quoteCode": "OWIN-BG-20260708-0001",
+      "createdAt": "2026-07-08T00:00:00.000Z",
+      "company": {
+        "name": "HOÀNG ANH OWIN",
+        "phone": "0799040616",
+        "email": "",
+        "address": "Tiên Điền – Nghi Xuân – Hà Tĩnh",
+        "logo": "owin-user-assets/logo/logo.webp"
+      },
+      "customerId": null,
+      "customerName": "Mrs Oanh",
+      "customerPhone": "",
+      "customerEmail": null,
+      "customerAddress": "Kì Anh, Hà Tĩnh",
+      "quoteDate": "2026-07-08",
+      "depositVnd": 0,
+      "items": [
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "D1",
+          "quoteItemCode": "D1",
+          "itemName": "Cửa Thủy Lực Nhôm OWIN",
+          "productName": "Cửa Thủy Lực Nhôm OWIN",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/D1/cover.png",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/D1/cover.png",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 4500000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Trắc",
+              "sortOrder": 0
+            },
+            {
+              "key": "Khung Bao",
+              "value": "50 X 200",
+              "sortOrder": 1
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "60 X 180",
+              "sortOrder": 2
+            },
+            {
+              "key": "Độ Dày",
+              "value": "2 - 2.2 mm",
+              "sortOrder": 3
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Tấm Liền Nguyên Khối + Fix Kính",
+              "sortOrder": 4
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 2.4,
+              "heightM": 3,
+              "quantity": 1,
+              "calculatedQty": 7.2,
+              "unitPriceVnd": 4500000,
+              "lineTotalVnd": 32400000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+              "quantityPerSet": 1,
+              "totalSet": 1,
+              "unitPriceVnd": 10000000,
+              "lineTotalVnd": 10000000,
+              "note": "Bản Lề Sàn Alder\nNgỗng Trên Dưới\nTay Nắm KOLN\nKhóa Bi Ngang\nChốt Cánh Phụ\nHố Chốt Đồng\nVật Tư Phụ",
+              "sortOrder": 0
+            },
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Phào Mặt Trong",
+              "quantityPerSet": 1,
+              "totalSet": 1,
+              "unitPriceVnd": 1500000,
+              "lineTotalVnd": 1500000,
+              "note": "BO",
+              "sortOrder": 1
+            },
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Phào Nội Thất",
+              "quantityPerSet": 1,
+              "totalSet": 1,
+              "unitPriceVnd": 3000000,
+              "lineTotalVnd": 3000000,
+              "note": "BO",
+              "sortOrder": 2
+            },
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Phào Biệt Thự",
+              "quantityPerSet": 1,
+              "totalSet": 8.96,
+              "unitPriceVnd": 1500000,
+              "lineTotalVnd": 13440000,
+              "note": "METER",
+              "sortOrder": 3
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Bản Lề Sàn Alder\",\"quantity\":0},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":0},{\"name\":\"Tay Nắm KOLN\",\"quantity\":0},{\"name\":\"Khóa Bi Ngang\",\"quantity\":0},{\"name\":\"Chốt Cánh Phụ\",\"quantity\":0},{\"name\":\"Hố Chốt Đồng\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000,\"quantity\":1,\"unitPriceVnd\":10000000,\"totalVnd\":10000000}",
+          "extraAccessories": "[{\"id\":\"2daca9e9-b45c-45d0-ba29-36f7652c57f7\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":0},{\"id\":\"b57b3d28-b56f-4d6b-a632-d858fd41889d\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":1},{\"id\":\"07396c55-21af-456e-a782-fc9742566e11\",\"name\":\"Phào Biệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.96,\"unitPrice\":1500000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":2}]",
+          "productSubtotalVnd": 32400000,
+          "accessorySubtotalVnd": 27940000,
+          "itemTotalVnd": 60340000,
+          "mainTotal": 32400000,
+          "accessoryTotal": 27940000,
+          "itemTotal": 60340000,
+          "sortOrder": 1,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "S1",
+          "quoteItemCode": "S1",
+          "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+          "productName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/S1/cover.jpg",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/S1/cover.jpg",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5700000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Trắc",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "100",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.4 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Tấm Liền Nguyên Khối",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 2,
+              "heightM": 2.15,
+              "quantity": 1,
+              "calculatedQty": 4.3,
+              "unitPriceVnd": 7150000,
+              "lineTotalVnd": 30745000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 3,
+              "totalSet": 3,
+              "unitPriceVnd": 500000,
+              "lineTotalVnd": 1500000,
+              "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1500000,\"quantity\":3,\"unitPriceVnd\":500000,\"totalVnd\":1500000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 30745000,
+          "accessorySubtotalVnd": 1500000,
+          "itemTotalVnd": 32245000,
+          "mainTotal": 30745000,
+          "accessoryTotal": 1500000,
+          "itemTotal": 32245000,
+          "sortOrder": 2,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "D2",
+          "quoteItemCode": "D2",
+          "itemName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+          "productName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/D2/cover.jpg",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/D2/cover.jpg",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5700000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Trắc",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "150 Liền Phào",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.6 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 2.4,
+              "heightM": 2.7,
+              "quantity": 1,
+              "calculatedQty": 6.48,
+              "unitPriceVnd": 3250000,
+              "lineTotalVnd": 21060000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 1,
+              "totalSet": 1,
+              "unitPriceVnd": 2000000,
+              "lineTotalVnd": 2000000,
+              "note": "Khóa Đơn Điểm\nBản Lề\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Khóa Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":2000000,\"total\":2000000,\"quantity\":1,\"unitPriceVnd\":2000000,\"totalVnd\":2000000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 21060000,
+          "accessorySubtotalVnd": 2000000,
+          "itemTotalVnd": 23060000,
+          "mainTotal": 21060000,
+          "accessoryTotal": 2000000,
+          "itemTotal": 23060000,
+          "sortOrder": 3,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "S2",
+          "quoteItemCode": "S2",
+          "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+          "productName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/S2/cover.jpg",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/S2/cover.jpg",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5700000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Trắc",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "100",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.4 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 1.95,
+              "heightM": 1.85,
+              "quantity": 1,
+              "calculatedQty": 3.608,
+              "unitPriceVnd": 2700000,
+              "lineTotalVnd": 9741600,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 3,
+              "totalSet": 3,
+              "unitPriceVnd": 500000,
+              "lineTotalVnd": 1500000,
+              "note": "Khóa Đơn Điểm\nBản Lề\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Khóa Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1500000,\"quantity\":3,\"unitPriceVnd\":500000,\"totalVnd\":1500000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 9741600,
+          "accessorySubtotalVnd": 1500000,
+          "itemTotalVnd": 11241600,
+          "mainTotal": 9741600,
+          "accessoryTotal": 1500000,
+          "itemTotal": 11241600,
+          "sortOrder": 4,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "D3",
+          "quoteItemCode": "D3",
+          "itemName": "Cửa Đi Mở Quay Nhôm OWIN Hệ Khuôn Phào",
+          "productName": "Cửa Đi Mở Quay Nhôm OWIN Hệ Khuôn Phào",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/D3/cover.jpg",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/D3/cover.jpg",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5700000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Trắc",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "150 Liền Phào",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.6 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            },
+            {
+              "key": "Khuôn Bao",
+              "value": "Tường Đơn",
+              "sortOrder": 4
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 0.94,
+              "heightM": 2.1,
+              "quantity": 5,
+              "calculatedQty": 9.87,
+              "unitPriceVnd": 5800000,
+              "lineTotalVnd": 57246000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 5,
+              "totalSet": 5,
+              "unitPriceVnd": 1000000,
+              "lineTotalVnd": 5000000,
+              "note": "Khóa Đơn Điểm\nBản Lề\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Khóa Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":5,\"unit\":\"BO\",\"unitPrice\":1000000,\"total\":5000000,\"quantity\":5,\"unitPriceVnd\":1000000,\"totalVnd\":5000000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 57246000,
+          "accessorySubtotalVnd": 5000000,
+          "itemTotalVnd": 62246000,
+          "mainTotal": 57246000,
+          "accessoryTotal": 5000000,
+          "itemTotal": 62246000,
+          "sortOrder": 5,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "S3",
+          "quoteItemCode": "S3",
+          "itemName": "Cửa Sổ Lùa Vip Nhôm OWIN",
+          "productName": "Cửa Sổ Lùa Vip Nhôm OWIN",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/S3/cover.jpg",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/S3/cover.jpg",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5700000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Trắc",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "70",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.4 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 1.25,
+              "heightM": 1.25,
+              "quantity": 1,
+              "calculatedQty": 1.563,
+              "unitPriceVnd": 2500000,
+              "lineTotalVnd": 3907500,
+              "description": null
+            },
+            {
+              "unit": "M2",
+              "widthM": 1.25,
+              "heightM": 1.26,
+              "quantity": 1,
+              "calculatedQty": 1.575,
+              "unitPriceVnd": 2500000,
+              "lineTotalVnd": 3937500,
+              "description": null
+            },
+            {
+              "unit": "M2",
+              "widthM": 1.25,
+              "heightM": 1.3,
+              "quantity": 2,
+              "calculatedQty": 3.25,
+              "unitPriceVnd": 2500000,
+              "lineTotalVnd": 8125000,
+              "description": null
+            },
+            {
+              "unit": "M2",
+              "widthM": 0.7,
+              "heightM": 0.8,
+              "quantity": 1,
+              "calculatedQty": 0.56,
+              "unitPriceVnd": 2500000,
+              "lineTotalVnd": 1400000,
+              "description": null
+            },
+            {
+              "unit": "M2",
+              "widthM": 1.2,
+              "heightM": 1.4,
+              "quantity": 1,
+              "calculatedQty": 1.68,
+              "unitPriceVnd": 2500000,
+              "lineTotalVnd": 4200000,
+              "description": null
+            },
+            {
+              "unit": "M2",
+              "widthM": 1.2,
+              "heightM": 1.35,
+              "quantity": 3,
+              "calculatedQty": 4.86,
+              "unitPriceVnd": 2500000,
+              "lineTotalVnd": 12150000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 18,
+              "totalSet": 18,
+              "unitPriceVnd": 500000,
+              "lineTotalVnd": 9000000,
+              "note": "Bánh Xe\nChốt Sập\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Bánh Xe\",\"quantity\":0},{\"name\":\"Chốt Sập\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":18,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":9000000,\"quantity\":18,\"unitPriceVnd\":500000,\"totalVnd\":9000000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 33720000,
+          "accessorySubtotalVnd": 9000000,
+          "itemTotalVnd": 42720000,
+          "mainTotal": 33720000,
+          "accessoryTotal": 9000000,
+          "itemTotal": 42720000,
+          "sortOrder": 6,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "DWC",
+          "quoteItemCode": "DWC",
+          "itemName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+          "productName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/DWC/cover.jpg",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/DWC/cover.jpg",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5700000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Trắc",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "100",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.4 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 0.81,
+              "heightM": 2.1,
+              "quantity": 3,
+              "calculatedQty": 5.103,
+              "unitPriceVnd": 2800000,
+              "lineTotalVnd": 14288400,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 3,
+              "totalSet": 3,
+              "unitPriceVnd": 1000000,
+              "lineTotalVnd": 3000000,
+              "note": "Khóa Đơn Điểm\nBản Lề\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Khóa Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":1000000,\"total\":3000000,\"quantity\":3,\"unitPriceVnd\":1000000,\"totalVnd\":3000000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 14288400,
+          "accessorySubtotalVnd": 3000000,
+          "itemTotalVnd": 17288400,
+          "mainTotal": 14288400,
+          "accessoryTotal": 3000000,
+          "itemTotal": 17288400,
+          "sortOrder": 7,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "SWC",
+          "quoteItemCode": "SWC",
+          "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+          "productName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": null,
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": null,
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5700000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Trắc",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "100",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.4 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "BO",
+              "widthM": 0.4,
+              "heightM": 0.3,
+              "quantity": 3,
+              "calculatedQty": 3,
+              "unitPriceVnd": 1000000,
+              "lineTotalVnd": 3000000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 3,
+              "totalSet": 3,
+              "unitPriceVnd": 500000,
+              "lineTotalVnd": 1500000,
+              "note": "Tay Đơn Điểm\nBản Lề\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1500000,\"quantity\":3,\"unitPriceVnd\":500000,\"totalVnd\":1500000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 3000000,
+          "accessorySubtotalVnd": 1500000,
+          "itemTotalVnd": 4500000,
+          "mainTotal": 3000000,
+          "accessoryTotal": 1500000,
+          "itemTotal": 4500000,
+          "sortOrder": 8,
+          "numericId": null
+        }
+      ],
+      "summary": {
+        "subtotalProductVnd": 202201000,
+        "subtotalAccessoryVnd": 51440000,
+        "totalVnd": 253641000,
+        "roundedTotalVnd": 253600000,
+        "depositVnd": 0,
+        "balanceVnd": 253600000
+      }
+    },
+    "snapshotJson": "{\"quoteCode\":\"OWIN-BG-20260708-0001\",\"createdAt\":\"2026-07-08T00:00:00.000Z\",\"company\":{\"name\":\"HOÀNG ANH OWIN\",\"phone\":\"0799040616\",\"email\":\"\",\"address\":\"Tiên Điền – Nghi Xuân – Hà Tĩnh\",\"logo\":\"owin-user-assets/logo/logo.webp\"},\"customerId\":null,\"customerName\":\"Mrs Oanh\",\"customerPhone\":\"\",\"customerEmail\":null,\"customerAddress\":\"Kì Anh, Hà Tĩnh\",\"quoteDate\":\"2026-07-08\",\"depositVnd\":0,\"items\":[{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"D1\",\"quoteItemCode\":\"D1\",\"itemName\":\"Cửa Thủy Lực Nhôm OWIN\",\"productName\":\"Cửa Thủy Lực Nhôm OWIN\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/D1/cover.png\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/D1/cover.png\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":4500000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Khung Bao\",\"value\":\"50 X 200\",\"sortOrder\":1},{\"key\":\"Bản Cánh\",\"value\":\"60 X 180\",\"sortOrder\":2},{\"key\":\"Độ Dày\",\"value\":\"2 - 2.2 mm\",\"sortOrder\":3},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối + Fix Kính\",\"sortOrder\":4}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":2.4,\"heightM\":3,\"quantity\":1,\"calculatedQty\":7.2,\"unitPriceVnd\":4500000,\"lineTotalVnd\":32400000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":10000000,\"lineTotalVnd\":10000000,\"note\":\"Bản Lề Sàn Alder\\nNgỗng Trên Dưới\\nTay Nắm KOLN\\nKhóa Bi Ngang\\nChốt Cánh Phụ\\nHố Chốt Đồng\\nVật Tư Phụ\",\"sortOrder\":0},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Mặt Trong\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":1500000,\"lineTotalVnd\":1500000,\"note\":\"BO\",\"sortOrder\":1},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Nội Thất\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":3000000,\"lineTotalVnd\":3000000,\"note\":\"BO\",\"sortOrder\":2},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Biệt Thự\",\"quantityPerSet\":1,\"totalSet\":8.96,\"unitPriceVnd\":1500000,\"lineTotalVnd\":13440000,\"note\":\"METER\",\"sortOrder\":3}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Cửa Thủy Lực\\\",\\\"items\\\":[{\\\"name\\\":\\\"Bản Lề Sàn Alder\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Ngỗng Trên Dưới\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Tay Nắm KOLN\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Khóa Bi Ngang\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Chốt Cánh Phụ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Hố Chốt Đồng\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":1,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":10000000,\\\"total\\\":10000000,\\\"quantity\\\":1,\\\"unitPriceVnd\\\":10000000,\\\"totalVnd\\\":10000000}\",\"extraAccessories\":\"[{\\\"id\\\":\\\"2daca9e9-b45c-45d0-ba29-36f7652c57f7\\\",\\\"name\\\":\\\"Phào Mặt Trong\\\",\\\"unit\\\":\\\"BO\\\",\\\"quantity\\\":1,\\\"weight\\\":0,\\\"unitPrice\\\":1500000,\\\"amount\\\":1500000,\\\"total\\\":1500000,\\\"sortOrder\\\":0},{\\\"id\\\":\\\"b57b3d28-b56f-4d6b-a632-d858fd41889d\\\",\\\"name\\\":\\\"Phào Nội Thất\\\",\\\"unit\\\":\\\"BO\\\",\\\"quantity\\\":1,\\\"weight\\\":0,\\\"unitPrice\\\":3000000,\\\"amount\\\":3000000,\\\"total\\\":3000000,\\\"sortOrder\\\":1},{\\\"id\\\":\\\"07396c55-21af-456e-a782-fc9742566e11\\\",\\\"name\\\":\\\"Phào Biệt Thự\\\",\\\"unit\\\":\\\"METER\\\",\\\"quantity\\\":1,\\\"weight\\\":8.96,\\\"unitPrice\\\":1500000,\\\"amount\\\":13440000,\\\"total\\\":13440000,\\\"sortOrder\\\":2}]\",\"productSubtotalVnd\":32400000,\"accessorySubtotalVnd\":27940000,\"itemTotalVnd\":60340000,\"mainTotal\":32400000,\"accessoryTotal\":27940000,\"itemTotal\":60340000,\"sortOrder\":1,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"S1\",\"quoteItemCode\":\"S1\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/S1/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/S1/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":2,\"heightM\":2.15,\"quantity\":1,\"calculatedQty\":4.3,\"unitPriceVnd\":7150000,\"lineTotalVnd\":30745000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":500000,\"lineTotalVnd\":1500000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1500000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1500000}\",\"extraAccessories\":null,\"productSubtotalVnd\":30745000,\"accessorySubtotalVnd\":1500000,\"itemTotalVnd\":32245000,\"mainTotal\":30745000,\"accessoryTotal\":1500000,\"itemTotal\":32245000,\"sortOrder\":2,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"D2\",\"quoteItemCode\":\"D2\",\"itemName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/D2/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/D2/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"150 Liền Phào\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.6 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":2.4,\"heightM\":2.7,\"quantity\":1,\"calculatedQty\":6.48,\"unitPriceVnd\":3250000,\"lineTotalVnd\":21060000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":2000000,\"lineTotalVnd\":2000000,\"note\":\"Khóa Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":1,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":2000000,\\\"total\\\":2000000,\\\"quantity\\\":1,\\\"unitPriceVnd\\\":2000000,\\\"totalVnd\\\":2000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":21060000,\"accessorySubtotalVnd\":2000000,\"itemTotalVnd\":23060000,\"mainTotal\":21060000,\"accessoryTotal\":2000000,\"itemTotal\":23060000,\"sortOrder\":3,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"S2\",\"quoteItemCode\":\"S2\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/S2/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/S2/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":1.95,\"heightM\":1.85,\"quantity\":1,\"calculatedQty\":3.608,\"unitPriceVnd\":2700000,\"lineTotalVnd\":9741600,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":500000,\"lineTotalVnd\":1500000,\"note\":\"Khóa Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1500000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1500000}\",\"extraAccessories\":null,\"productSubtotalVnd\":9741600,\"accessorySubtotalVnd\":1500000,\"itemTotalVnd\":11241600,\"mainTotal\":9741600,\"accessoryTotal\":1500000,\"itemTotal\":11241600,\"sortOrder\":4,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"D3\",\"quoteItemCode\":\"D3\",\"itemName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/D3/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/D3/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"150 Liền Phào\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.6 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3},{\"key\":\"Khuôn Bao\",\"value\":\"Tường Đơn\",\"sortOrder\":4}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.94,\"heightM\":2.1,\"quantity\":5,\"calculatedQty\":9.87,\"unitPriceVnd\":5800000,\"lineTotalVnd\":57246000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":5,\"totalSet\":5,\"unitPriceVnd\":1000000,\"lineTotalVnd\":5000000,\"note\":\"Khóa Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":5,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":1000000,\\\"total\\\":5000000,\\\"quantity\\\":5,\\\"unitPriceVnd\\\":1000000,\\\"totalVnd\\\":5000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":57246000,\"accessorySubtotalVnd\":5000000,\"itemTotalVnd\":62246000,\"mainTotal\":57246000,\"accessoryTotal\":5000000,\"itemTotal\":62246000,\"sortOrder\":5,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"S3\",\"quoteItemCode\":\"S3\",\"itemName\":\"Cửa Sổ Lùa Vip Nhôm OWIN\",\"productName\":\"Cửa Sổ Lùa Vip Nhôm OWIN\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/S3/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/S3/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"70\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":1.25,\"heightM\":1.25,\"quantity\":1,\"calculatedQty\":1.563,\"unitPriceVnd\":2500000,\"lineTotalVnd\":3907500,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.25,\"heightM\":1.26,\"quantity\":1,\"calculatedQty\":1.575,\"unitPriceVnd\":2500000,\"lineTotalVnd\":3937500,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.25,\"heightM\":1.3,\"quantity\":2,\"calculatedQty\":3.25,\"unitPriceVnd\":2500000,\"lineTotalVnd\":8125000,\"description\":null},{\"unit\":\"M2\",\"widthM\":0.7,\"heightM\":0.8,\"quantity\":1,\"calculatedQty\":0.56,\"unitPriceVnd\":2500000,\"lineTotalVnd\":1400000,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.2,\"heightM\":1.4,\"quantity\":1,\"calculatedQty\":1.68,\"unitPriceVnd\":2500000,\"lineTotalVnd\":4200000,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.2,\"heightM\":1.35,\"quantity\":3,\"calculatedQty\":4.86,\"unitPriceVnd\":2500000,\"lineTotalVnd\":12150000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":18,\"totalSet\":18,\"unitPriceVnd\":500000,\"lineTotalVnd\":9000000,\"note\":\"Bánh Xe\\nChốt Sập\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Bánh Xe\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Chốt Sập\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":18,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":9000000,\\\"quantity\\\":18,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":9000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":33720000,\"accessorySubtotalVnd\":9000000,\"itemTotalVnd\":42720000,\"mainTotal\":33720000,\"accessoryTotal\":9000000,\"itemTotal\":42720000,\"sortOrder\":6,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"DWC\",\"quoteItemCode\":\"DWC\",\"itemName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/DWC/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/DWC/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.81,\"heightM\":2.1,\"quantity\":3,\"calculatedQty\":5.103,\"unitPriceVnd\":2800000,\"lineTotalVnd\":14288400,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":1000000,\"lineTotalVnd\":3000000,\"note\":\"Khóa Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":1000000,\\\"total\\\":3000000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":1000000,\\\"totalVnd\\\":3000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":14288400,\"accessorySubtotalVnd\":3000000,\"itemTotalVnd\":17288400,\"mainTotal\":14288400,\"accessoryTotal\":3000000,\"itemTotal\":17288400,\"sortOrder\":7,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"SWC\",\"quoteItemCode\":\"SWC\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":null,\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":null,\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"BO\",\"widthM\":0.4,\"heightM\":0.3,\"quantity\":3,\"calculatedQty\":3,\"unitPriceVnd\":1000000,\"lineTotalVnd\":3000000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":500000,\"lineTotalVnd\":1500000,\"note\":\"Tay Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1500000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1500000}\",\"extraAccessories\":null,\"productSubtotalVnd\":3000000,\"accessorySubtotalVnd\":1500000,\"itemTotalVnd\":4500000,\"mainTotal\":3000000,\"accessoryTotal\":1500000,\"itemTotal\":4500000,\"sortOrder\":8,\"numericId\":null}],\"summary\":{\"subtotalProductVnd\":202201000,\"subtotalAccessoryVnd\":51440000,\"totalVnd\":253641000,\"roundedTotalVnd\":253600000,\"depositVnd\":0,\"balanceVnd\":253600000}}",
+    "items": [
+      {
+        "id": "OWIN-BG-20260708-0001-D1",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "D1",
+        "itemName": "Cửa Thủy Lực Nhôm OWIN",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/D1/cover.png",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 4500000,
+        "productSubtotalVnd": 32400000,
+        "accessorySubtotalVnd": 27940000,
+        "itemTotalVnd": 60340000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Bản Lề Sàn Alder\",\"quantity\":0},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":0},{\"name\":\"Tay Nắm KOLN\",\"quantity\":0},{\"name\":\"Khóa Bi Ngang\",\"quantity\":0},{\"name\":\"Chốt Cánh Phụ\",\"quantity\":0},{\"name\":\"Hố Chốt Đồng\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000,\"quantity\":1,\"unitPriceVnd\":10000000,\"totalVnd\":10000000}",
+        "extraAccessories": "[{\"id\":\"2daca9e9-b45c-45d0-ba29-36f7652c57f7\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":0},{\"id\":\"b57b3d28-b56f-4d6b-a632-d858fd41889d\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":1},{\"id\":\"07396c55-21af-456e-a782-fc9742566e11\",\"name\":\"Phào Biệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.96,\"unitPrice\":1500000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":2}]",
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"D1\",\"quoteItemCode\":\"D1\",\"itemName\":\"Cửa Thủy Lực Nhôm OWIN\",\"productName\":\"Cửa Thủy Lực Nhôm OWIN\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/D1/cover.png\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/D1/cover.png\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":4500000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Khung Bao\",\"value\":\"50 X 200\",\"sortOrder\":1},{\"key\":\"Bản Cánh\",\"value\":\"60 X 180\",\"sortOrder\":2},{\"key\":\"Độ Dày\",\"value\":\"2 - 2.2 mm\",\"sortOrder\":3},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối + Fix Kính\",\"sortOrder\":4}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":2.4,\"heightM\":3,\"quantity\":1,\"calculatedQty\":7.2,\"unitPriceVnd\":4500000,\"lineTotalVnd\":32400000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":10000000,\"lineTotalVnd\":10000000,\"note\":\"Bản Lề Sàn Alder\\nNgỗng Trên Dưới\\nTay Nắm KOLN\\nKhóa Bi Ngang\\nChốt Cánh Phụ\\nHố Chốt Đồng\\nVật Tư Phụ\",\"sortOrder\":0},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Mặt Trong\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":1500000,\"lineTotalVnd\":1500000,\"note\":\"BO\",\"sortOrder\":1},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Nội Thất\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":3000000,\"lineTotalVnd\":3000000,\"note\":\"BO\",\"sortOrder\":2},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Biệt Thự\",\"quantityPerSet\":1,\"totalSet\":8.96,\"unitPriceVnd\":1500000,\"lineTotalVnd\":13440000,\"note\":\"METER\",\"sortOrder\":3}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Cửa Thủy Lực\\\",\\\"items\\\":[{\\\"name\\\":\\\"Bản Lề Sàn Alder\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Ngỗng Trên Dưới\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Tay Nắm KOLN\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Khóa Bi Ngang\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Chốt Cánh Phụ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Hố Chốt Đồng\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":1,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":10000000,\\\"total\\\":10000000,\\\"quantity\\\":1,\\\"unitPriceVnd\\\":10000000,\\\"totalVnd\\\":10000000}\",\"extraAccessories\":\"[{\\\"id\\\":\\\"2daca9e9-b45c-45d0-ba29-36f7652c57f7\\\",\\\"name\\\":\\\"Phào Mặt Trong\\\",\\\"unit\\\":\\\"BO\\\",\\\"quantity\\\":1,\\\"weight\\\":0,\\\"unitPrice\\\":1500000,\\\"amount\\\":1500000,\\\"total\\\":1500000,\\\"sortOrder\\\":0},{\\\"id\\\":\\\"b57b3d28-b56f-4d6b-a632-d858fd41889d\\\",\\\"name\\\":\\\"Phào Nội Thất\\\",\\\"unit\\\":\\\"BO\\\",\\\"quantity\\\":1,\\\"weight\\\":0,\\\"unitPrice\\\":3000000,\\\"amount\\\":3000000,\\\"total\\\":3000000,\\\"sortOrder\\\":1},{\\\"id\\\":\\\"07396c55-21af-456e-a782-fc9742566e11\\\",\\\"name\\\":\\\"Phào Biệt Thự\\\",\\\"unit\\\":\\\"METER\\\",\\\"quantity\\\":1,\\\"weight\\\":8.96,\\\"unitPrice\\\":1500000,\\\"amount\\\":13440000,\\\"total\\\":13440000,\\\"sortOrder\\\":2}]\",\"productSubtotalVnd\":32400000,\"accessorySubtotalVnd\":27940000,\"itemTotalVnd\":60340000,\"mainTotal\":32400000,\"accessoryTotal\":27940000,\"itemTotal\":60340000,\"sortOrder\":1,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 2.4,
+            "heightM": 3,
+            "quantity": 1,
+            "calculatedQty": 7.2,
+            "unitPriceVnd": 4500000,
+            "lineTotalVnd": 32400000,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+            "quantityPerSet": 1,
+            "totalSet": 1,
+            "unitPriceVnd": 10000000,
+            "lineTotalVnd": 10000000,
+            "note": "Bản Lề Sàn Alder\nNgỗng Trên Dưới\nTay Nắm KOLN\nKhóa Bi Ngang\nChốt Cánh Phụ\nHố Chốt Đồng\nVật Tư Phụ",
+            "sortOrder": 0
+          },
+          {
+            "name": "Phào Mặt Trong",
+            "quantityPerSet": 1,
+            "totalSet": 1,
+            "unitPriceVnd": 1500000,
+            "lineTotalVnd": 1500000,
+            "note": "BO",
+            "sortOrder": 1
+          },
+          {
+            "name": "Phào Nội Thất",
+            "quantityPerSet": 1,
+            "totalSet": 1,
+            "unitPriceVnd": 3000000,
+            "lineTotalVnd": 3000000,
+            "note": "BO",
+            "sortOrder": 2
+          },
+          {
+            "name": "Phào Biệt Thự",
+            "quantityPerSet": 1,
+            "totalSet": 8.96,
+            "unitPriceVnd": 1500000,
+            "lineTotalVnd": 13440000,
+            "note": "METER",
+            "sortOrder": 3
+          }
+        ],
+        "sortOrder": 0
+      },
+      {
+        "id": "OWIN-BG-20260708-0001-S1",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "S1",
+        "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/S1/cover.jpg",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5700000,
+        "productSubtotalVnd": 30745000,
+        "accessorySubtotalVnd": 1500000,
+        "itemTotalVnd": 32245000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1500000,\"quantity\":3,\"unitPriceVnd\":500000,\"totalVnd\":1500000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"S1\",\"quoteItemCode\":\"S1\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/S1/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/S1/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":2,\"heightM\":2.15,\"quantity\":1,\"calculatedQty\":4.3,\"unitPriceVnd\":7150000,\"lineTotalVnd\":30745000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":500000,\"lineTotalVnd\":1500000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1500000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1500000}\",\"extraAccessories\":null,\"productSubtotalVnd\":30745000,\"accessorySubtotalVnd\":1500000,\"itemTotalVnd\":32245000,\"mainTotal\":30745000,\"accessoryTotal\":1500000,\"itemTotal\":32245000,\"sortOrder\":2,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 2,
+            "heightM": 2.15,
+            "quantity": 1,
+            "calculatedQty": 4.3,
+            "unitPriceVnd": 7150000,
+            "lineTotalVnd": 30745000,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 3,
+            "totalSet": 3,
+            "unitPriceVnd": 500000,
+            "lineTotalVnd": 1500000,
+            "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "OWIN-BG-20260708-0001-D2",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "D2",
+        "itemName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/D2/cover.jpg",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5700000,
+        "productSubtotalVnd": 21060000,
+        "accessorySubtotalVnd": 2000000,
+        "itemTotalVnd": 23060000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Khóa Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":2000000,\"total\":2000000,\"quantity\":1,\"unitPriceVnd\":2000000,\"totalVnd\":2000000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"D2\",\"quoteItemCode\":\"D2\",\"itemName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/D2/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/D2/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"150 Liền Phào\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.6 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":2.4,\"heightM\":2.7,\"quantity\":1,\"calculatedQty\":6.48,\"unitPriceVnd\":3250000,\"lineTotalVnd\":21060000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":2000000,\"lineTotalVnd\":2000000,\"note\":\"Khóa Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":1,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":2000000,\\\"total\\\":2000000,\\\"quantity\\\":1,\\\"unitPriceVnd\\\":2000000,\\\"totalVnd\\\":2000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":21060000,\"accessorySubtotalVnd\":2000000,\"itemTotalVnd\":23060000,\"mainTotal\":21060000,\"accessoryTotal\":2000000,\"itemTotal\":23060000,\"sortOrder\":3,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 2.4,
+            "heightM": 2.7,
+            "quantity": 1,
+            "calculatedQty": 6.48,
+            "unitPriceVnd": 3250000,
+            "lineTotalVnd": 21060000,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 1,
+            "totalSet": 1,
+            "unitPriceVnd": 2000000,
+            "lineTotalVnd": 2000000,
+            "note": "Khóa Đơn Điểm\nBản Lề\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "OWIN-BG-20260708-0001-S2",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "S2",
+        "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/S2/cover.jpg",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5700000,
+        "productSubtotalVnd": 9741600,
+        "accessorySubtotalVnd": 1500000,
+        "itemTotalVnd": 11241600,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Khóa Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1500000,\"quantity\":3,\"unitPriceVnd\":500000,\"totalVnd\":1500000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"S2\",\"quoteItemCode\":\"S2\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/S2/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/S2/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":1.95,\"heightM\":1.85,\"quantity\":1,\"calculatedQty\":3.608,\"unitPriceVnd\":2700000,\"lineTotalVnd\":9741600,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":500000,\"lineTotalVnd\":1500000,\"note\":\"Khóa Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1500000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1500000}\",\"extraAccessories\":null,\"productSubtotalVnd\":9741600,\"accessorySubtotalVnd\":1500000,\"itemTotalVnd\":11241600,\"mainTotal\":9741600,\"accessoryTotal\":1500000,\"itemTotal\":11241600,\"sortOrder\":4,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 1.95,
+            "heightM": 1.85,
+            "quantity": 1,
+            "calculatedQty": 3.608,
+            "unitPriceVnd": 2700000,
+            "lineTotalVnd": 9741600,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 3,
+            "totalSet": 3,
+            "unitPriceVnd": 500000,
+            "lineTotalVnd": 1500000,
+            "note": "Khóa Đơn Điểm\nBản Lề\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "OWIN-BG-20260708-0001-D3",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "D3",
+        "itemName": "Cửa Đi Mở Quay Nhôm OWIN Hệ Khuôn Phào",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/D3/cover.jpg",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5700000,
+        "productSubtotalVnd": 57246000,
+        "accessorySubtotalVnd": 5000000,
+        "itemTotalVnd": 62246000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Khóa Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":5,\"unit\":\"BO\",\"unitPrice\":1000000,\"total\":5000000,\"quantity\":5,\"unitPriceVnd\":1000000,\"totalVnd\":5000000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"D3\",\"quoteItemCode\":\"D3\",\"itemName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/D3/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/D3/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"150 Liền Phào\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.6 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3},{\"key\":\"Khuôn Bao\",\"value\":\"Tường Đơn\",\"sortOrder\":4}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.94,\"heightM\":2.1,\"quantity\":5,\"calculatedQty\":9.87,\"unitPriceVnd\":5800000,\"lineTotalVnd\":57246000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":5,\"totalSet\":5,\"unitPriceVnd\":1000000,\"lineTotalVnd\":5000000,\"note\":\"Khóa Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":5,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":1000000,\\\"total\\\":5000000,\\\"quantity\\\":5,\\\"unitPriceVnd\\\":1000000,\\\"totalVnd\\\":5000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":57246000,\"accessorySubtotalVnd\":5000000,\"itemTotalVnd\":62246000,\"mainTotal\":57246000,\"accessoryTotal\":5000000,\"itemTotal\":62246000,\"sortOrder\":5,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 0.94,
+            "heightM": 2.1,
+            "quantity": 5,
+            "calculatedQty": 9.87,
+            "unitPriceVnd": 5800000,
+            "lineTotalVnd": 57246000,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 5,
+            "totalSet": 5,
+            "unitPriceVnd": 1000000,
+            "lineTotalVnd": 5000000,
+            "note": "Khóa Đơn Điểm\nBản Lề\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 4
+      },
+      {
+        "id": "OWIN-BG-20260708-0001-S3",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "S3",
+        "itemName": "Cửa Sổ Lùa Vip Nhôm OWIN",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/S3/cover.jpg",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5700000,
+        "productSubtotalVnd": 33720000,
+        "accessorySubtotalVnd": 9000000,
+        "itemTotalVnd": 42720000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Bánh Xe\",\"quantity\":0},{\"name\":\"Chốt Sập\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":18,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":9000000,\"quantity\":18,\"unitPriceVnd\":500000,\"totalVnd\":9000000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"S3\",\"quoteItemCode\":\"S3\",\"itemName\":\"Cửa Sổ Lùa Vip Nhôm OWIN\",\"productName\":\"Cửa Sổ Lùa Vip Nhôm OWIN\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/S3/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/S3/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"70\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":1.25,\"heightM\":1.25,\"quantity\":1,\"calculatedQty\":1.563,\"unitPriceVnd\":2500000,\"lineTotalVnd\":3907500,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.25,\"heightM\":1.26,\"quantity\":1,\"calculatedQty\":1.575,\"unitPriceVnd\":2500000,\"lineTotalVnd\":3937500,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.25,\"heightM\":1.3,\"quantity\":2,\"calculatedQty\":3.25,\"unitPriceVnd\":2500000,\"lineTotalVnd\":8125000,\"description\":null},{\"unit\":\"M2\",\"widthM\":0.7,\"heightM\":0.8,\"quantity\":1,\"calculatedQty\":0.56,\"unitPriceVnd\":2500000,\"lineTotalVnd\":1400000,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.2,\"heightM\":1.4,\"quantity\":1,\"calculatedQty\":1.68,\"unitPriceVnd\":2500000,\"lineTotalVnd\":4200000,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.2,\"heightM\":1.35,\"quantity\":3,\"calculatedQty\":4.86,\"unitPriceVnd\":2500000,\"lineTotalVnd\":12150000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":18,\"totalSet\":18,\"unitPriceVnd\":500000,\"lineTotalVnd\":9000000,\"note\":\"Bánh Xe\\nChốt Sập\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Bánh Xe\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Chốt Sập\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":18,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":9000000,\\\"quantity\\\":18,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":9000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":33720000,\"accessorySubtotalVnd\":9000000,\"itemTotalVnd\":42720000,\"mainTotal\":33720000,\"accessoryTotal\":9000000,\"itemTotal\":42720000,\"sortOrder\":6,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 1.25,
+            "heightM": 1.25,
+            "quantity": 1,
+            "calculatedQty": 1.563,
+            "unitPriceVnd": 2500000,
+            "lineTotalVnd": 3907500,
+            "description": null,
+            "sortOrder": 0
+          },
+          {
+            "unit": "M2",
+            "widthM": 1.25,
+            "heightM": 1.26,
+            "quantity": 1,
+            "calculatedQty": 1.575,
+            "unitPriceVnd": 2500000,
+            "lineTotalVnd": 3937500,
+            "description": null,
+            "sortOrder": 1
+          },
+          {
+            "unit": "M2",
+            "widthM": 1.25,
+            "heightM": 1.3,
+            "quantity": 2,
+            "calculatedQty": 3.25,
+            "unitPriceVnd": 2500000,
+            "lineTotalVnd": 8125000,
+            "description": null,
+            "sortOrder": 2
+          },
+          {
+            "unit": "M2",
+            "widthM": 0.7,
+            "heightM": 0.8,
+            "quantity": 1,
+            "calculatedQty": 0.56,
+            "unitPriceVnd": 2500000,
+            "lineTotalVnd": 1400000,
+            "description": null,
+            "sortOrder": 3
+          },
+          {
+            "unit": "M2",
+            "widthM": 1.2,
+            "heightM": 1.4,
+            "quantity": 1,
+            "calculatedQty": 1.68,
+            "unitPriceVnd": 2500000,
+            "lineTotalVnd": 4200000,
+            "description": null,
+            "sortOrder": 4
+          },
+          {
+            "unit": "M2",
+            "widthM": 1.2,
+            "heightM": 1.35,
+            "quantity": 3,
+            "calculatedQty": 4.86,
+            "unitPriceVnd": 2500000,
+            "lineTotalVnd": 12150000,
+            "description": null,
+            "sortOrder": 5
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 18,
+            "totalSet": 18,
+            "unitPriceVnd": 500000,
+            "lineTotalVnd": 9000000,
+            "note": "Bánh Xe\nChốt Sập\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 5
+      },
+      {
+        "id": "OWIN-BG-20260708-0001-DWC",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "DWC",
+        "itemName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/DWC/cover.jpg",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5700000,
+        "productSubtotalVnd": 14288400,
+        "accessorySubtotalVnd": 3000000,
+        "itemTotalVnd": 17288400,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Khóa Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":1000000,\"total\":3000000,\"quantity\":3,\"unitPriceVnd\":1000000,\"totalVnd\":3000000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"DWC\",\"quoteItemCode\":\"DWC\",\"itemName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/DWC/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/DWC/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.81,\"heightM\":2.1,\"quantity\":3,\"calculatedQty\":5.103,\"unitPriceVnd\":2800000,\"lineTotalVnd\":14288400,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":1000000,\"lineTotalVnd\":3000000,\"note\":\"Khóa Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":1000000,\\\"total\\\":3000000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":1000000,\\\"totalVnd\\\":3000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":14288400,\"accessorySubtotalVnd\":3000000,\"itemTotalVnd\":17288400,\"mainTotal\":14288400,\"accessoryTotal\":3000000,\"itemTotal\":17288400,\"sortOrder\":7,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 0.81,
+            "heightM": 2.1,
+            "quantity": 3,
+            "calculatedQty": 5.103,
+            "unitPriceVnd": 2800000,
+            "lineTotalVnd": 14288400,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 3,
+            "totalSet": 3,
+            "unitPriceVnd": 1000000,
+            "lineTotalVnd": 3000000,
+            "note": "Khóa Đơn Điểm\nBản Lề\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 6
+      },
+      {
+        "id": "OWIN-BG-20260708-0001-SWC",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "SWC",
+        "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+        "category": null,
+        "imagePath": null,
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5700000,
+        "productSubtotalVnd": 3000000,
+        "accessorySubtotalVnd": 1500000,
+        "itemTotalVnd": 4500000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đơn Điểm\",\"quantity\":0},{\"name\":\"Bản Lề\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1500000,\"quantity\":3,\"unitPriceVnd\":500000,\"totalVnd\":1500000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"SWC\",\"quoteItemCode\":\"SWC\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":null,\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":null,\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Trắc\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"BO\",\"widthM\":0.4,\"heightM\":0.3,\"quantity\":3,\"calculatedQty\":3,\"unitPriceVnd\":1000000,\"lineTotalVnd\":3000000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":500000,\"lineTotalVnd\":1500000,\"note\":\"Tay Đơn Điểm\\nBản Lề\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đơn Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1500000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1500000}\",\"extraAccessories\":null,\"productSubtotalVnd\":3000000,\"accessorySubtotalVnd\":1500000,\"itemTotalVnd\":4500000,\"mainTotal\":3000000,\"accessoryTotal\":1500000,\"itemTotal\":4500000,\"sortOrder\":8,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "BO",
+            "widthM": 0.4,
+            "heightM": 0.3,
+            "quantity": 3,
+            "calculatedQty": 3,
+            "unitPriceVnd": 1000000,
+            "lineTotalVnd": 3000000,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 3,
+            "totalSet": 3,
+            "unitPriceVnd": 500000,
+            "lineTotalVnd": 1500000,
+            "note": "Tay Đơn Điểm\nBản Lề\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 7
+      }
+    ],
+    "exports": [
+      {
+        "id": "OWIN-BG-20260708-0001-export-1",
+        "type": "docx",
+        "fileName": "Bao_gia_OWIN-BG-20260708-0001.docx",
+        "filePath": "quotes/2026/07/OWIN-BG-20260708-0001/exports/Bao_gia_OWIN-BG-20260708-0001.docx",
+        "createdAt": "2026-07-08T00:00:00.000Z"
+      }
+    ],
+    "folderPath": "quotes/2026/07/OWIN-BG-20260708-0001",
+    "deletedAt": null,
+    "createdAt": "2026-07-08T00:00:00.000Z",
+    "updatedAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "OWIN-BG-20260708-0002",
+    "code": "OWIN-BG-20260708-0002",
+    "customerId": null,
+    "customerName": "A Công Nguyên",
+    "customerPhone": "",
+    "customerEmail": null,
+    "customerAddress": "Nghi Lộc, Hà Tĩnh",
+    "quoteDate": "2026-07-08",
+    "depositVnd": 0,
+    "subtotalProductVnd": 135040900,
+    "subtotalAccessoryVnd": 43440000,
+    "totalVnd": 178480900,
+    "roundedTotalVnd": 178400000,
+    "balanceVnd": 178400000,
+    "status": "EXPORTED",
+    "snapshot": {
+      "quoteCode": "OWIN-BG-20260708-0002",
+      "createdAt": "2026-07-08T00:00:00.000Z",
+      "company": {
+        "name": "HOÀNG ANH OWIN",
+        "phone": "0799040616",
+        "email": "",
+        "address": "Tiên Điền – Nghi Xuân – Hà Tĩnh",
+        "logo": "owin-user-assets/logo/logo.webp"
+      },
+      "customerId": null,
+      "customerName": "A Công Nguyên",
+      "customerPhone": "",
+      "customerEmail": null,
+      "customerAddress": "Nghi Lộc, Hà Tĩnh",
+      "quoteDate": "2026-07-08",
+      "depositVnd": 0,
+      "items": [
+        {
+          "sourceType": "PRODUCT",
+          "productId": "20260615231227",
+          "productCode": "D1",
+          "quoteItemCode": "D1",
+          "itemName": "Cửa Thủy Lực Nhôm OWIN",
+          "productName": "Cửa Thủy Lực Nhôm OWIN",
+          "productType": null,
+          "category": "Cửa Chính",
+          "groupName": "Cửa Chính",
+          "coverImagePath": "imported-assets/quotes/draft/items/HM-01/cover.jpg",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/HM-01/cover.jpg",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 4500000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Lim",
+              "sortOrder": 0
+            },
+            {
+              "key": "Khung Bao",
+              "value": "50 X 200",
+              "sortOrder": 1
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "60 X 180",
+              "sortOrder": 2
+            },
+            {
+              "key": "Độ Dày",
+              "value": "2 mm",
+              "sortOrder": 3
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Tấm Liền Nguyên Khối + Fix Kính",
+              "sortOrder": 4
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 2.95,
+              "heightM": 2.85,
+              "quantity": 1,
+              "calculatedQty": 8.408,
+              "unitPriceVnd": 4500000,
+              "lineTotalVnd": 37836000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+              "quantityPerSet": 1,
+              "totalSet": 1,
+              "unitPriceVnd": 10000000,
+              "lineTotalVnd": 10000000,
+              "note": "Khóa Bi Ngang\nBản Lề Sàn\nTay Nắm\nNgỗng Trên Dưới\nVật Tư Phụ",
+              "sortOrder": 0
+            },
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Phào Biệt Thự",
+              "quantityPerSet": 1,
+              "totalSet": 8.4,
+              "unitPriceVnd": 1600000,
+              "lineTotalVnd": 13440000,
+              "note": "METER",
+              "sortOrder": 1
+            },
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Phào Mặt Trong",
+              "quantityPerSet": 1,
+              "totalSet": 1,
+              "unitPriceVnd": 1500000,
+              "lineTotalVnd": 1500000,
+              "note": "BO",
+              "sortOrder": 2
+            },
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Phào Nội Thất",
+              "quantityPerSet": 1,
+              "totalSet": 1,
+              "unitPriceVnd": 3000000,
+              "lineTotalVnd": 3000000,
+              "note": "BO",
+              "sortOrder": 3
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":0},{\"name\":\"Bản Lề Sàn\",\"quantity\":0},{\"name\":\"Tay Nắm\",\"quantity\":0},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000,\"quantity\":1,\"unitPriceVnd\":10000000,\"totalVnd\":10000000}",
+          "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào Biệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+          "productSubtotalVnd": 37836000,
+          "accessorySubtotalVnd": 27940000,
+          "itemTotalVnd": 65776000,
+          "mainTotal": 37836000,
+          "accessoryTotal": 27940000,
+          "itemTotal": 65776000,
+          "sortOrder": 1,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "SC",
+          "quoteItemCode": "SC",
+          "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+          "productName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/SC/cover.png",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/SC/cover.png",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 0,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Lim",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "100",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.4 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Tấm Liền Nguyên Khối",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 1.8,
+              "heightM": 1.98,
+              "quantity": 1,
+              "calculatedQty": 3.564,
+              "unitPriceVnd": 0,
+              "lineTotalVnd": 0,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 3,
+              "totalSet": 3,
+              "unitPriceVnd": 500000,
+              "lineTotalVnd": 1500000,
+              "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1500000,\"quantity\":3,\"unitPriceVnd\":500000,\"totalVnd\":1500000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 0,
+          "accessorySubtotalVnd": 1500000,
+          "itemTotalVnd": 1500000,
+          "mainTotal": 0,
+          "accessoryTotal": 1500000,
+          "itemTotal": 1500000,
+          "sortOrder": 2,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "SK",
+          "quoteItemCode": "SK",
+          "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+          "productName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/SK/cover.png",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/SK/cover.png",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5700000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Lim",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "100",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.4 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 0.82,
+              "heightM": 1.52,
+              "quantity": 2,
+              "calculatedQty": 2.493,
+              "unitPriceVnd": 5700000,
+              "lineTotalVnd": 14210100,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 2,
+              "totalSet": 2,
+              "unitPriceVnd": 500000,
+              "lineTotalVnd": 1000000,
+              "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":2,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1000000,\"quantity\":2,\"unitPriceVnd\":500000,\"totalVnd\":1000000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 14210100,
+          "accessorySubtotalVnd": 1000000,
+          "itemTotalVnd": 15210100,
+          "mainTotal": 14210100,
+          "accessoryTotal": 1000000,
+          "itemTotal": 15210100,
+          "sortOrder": 3,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "D2",
+          "quoteItemCode": "D2",
+          "itemName": "Cửa Đi Mở Quay 1 Cánh Nhôm OWIN Hệ Khuôn Phào",
+          "productName": "Cửa Đi Mở Quay 1 Cánh Nhôm OWIN Hệ Khuôn Phào",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": "imported-assets/quotes/draft/items/D3/cover.jpg",
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": "imported-assets/quotes/draft/items/D3/cover.jpg",
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 5800000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Lim",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "150 Liền Phào",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.6 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Tấm Liền Nguyên Khối",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 0.94,
+              "heightM": 2.35,
+              "quantity": 4,
+              "calculatedQty": 8.836,
+              "unitPriceVnd": 5800000,
+              "lineTotalVnd": 51248800,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 4,
+              "totalSet": 4,
+              "unitPriceVnd": 1000000,
+              "lineTotalVnd": 4000000,
+              "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":4,\"unit\":\"BO\",\"unitPrice\":1000000,\"total\":4000000,\"quantity\":4,\"unitPriceVnd\":1000000,\"totalVnd\":4000000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 51248800,
+          "accessorySubtotalVnd": 4000000,
+          "itemTotalVnd": 55248800,
+          "mainTotal": 51248800,
+          "accessoryTotal": 4000000,
+          "itemTotal": 55248800,
+          "sortOrder": 4,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "S2",
+          "quoteItemCode": "S2",
+          "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+          "productName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": null,
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": null,
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 2000000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Lim",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "76",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.2 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 0.8,
+              "heightM": 1.45,
+              "quantity": 4,
+              "calculatedQty": 4.64,
+              "unitPriceVnd": 2000000,
+              "lineTotalVnd": 9280000,
+              "description": null
+            },
+            {
+              "unit": "M2",
+              "widthM": 0.76,
+              "heightM": 1.3,
+              "quantity": 1,
+              "calculatedQty": 0.988,
+              "unitPriceVnd": 2000000,
+              "lineTotalVnd": 1976000,
+              "description": null
+            },
+            {
+              "unit": "M2",
+              "widthM": 0.75,
+              "heightM": 0.6,
+              "quantity": 2,
+              "calculatedQty": 0.9,
+              "unitPriceVnd": 2000000,
+              "lineTotalVnd": 1800000,
+              "description": null
+            },
+            {
+              "unit": "M2",
+              "widthM": 1.82,
+              "heightM": 1.5,
+              "quantity": 1,
+              "calculatedQty": 2.73,
+              "unitPriceVnd": 2000000,
+              "lineTotalVnd": 5460000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 10,
+              "totalSet": 10,
+              "unitPriceVnd": 500000,
+              "lineTotalVnd": 5000000,
+              "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":10,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":5000000,\"quantity\":10,\"unitPriceVnd\":500000,\"totalVnd\":5000000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 18516000,
+          "accessorySubtotalVnd": 5000000,
+          "itemTotalVnd": 23516000,
+          "mainTotal": 18516000,
+          "accessoryTotal": 5000000,
+          "itemTotal": 23516000,
+          "sortOrder": 5,
+          "numericId": null
+        },
+        {
+          "sourceType": "CUSTOM",
+          "productId": null,
+          "productCode": "DWC",
+          "quoteItemCode": "DWC",
+          "itemName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+          "productName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+          "productType": null,
+          "category": null,
+          "groupName": null,
+          "coverImagePath": null,
+          "categoryImagePath": null,
+          "categoryImage": null,
+          "companyLogo": null,
+          "image": null,
+          "unit": "M2",
+          "description": null,
+          "unitPriceVnd": 2100000,
+          "specs": [
+            {
+              "key": "Màu",
+              "value": "Vân Gỗ Lim",
+              "sortOrder": 0
+            },
+            {
+              "key": "Bản Cánh",
+              "value": "87",
+              "sortOrder": 1
+            },
+            {
+              "key": "Độ Dày",
+              "value": "1.2 mm",
+              "sortOrder": 2
+            },
+            {
+              "key": "Loại Kính",
+              "value": "Kính Dán An Toàn 6.38 mm",
+              "sortOrder": 3
+            }
+          ],
+          "dimensions": [
+            {
+              "unit": "M2",
+              "widthM": 0.75,
+              "heightM": 2.1,
+              "quantity": 4,
+              "calculatedQty": 6.3,
+              "unitPriceVnd": 2100000,
+              "lineTotalVnd": 13230000,
+              "description": null
+            }
+          ],
+          "accessories": [
+            {
+              "enabled": true,
+              "isEnabled": true,
+              "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+              "quantityPerSet": 4,
+              "totalSet": 4,
+              "unitPriceVnd": 1000000,
+              "lineTotalVnd": 4000000,
+              "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+              "sortOrder": 0
+            }
+          ],
+          "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":4,\"unit\":\"BO\",\"unitPrice\":1000000,\"total\":4000000,\"quantity\":4,\"unitPriceVnd\":1000000,\"totalVnd\":4000000}",
+          "extraAccessories": null,
+          "productSubtotalVnd": 13230000,
+          "accessorySubtotalVnd": 4000000,
+          "itemTotalVnd": 17230000,
+          "mainTotal": 13230000,
+          "accessoryTotal": 4000000,
+          "itemTotal": 17230000,
+          "sortOrder": 6,
+          "numericId": null
+        }
+      ],
+      "summary": {
+        "subtotalProductVnd": 135040900,
+        "subtotalAccessoryVnd": 43440000,
+        "totalVnd": 178480900,
+        "roundedTotalVnd": 178400000,
+        "depositVnd": 0,
+        "balanceVnd": 178400000
+      }
+    },
+    "snapshotJson": "{\"quoteCode\":\"OWIN-BG-20260708-0002\",\"createdAt\":\"2026-07-08T00:00:00.000Z\",\"company\":{\"name\":\"HOÀNG ANH OWIN\",\"phone\":\"0799040616\",\"email\":\"\",\"address\":\"Tiên Điền – Nghi Xuân – Hà Tĩnh\",\"logo\":\"owin-user-assets/logo/logo.webp\"},\"customerId\":null,\"customerName\":\"A Công Nguyên\",\"customerPhone\":\"\",\"customerEmail\":null,\"customerAddress\":\"Nghi Lộc, Hà Tĩnh\",\"quoteDate\":\"2026-07-08\",\"depositVnd\":0,\"items\":[{\"sourceType\":\"PRODUCT\",\"productId\":\"20260615231227\",\"productCode\":\"D1\",\"quoteItemCode\":\"D1\",\"itemName\":\"Cửa Thủy Lực Nhôm OWIN\",\"productName\":\"Cửa Thủy Lực Nhôm OWIN\",\"productType\":null,\"category\":\"Cửa Chính\",\"groupName\":\"Cửa Chính\",\"coverImagePath\":\"imported-assets/quotes/draft/items/HM-01/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/HM-01/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":4500000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Khung Bao\",\"value\":\"50 X 200\",\"sortOrder\":1},{\"key\":\"Bản Cánh\",\"value\":\"60 X 180\",\"sortOrder\":2},{\"key\":\"Độ Dày\",\"value\":\"2 mm\",\"sortOrder\":3},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối + Fix Kính\",\"sortOrder\":4}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":2.95,\"heightM\":2.85,\"quantity\":1,\"calculatedQty\":8.408,\"unitPriceVnd\":4500000,\"lineTotalVnd\":37836000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":10000000,\"lineTotalVnd\":10000000,\"note\":\"Khóa Bi Ngang\\nBản Lề Sàn\\nTay Nắm\\nNgỗng Trên Dưới\\nVật Tư Phụ\",\"sortOrder\":0},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Biệt Thự\",\"quantityPerSet\":1,\"totalSet\":8.4,\"unitPriceVnd\":1600000,\"lineTotalVnd\":13440000,\"note\":\"METER\",\"sortOrder\":1},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Mặt Trong\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":1500000,\"lineTotalVnd\":1500000,\"note\":\"BO\",\"sortOrder\":2},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Nội Thất\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":3000000,\"lineTotalVnd\":3000000,\"note\":\"BO\",\"sortOrder\":3}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Cửa Thủy Lực\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Bi Ngang\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Sàn\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Tay Nắm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Ngỗng Trên Dưới\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":1,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":10000000,\\\"total\\\":10000000,\\\"quantity\\\":1,\\\"unitPriceVnd\\\":10000000,\\\"totalVnd\\\":10000000}\",\"extraAccessories\":\"[{\\\"id\\\":\\\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\\\",\\\"name\\\":\\\"Phào Biệt Thự\\\",\\\"unit\\\":\\\"METER\\\",\\\"quantity\\\":1,\\\"weight\\\":8.4,\\\"unitPrice\\\":1600000,\\\"amount\\\":13440000,\\\"total\\\":13440000,\\\"sortOrder\\\":0},{\\\"id\\\":\\\"7a483927-4325-4f52-8aa1-c29376701ed6\\\",\\\"name\\\":\\\"Phào Mặt Trong\\\",\\\"unit\\\":\\\"BO\\\",\\\"quantity\\\":1,\\\"weight\\\":0,\\\"unitPrice\\\":1500000,\\\"amount\\\":1500000,\\\"total\\\":1500000,\\\"sortOrder\\\":1},{\\\"id\\\":\\\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\\\",\\\"name\\\":\\\"Phào Nội Thất\\\",\\\"unit\\\":\\\"BO\\\",\\\"quantity\\\":1,\\\"weight\\\":0,\\\"unitPrice\\\":3000000,\\\"amount\\\":3000000,\\\"total\\\":3000000,\\\"sortOrder\\\":2}]\",\"productSubtotalVnd\":37836000,\"accessorySubtotalVnd\":27940000,\"itemTotalVnd\":65776000,\"mainTotal\":37836000,\"accessoryTotal\":27940000,\"itemTotal\":65776000,\"sortOrder\":1,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"SC\",\"quoteItemCode\":\"SC\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/SC/cover.png\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/SC/cover.png\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":0,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":1.8,\"heightM\":1.98,\"quantity\":1,\"calculatedQty\":3.564,\"unitPriceVnd\":0,\"lineTotalVnd\":0,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":500000,\"lineTotalVnd\":1500000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1500000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1500000}\",\"extraAccessories\":null,\"productSubtotalVnd\":0,\"accessorySubtotalVnd\":1500000,\"itemTotalVnd\":1500000,\"mainTotal\":0,\"accessoryTotal\":1500000,\"itemTotal\":1500000,\"sortOrder\":2,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"SK\",\"quoteItemCode\":\"SK\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/SK/cover.png\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/SK/cover.png\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.82,\"heightM\":1.52,\"quantity\":2,\"calculatedQty\":2.493,\"unitPriceVnd\":5700000,\"lineTotalVnd\":14210100,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":2,\"totalSet\":2,\"unitPriceVnd\":500000,\"lineTotalVnd\":1000000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":2,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1000000,\\\"quantity\\\":2,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":14210100,\"accessorySubtotalVnd\":1000000,\"itemTotalVnd\":15210100,\"mainTotal\":14210100,\"accessoryTotal\":1000000,\"itemTotal\":15210100,\"sortOrder\":3,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"D2\",\"quoteItemCode\":\"D2\",\"itemName\":\"Cửa Đi Mở Quay 1 Cánh Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Đi Mở Quay 1 Cánh Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/D3/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/D3/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5800000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"150 Liền Phào\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.6 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.94,\"heightM\":2.35,\"quantity\":4,\"calculatedQty\":8.836,\"unitPriceVnd\":5800000,\"lineTotalVnd\":51248800,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":4,\"totalSet\":4,\"unitPriceVnd\":1000000,\"lineTotalVnd\":4000000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":4,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":1000000,\\\"total\\\":4000000,\\\"quantity\\\":4,\\\"unitPriceVnd\\\":1000000,\\\"totalVnd\\\":4000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":51248800,\"accessorySubtotalVnd\":4000000,\"itemTotalVnd\":55248800,\"mainTotal\":51248800,\"accessoryTotal\":4000000,\"itemTotal\":55248800,\"sortOrder\":4,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"S2\",\"quoteItemCode\":\"S2\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":null,\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":null,\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":2000000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"76\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.2 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.8,\"heightM\":1.45,\"quantity\":4,\"calculatedQty\":4.64,\"unitPriceVnd\":2000000,\"lineTotalVnd\":9280000,\"description\":null},{\"unit\":\"M2\",\"widthM\":0.76,\"heightM\":1.3,\"quantity\":1,\"calculatedQty\":0.988,\"unitPriceVnd\":2000000,\"lineTotalVnd\":1976000,\"description\":null},{\"unit\":\"M2\",\"widthM\":0.75,\"heightM\":0.6,\"quantity\":2,\"calculatedQty\":0.9,\"unitPriceVnd\":2000000,\"lineTotalVnd\":1800000,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.82,\"heightM\":1.5,\"quantity\":1,\"calculatedQty\":2.73,\"unitPriceVnd\":2000000,\"lineTotalVnd\":5460000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":10,\"totalSet\":10,\"unitPriceVnd\":500000,\"lineTotalVnd\":5000000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":10,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":5000000,\\\"quantity\\\":10,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":5000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":18516000,\"accessorySubtotalVnd\":5000000,\"itemTotalVnd\":23516000,\"mainTotal\":18516000,\"accessoryTotal\":5000000,\"itemTotal\":23516000,\"sortOrder\":5,\"numericId\":null},{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"DWC\",\"quoteItemCode\":\"DWC\",\"itemName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":null,\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":null,\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":2100000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"87\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.2 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.75,\"heightM\":2.1,\"quantity\":4,\"calculatedQty\":6.3,\"unitPriceVnd\":2100000,\"lineTotalVnd\":13230000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":4,\"totalSet\":4,\"unitPriceVnd\":1000000,\"lineTotalVnd\":4000000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":4,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":1000000,\\\"total\\\":4000000,\\\"quantity\\\":4,\\\"unitPriceVnd\\\":1000000,\\\"totalVnd\\\":4000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":13230000,\"accessorySubtotalVnd\":4000000,\"itemTotalVnd\":17230000,\"mainTotal\":13230000,\"accessoryTotal\":4000000,\"itemTotal\":17230000,\"sortOrder\":6,\"numericId\":null}],\"summary\":{\"subtotalProductVnd\":135040900,\"subtotalAccessoryVnd\":43440000,\"totalVnd\":178480900,\"roundedTotalVnd\":178400000,\"depositVnd\":0,\"balanceVnd\":178400000}}",
+    "items": [
+      {
+        "id": "OWIN-BG-20260708-0002-D1",
+        "sourceType": "PRODUCT",
+        "productId": "20260615231227",
+        "productCode": "D1",
+        "itemName": "Cửa Thủy Lực Nhôm OWIN",
+        "category": "Cửa Chính",
+        "imagePath": "imported-assets/quotes/draft/items/HM-01/cover.jpg",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 4500000,
+        "productSubtotalVnd": 37836000,
+        "accessorySubtotalVnd": 27940000,
+        "itemTotalVnd": 65776000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"items\":[{\"name\":\"Khóa Bi Ngang\",\"quantity\":0},{\"name\":\"Bản Lề Sàn\",\"quantity\":0},{\"name\":\"Tay Nắm\",\"quantity\":0},{\"name\":\"Ngỗng Trên Dưới\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":1,\"unit\":\"BO\",\"unitPrice\":10000000,\"total\":10000000,\"quantity\":1,\"unitPriceVnd\":10000000,\"totalVnd\":10000000}",
+        "extraAccessories": "[{\"id\":\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\",\"name\":\"Phào Biệt Thự\",\"unit\":\"METER\",\"quantity\":1,\"weight\":8.4,\"unitPrice\":1600000,\"amount\":13440000,\"total\":13440000,\"sortOrder\":0},{\"id\":\"7a483927-4325-4f52-8aa1-c29376701ed6\",\"name\":\"Phào Mặt Trong\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":1500000,\"amount\":1500000,\"total\":1500000,\"sortOrder\":1},{\"id\":\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\",\"name\":\"Phào Nội Thất\",\"unit\":\"BO\",\"quantity\":1,\"weight\":0,\"unitPrice\":3000000,\"amount\":3000000,\"total\":3000000,\"sortOrder\":2}]",
+        "snapshotJson": "{\"sourceType\":\"PRODUCT\",\"productId\":\"20260615231227\",\"productCode\":\"D1\",\"quoteItemCode\":\"D1\",\"itemName\":\"Cửa Thủy Lực Nhôm OWIN\",\"productName\":\"Cửa Thủy Lực Nhôm OWIN\",\"productType\":null,\"category\":\"Cửa Chính\",\"groupName\":\"Cửa Chính\",\"coverImagePath\":\"imported-assets/quotes/draft/items/HM-01/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/HM-01/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":4500000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Khung Bao\",\"value\":\"50 X 200\",\"sortOrder\":1},{\"key\":\"Bản Cánh\",\"value\":\"60 X 180\",\"sortOrder\":2},{\"key\":\"Độ Dày\",\"value\":\"2 mm\",\"sortOrder\":3},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối + Fix Kính\",\"sortOrder\":4}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":2.95,\"heightM\":2.85,\"quantity\":1,\"calculatedQty\":8.408,\"unitPriceVnd\":4500000,\"lineTotalVnd\":37836000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Cửa Thủy Lực\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":10000000,\"lineTotalVnd\":10000000,\"note\":\"Khóa Bi Ngang\\nBản Lề Sàn\\nTay Nắm\\nNgỗng Trên Dưới\\nVật Tư Phụ\",\"sortOrder\":0},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Biệt Thự\",\"quantityPerSet\":1,\"totalSet\":8.4,\"unitPriceVnd\":1600000,\"lineTotalVnd\":13440000,\"note\":\"METER\",\"sortOrder\":1},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Mặt Trong\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":1500000,\"lineTotalVnd\":1500000,\"note\":\"BO\",\"sortOrder\":2},{\"enabled\":true,\"isEnabled\":true,\"name\":\"Phào Nội Thất\",\"quantityPerSet\":1,\"totalSet\":1,\"unitPriceVnd\":3000000,\"lineTotalVnd\":3000000,\"note\":\"BO\",\"sortOrder\":3}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Cửa Thủy Lực\\\",\\\"items\\\":[{\\\"name\\\":\\\"Khóa Bi Ngang\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Sàn\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Tay Nắm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Ngỗng Trên Dưới\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":1,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":10000000,\\\"total\\\":10000000,\\\"quantity\\\":1,\\\"unitPriceVnd\\\":10000000,\\\"totalVnd\\\":10000000}\",\"extraAccessories\":\"[{\\\"id\\\":\\\"d3fb800f-da02-464d-95f2-3f2b80cc38a8\\\",\\\"name\\\":\\\"Phào Biệt Thự\\\",\\\"unit\\\":\\\"METER\\\",\\\"quantity\\\":1,\\\"weight\\\":8.4,\\\"unitPrice\\\":1600000,\\\"amount\\\":13440000,\\\"total\\\":13440000,\\\"sortOrder\\\":0},{\\\"id\\\":\\\"7a483927-4325-4f52-8aa1-c29376701ed6\\\",\\\"name\\\":\\\"Phào Mặt Trong\\\",\\\"unit\\\":\\\"BO\\\",\\\"quantity\\\":1,\\\"weight\\\":0,\\\"unitPrice\\\":1500000,\\\"amount\\\":1500000,\\\"total\\\":1500000,\\\"sortOrder\\\":1},{\\\"id\\\":\\\"90e04d5f-605d-4cb6-b1a0-3844b9c756fd\\\",\\\"name\\\":\\\"Phào Nội Thất\\\",\\\"unit\\\":\\\"BO\\\",\\\"quantity\\\":1,\\\"weight\\\":0,\\\"unitPrice\\\":3000000,\\\"amount\\\":3000000,\\\"total\\\":3000000,\\\"sortOrder\\\":2}]\",\"productSubtotalVnd\":37836000,\"accessorySubtotalVnd\":27940000,\"itemTotalVnd\":65776000,\"mainTotal\":37836000,\"accessoryTotal\":27940000,\"itemTotal\":65776000,\"sortOrder\":1,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 2.95,
+            "heightM": 2.85,
+            "quantity": 1,
+            "calculatedQty": 8.408,
+            "unitPriceVnd": 4500000,
+            "lineTotalVnd": 37836000,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Cửa Thủy Lực",
+            "quantityPerSet": 1,
+            "totalSet": 1,
+            "unitPriceVnd": 10000000,
+            "lineTotalVnd": 10000000,
+            "note": "Khóa Bi Ngang\nBản Lề Sàn\nTay Nắm\nNgỗng Trên Dưới\nVật Tư Phụ",
+            "sortOrder": 0
+          },
+          {
+            "name": "Phào Biệt Thự",
+            "quantityPerSet": 1,
+            "totalSet": 8.4,
+            "unitPriceVnd": 1600000,
+            "lineTotalVnd": 13440000,
+            "note": "METER",
+            "sortOrder": 1
+          },
+          {
+            "name": "Phào Mặt Trong",
+            "quantityPerSet": 1,
+            "totalSet": 1,
+            "unitPriceVnd": 1500000,
+            "lineTotalVnd": 1500000,
+            "note": "BO",
+            "sortOrder": 2
+          },
+          {
+            "name": "Phào Nội Thất",
+            "quantityPerSet": 1,
+            "totalSet": 1,
+            "unitPriceVnd": 3000000,
+            "lineTotalVnd": 3000000,
+            "note": "BO",
+            "sortOrder": 3
+          }
+        ],
+        "sortOrder": 0
+      },
+      {
+        "id": "OWIN-BG-20260708-0002-SC",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "SC",
+        "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/SC/cover.png",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 0,
+        "productSubtotalVnd": 0,
+        "accessorySubtotalVnd": 1500000,
+        "itemTotalVnd": 1500000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":3,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1500000,\"quantity\":3,\"unitPriceVnd\":500000,\"totalVnd\":1500000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"SC\",\"quoteItemCode\":\"SC\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/SC/cover.png\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/SC/cover.png\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":0,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":1.8,\"heightM\":1.98,\"quantity\":1,\"calculatedQty\":3.564,\"unitPriceVnd\":0,\"lineTotalVnd\":0,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":3,\"totalSet\":3,\"unitPriceVnd\":500000,\"lineTotalVnd\":1500000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":3,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1500000,\\\"quantity\\\":3,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1500000}\",\"extraAccessories\":null,\"productSubtotalVnd\":0,\"accessorySubtotalVnd\":1500000,\"itemTotalVnd\":1500000,\"mainTotal\":0,\"accessoryTotal\":1500000,\"itemTotal\":1500000,\"sortOrder\":2,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 1.8,
+            "heightM": 1.98,
+            "quantity": 1,
+            "calculatedQty": 3.564,
+            "unitPriceVnd": 0,
+            "lineTotalVnd": 0,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 3,
+            "totalSet": 3,
+            "unitPriceVnd": 500000,
+            "lineTotalVnd": 1500000,
+            "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 1
+      },
+      {
+        "id": "OWIN-BG-20260708-0002-SK",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "SK",
+        "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/SK/cover.png",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5700000,
+        "productSubtotalVnd": 14210100,
+        "accessorySubtotalVnd": 1000000,
+        "itemTotalVnd": 15210100,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":2,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":1000000,\"quantity\":2,\"unitPriceVnd\":500000,\"totalVnd\":1000000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"SK\",\"quoteItemCode\":\"SK\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/SK/cover.png\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/SK/cover.png\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5700000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"100\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.4 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.82,\"heightM\":1.52,\"quantity\":2,\"calculatedQty\":2.493,\"unitPriceVnd\":5700000,\"lineTotalVnd\":14210100,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":2,\"totalSet\":2,\"unitPriceVnd\":500000,\"lineTotalVnd\":1000000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":2,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":1000000,\\\"quantity\\\":2,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":1000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":14210100,\"accessorySubtotalVnd\":1000000,\"itemTotalVnd\":15210100,\"mainTotal\":14210100,\"accessoryTotal\":1000000,\"itemTotal\":15210100,\"sortOrder\":3,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 0.82,
+            "heightM": 1.52,
+            "quantity": 2,
+            "calculatedQty": 2.493,
+            "unitPriceVnd": 5700000,
+            "lineTotalVnd": 14210100,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 2,
+            "totalSet": 2,
+            "unitPriceVnd": 500000,
+            "lineTotalVnd": 1000000,
+            "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 2
+      },
+      {
+        "id": "OWIN-BG-20260708-0002-D2",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "D2",
+        "itemName": "Cửa Đi Mở Quay 1 Cánh Nhôm OWIN Hệ Khuôn Phào",
+        "category": null,
+        "imagePath": "imported-assets/quotes/draft/items/D3/cover.jpg",
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 5800000,
+        "productSubtotalVnd": 51248800,
+        "accessorySubtotalVnd": 4000000,
+        "itemTotalVnd": 55248800,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":4,\"unit\":\"BO\",\"unitPrice\":1000000,\"total\":4000000,\"quantity\":4,\"unitPriceVnd\":1000000,\"totalVnd\":4000000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"D2\",\"quoteItemCode\":\"D2\",\"itemName\":\"Cửa Đi Mở Quay 1 Cánh Nhôm OWIN Hệ Khuôn Phào\",\"productName\":\"Cửa Đi Mở Quay 1 Cánh Nhôm OWIN Hệ Khuôn Phào\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":\"imported-assets/quotes/draft/items/D3/cover.jpg\",\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":\"imported-assets/quotes/draft/items/D3/cover.jpg\",\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":5800000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"150 Liền Phào\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.6 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Tấm Liền Nguyên Khối\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.94,\"heightM\":2.35,\"quantity\":4,\"calculatedQty\":8.836,\"unitPriceVnd\":5800000,\"lineTotalVnd\":51248800,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":4,\"totalSet\":4,\"unitPriceVnd\":1000000,\"lineTotalVnd\":4000000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":4,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":1000000,\\\"total\\\":4000000,\\\"quantity\\\":4,\\\"unitPriceVnd\\\":1000000,\\\"totalVnd\\\":4000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":51248800,\"accessorySubtotalVnd\":4000000,\"itemTotalVnd\":55248800,\"mainTotal\":51248800,\"accessoryTotal\":4000000,\"itemTotal\":55248800,\"sortOrder\":4,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 0.94,
+            "heightM": 2.35,
+            "quantity": 4,
+            "calculatedQty": 8.836,
+            "unitPriceVnd": 5800000,
+            "lineTotalVnd": 51248800,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 4,
+            "totalSet": 4,
+            "unitPriceVnd": 1000000,
+            "lineTotalVnd": 4000000,
+            "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 3
+      },
+      {
+        "id": "OWIN-BG-20260708-0002-S2",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "S2",
+        "itemName": "Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55",
+        "category": null,
+        "imagePath": null,
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 2000000,
+        "productSubtotalVnd": 18516000,
+        "accessorySubtotalVnd": 5000000,
+        "itemTotalVnd": 23516000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":10,\"unit\":\"BO\",\"unitPrice\":500000,\"total\":5000000,\"quantity\":10,\"unitPriceVnd\":500000,\"totalVnd\":5000000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"S2\",\"quoteItemCode\":\"S2\",\"itemName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Sổ Mở Quay/Hất Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":null,\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":null,\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":2000000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"76\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.2 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.8,\"heightM\":1.45,\"quantity\":4,\"calculatedQty\":4.64,\"unitPriceVnd\":2000000,\"lineTotalVnd\":9280000,\"description\":null},{\"unit\":\"M2\",\"widthM\":0.76,\"heightM\":1.3,\"quantity\":1,\"calculatedQty\":0.988,\"unitPriceVnd\":2000000,\"lineTotalVnd\":1976000,\"description\":null},{\"unit\":\"M2\",\"widthM\":0.75,\"heightM\":0.6,\"quantity\":2,\"calculatedQty\":0.9,\"unitPriceVnd\":2000000,\"lineTotalVnd\":1800000,\"description\":null},{\"unit\":\"M2\",\"widthM\":1.82,\"heightM\":1.5,\"quantity\":1,\"calculatedQty\":2.73,\"unitPriceVnd\":2000000,\"lineTotalVnd\":5460000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":10,\"totalSet\":10,\"unitPriceVnd\":500000,\"lineTotalVnd\":5000000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":10,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":500000,\\\"total\\\":5000000,\\\"quantity\\\":10,\\\"unitPriceVnd\\\":500000,\\\"totalVnd\\\":5000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":18516000,\"accessorySubtotalVnd\":5000000,\"itemTotalVnd\":23516000,\"mainTotal\":18516000,\"accessoryTotal\":5000000,\"itemTotal\":23516000,\"sortOrder\":5,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 0.8,
+            "heightM": 1.45,
+            "quantity": 4,
+            "calculatedQty": 4.64,
+            "unitPriceVnd": 2000000,
+            "lineTotalVnd": 9280000,
+            "description": null,
+            "sortOrder": 0
+          },
+          {
+            "unit": "M2",
+            "widthM": 0.76,
+            "heightM": 1.3,
+            "quantity": 1,
+            "calculatedQty": 0.988,
+            "unitPriceVnd": 2000000,
+            "lineTotalVnd": 1976000,
+            "description": null,
+            "sortOrder": 1
+          },
+          {
+            "unit": "M2",
+            "widthM": 0.75,
+            "heightM": 0.6,
+            "quantity": 2,
+            "calculatedQty": 0.9,
+            "unitPriceVnd": 2000000,
+            "lineTotalVnd": 1800000,
+            "description": null,
+            "sortOrder": 2
+          },
+          {
+            "unit": "M2",
+            "widthM": 1.82,
+            "heightM": 1.5,
+            "quantity": 1,
+            "calculatedQty": 2.73,
+            "unitPriceVnd": 2000000,
+            "lineTotalVnd": 5460000,
+            "description": null,
+            "sortOrder": 3
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 10,
+            "totalSet": 10,
+            "unitPriceVnd": 500000,
+            "lineTotalVnd": 5000000,
+            "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 4
+      },
+      {
+        "id": "OWIN-BG-20260708-0002-DWC",
+        "sourceType": "CUSTOM",
+        "productId": null,
+        "productCode": "DWC",
+        "itemName": "Cửa Đi Mở Quay Nhôm OWIN Hệ 55",
+        "category": null,
+        "imagePath": null,
+        "unit": "M2",
+        "description": null,
+        "unitPriceVnd": 2100000,
+        "productSubtotalVnd": 13230000,
+        "accessorySubtotalVnd": 4000000,
+        "itemTotalVnd": 17230000,
+        "fixedAccessoryPackage": "{\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"items\":[{\"name\":\"Tay Đa Điểm\",\"quantity\":0},{\"name\":\"Bản Lề Chữ A\",\"quantity\":0},{\"name\":\"Bộ Chuyển Động 5 Thứ\",\"quantity\":0},{\"name\":\"Vật Tư Phụ\",\"quantity\":0}],\"packageQuantity\":4,\"unit\":\"BO\",\"unitPrice\":1000000,\"total\":4000000,\"quantity\":4,\"unitPriceVnd\":1000000,\"totalVnd\":4000000}",
+        "extraAccessories": null,
+        "snapshotJson": "{\"sourceType\":\"CUSTOM\",\"productId\":null,\"productCode\":\"DWC\",\"quoteItemCode\":\"DWC\",\"itemName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productName\":\"Cửa Đi Mở Quay Nhôm OWIN Hệ 55\",\"productType\":null,\"category\":null,\"groupName\":null,\"coverImagePath\":null,\"categoryImagePath\":null,\"categoryImage\":null,\"companyLogo\":null,\"image\":null,\"unit\":\"M2\",\"description\":null,\"unitPriceVnd\":2100000,\"specs\":[{\"key\":\"Màu\",\"value\":\"Vân Gỗ Lim\",\"sortOrder\":0},{\"key\":\"Bản Cánh\",\"value\":\"87\",\"sortOrder\":1},{\"key\":\"Độ Dày\",\"value\":\"1.2 mm\",\"sortOrder\":2},{\"key\":\"Loại Kính\",\"value\":\"Kính Dán An Toàn 6.38 mm\",\"sortOrder\":3}],\"dimensions\":[{\"unit\":\"M2\",\"widthM\":0.75,\"heightM\":2.1,\"quantity\":4,\"calculatedQty\":6.3,\"unitPriceVnd\":2100000,\"lineTotalVnd\":13230000,\"description\":null}],\"accessories\":[{\"enabled\":true,\"isEnabled\":true,\"name\":\"Bộ Phụ Kiện Kinlong Chính Hãng\",\"quantityPerSet\":4,\"totalSet\":4,\"unitPriceVnd\":1000000,\"lineTotalVnd\":4000000,\"note\":\"Tay Đa Điểm\\nBản Lề Chữ A\\nBộ Chuyển Động 5 Thứ\\nVật Tư Phụ\",\"sortOrder\":0}],\"fixedAccessoryPackage\":\"{\\\"name\\\":\\\"Bộ Phụ Kiện Kinlong Chính Hãng\\\",\\\"items\\\":[{\\\"name\\\":\\\"Tay Đa Điểm\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bản Lề Chữ A\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Bộ Chuyển Động 5 Thứ\\\",\\\"quantity\\\":0},{\\\"name\\\":\\\"Vật Tư Phụ\\\",\\\"quantity\\\":0}],\\\"packageQuantity\\\":4,\\\"unit\\\":\\\"BO\\\",\\\"unitPrice\\\":1000000,\\\"total\\\":4000000,\\\"quantity\\\":4,\\\"unitPriceVnd\\\":1000000,\\\"totalVnd\\\":4000000}\",\"extraAccessories\":null,\"productSubtotalVnd\":13230000,\"accessorySubtotalVnd\":4000000,\"itemTotalVnd\":17230000,\"mainTotal\":13230000,\"accessoryTotal\":4000000,\"itemTotal\":17230000,\"sortOrder\":6,\"numericId\":null}",
+        "dimensions": [
+          {
+            "unit": "M2",
+            "widthM": 0.75,
+            "heightM": 2.1,
+            "quantity": 4,
+            "calculatedQty": 6.3,
+            "unitPriceVnd": 2100000,
+            "lineTotalVnd": 13230000,
+            "description": null,
+            "sortOrder": 0
+          }
+        ],
+        "accessories": [
+          {
+            "name": "Bộ Phụ Kiện Kinlong Chính Hãng",
+            "quantityPerSet": 4,
+            "totalSet": 4,
+            "unitPriceVnd": 1000000,
+            "lineTotalVnd": 4000000,
+            "note": "Tay Đa Điểm\nBản Lề Chữ A\nBộ Chuyển Động 5 Thứ\nVật Tư Phụ",
+            "sortOrder": 0
+          }
+        ],
+        "sortOrder": 5
+      }
+    ],
+    "exports": [
+      {
+        "id": "OWIN-BG-20260708-0002-export-1",
+        "type": "docx",
+        "fileName": "Bao_gia_OWIN-BG-20260708-0002.docx",
+        "filePath": "quotes/2026/07/OWIN-BG-20260708-0002/exports/Bao_gia_OWIN-BG-20260708-0002.docx",
+        "createdAt": "2026-07-08T00:00:00.000Z"
+      }
+    ],
+    "folderPath": "quotes/2026/07/OWIN-BG-20260708-0002",
+    "deletedAt": null,
+    "createdAt": "2026-07-08T00:00:00.000Z",
+    "updatedAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
     "id": "OWIN-BG-20260707-0001",
     "code": "OWIN-BG-20260707-0001",
     "customerId": null,

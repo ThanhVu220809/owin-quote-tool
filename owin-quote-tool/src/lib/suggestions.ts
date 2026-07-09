@@ -62,37 +62,39 @@ function typeFromPath(path: string): string {
   return path.split('/').pop()?.replace(/\.json$/, '') || '';
 }
 
+async function seedSuggestionValue(
+  type: string,
+  value: unknown,
+  usedCount: number,
+  createdAt: string,
+  overwriteExisting: boolean,
+): Promise<void> {
+  const text = normalizeValue(value);
+  if (!type || !text) return;
+  const id = suggestionId(type, text);
+  if (!overwriteExisting && await suggestionStore.getItem<SuggestionRecord>(id)) return;
+  await suggestionStore.setItem<SuggestionRecord>(id, {
+    id,
+    type,
+    value: text,
+    usedCount,
+    createdAt,
+    updatedAt: createdAt,
+  });
+}
+
 export async function seedSuggestionsIfEmpty(): Promise<void> {
   const seeded = await suggestionStore.getItem<boolean>(SEED_KEY);
-  if (seeded) return;
   const createdAt = nowIso();
   for (const [path, values] of Object.entries(seedModules)) {
     const type = typeFromPath(path);
     for (const value of values || []) {
-      const text = normalizeValue(value);
-      if (!type || !text) continue;
-      await suggestionStore.setItem<SuggestionRecord>(suggestionId(type, text), {
-        id: suggestionId(type, text),
-        type,
-        value: text,
-        usedCount: 1,
-        createdAt,
-        updatedAt: createdAt,
-      });
+      await seedSuggestionValue(type, value, 1, createdAt, false);
     }
   }
   for (const [type, values] of Object.entries(importedSuggestions as Record<string, string[]>)) {
     for (const value of values || []) {
-      const text = normalizeValue(value);
-      if (!type || !text) continue;
-      await suggestionStore.setItem<SuggestionRecord>(suggestionId(type, text), {
-        id: suggestionId(type, text),
-        type,
-        value: text,
-        usedCount: 2,
-        createdAt,
-        updatedAt: createdAt,
-      });
+      await seedSuggestionValue(type, value, 2, createdAt, !seeded);
     }
   }
   await suggestionStore.setItem(SEED_KEY, true);

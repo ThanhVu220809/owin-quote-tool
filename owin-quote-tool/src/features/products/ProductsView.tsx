@@ -272,7 +272,7 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         </div>
         <div className="product-header-actions">
           <button className="btn btn-ghost" onClick={onOpenCatalogue}>
-            <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> Catalogue
+            <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> Bảng giá
           </button>
           <button className="btn btn-primary" onClick={openNew}>
             <Plus size={18} style={{ verticalAlign: '-3px' }} /> Thêm sản phẩm

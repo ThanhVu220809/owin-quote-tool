@@ -298,8 +298,6 @@ export async function seedIfEmpty(): Promise<void> {
 
 async function importReferenceProductsIfNeeded(): Promise<void> {
   if ((importedProducts as ProductInput[]).length === 0) return;
-  const imported = await productStore.getItem<boolean>(REFERENCE_SEED_FLAG);
-  if (imported) return;
 
   const existing = await getAllProductsRaw();
   const existingIds = new Set(existing.map((product) => product.id));

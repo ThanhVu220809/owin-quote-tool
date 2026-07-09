@@ -5,8 +5,10 @@ import {
   deleteQuote,
   getAllQuotes,
   getQuote,
+  quoteStore,
   saveQuoteRecord,
 } from './quoteStore';
+import importedQuotes from '@/data/imported/quotes.json';
 
 beforeEach(async () => {
   await _clearQuotes();
@@ -50,5 +52,34 @@ describe('QuoteRecord storage', () => {
 
     expect((await getAllQuotes()).find((item) => item.id === quote.id)).toBeUndefined();
     expect((await getQuote(quote.id))?.deletedAt).toEqual(expect.any(String));
+  });
+
+  it('imports missing reference quotes even when an older seed flag already exists', async () => {
+    await quoteStore.setItem('__reference_quotes_seed_v1__', true);
+
+    const quotes = await getAllQuotes();
+
+    expect(quotes.length).toBe((importedQuotes as Array<{ id: string }>).length);
+    expect(quotes.map((quote) => quote.code)).toContain('OWIN-BG-20260708-0001');
+    expect(quotes.map((quote) => quote.code)).toContain('OWIN-BG-20260708-0002');
+  });
+
+  it('does not overwrite an existing user quote while importing missing reference quotes', async () => {
+    const reference = (importedQuotes as Array<{ id: string; code: string }>)[0];
+    await saveQuoteRecord({
+      id: reference.id,
+      code: reference.code,
+      customerName: 'User edited customer',
+      customerPhone: '',
+      customerAddress: '',
+      status: 'SAVED',
+      items: [],
+    });
+    await quoteStore.setItem('__reference_quotes_seed_v1__', true);
+
+    const quotes = await getAllQuotes();
+
+    expect(quotes.length).toBe((importedQuotes as Array<{ id: string }>).length);
+    expect((await getQuote(reference.id))?.customerName).toBe('User edited customer');
   });
 });

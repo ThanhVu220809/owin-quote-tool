@@ -204,8 +204,6 @@ export async function getAllQuotesRaw(): Promise<QuoteRecord[]> {
 
 async function seedImportedQuotesIfNeeded(): Promise<void> {
   if ((importedQuotes as QuoteInput[]).length === 0) return;
-  const seeded = await quoteStore.getItem<boolean>(REFERENCE_QUOTE_SEED_FLAG);
-  if (seeded) return;
 
   const existingCodes = new Set<string>();
   const existingIds = new Set<string>();
@@ -223,6 +221,7 @@ async function seedImportedQuotesIfNeeded(): Promise<void> {
     existingIds.add(record.id);
     existingCodes.add(record.code);
   }
+
   await quoteStore.setItem(REFERENCE_QUOTE_SEED_FLAG, true);
 }
 
