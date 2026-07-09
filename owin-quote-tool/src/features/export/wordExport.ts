@@ -228,6 +228,32 @@ function fillImageToken(rowXml: string, token: string, drawingXml: string | null
   return rowXml.split(token).join('');
 }
 
+function upsertCellProperty(cellXml: string, propertyXml: string, propertyName: string): string {
+  const propertyPattern = new RegExp(`<w:${propertyName}\\b[^>]*\\/>`, 'g');
+  let next = cellXml.replace(propertyPattern, '');
+  if (/<w:tcPr\b[^>]*>/.test(next)) {
+    return next.replace(/<\/w:tcPr>/, `${propertyXml}</w:tcPr>`);
+  }
+  return next.replace(/<w:tc\b([^>]*)>/, `<w:tc$1><w:tcPr>${propertyXml}</w:tcPr>`);
+}
+
+function clearCellBody(cellXml: string): string {
+  const openMatch = cellXml.match(/^<w:tc\b[^>]*>/)?.[0] || '<w:tc>';
+  const propsMatch = cellXml.match(/<w:tcPr\b[\s\S]*?<\/w:tcPr>/)?.[0] || '';
+  return `${openMatch}${propsMatch}<w:p/></w:tc>`;
+}
+
+function applyQuoteIdentityMerge(rowXml: string, mode: 'restart' | 'continue'): string {
+  let cellIndex = 0;
+  return rowXml.replace(/<w:tc\b[\s\S]*?<\/w:tc>/g, (cellXml) => {
+    const currentIndex = cellIndex;
+    cellIndex += 1;
+    if (currentIndex > 2) return cellXml;
+    const merged = upsertCellProperty(cellXml, `<w:vMerge w:val="${mode}"/>`, 'vMerge');
+    return mode === 'continue' ? clearCellBody(merged) : merged;
+  });
+}
+
 function quoteDescription(item: CalculatedQuote['items'][number], lineDescription?: string | null): string {
   return [
     item.itemName,
@@ -334,9 +360,10 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
       previousGroup = groupName;
     }
 
-    const imageXml = await embedImage(item.image || item.coverImagePath, { widthPx: 112, heightPx: 82 });
+    const itemRows: string[] = [];
+    const imageXml = await embedImage(item.image || item.coverImagePath, { widthPx: 150, heightPx: 112 });
     item.dimensions.forEach((line, lineIndex) => {
-      rows.push(renderQuoteProductRow(templates.product.row, item, line, {
+      itemRows.push(renderQuoteProductRow(templates.product.row, item, line, {
         stt: lineIndex === 0 ? String(itemIndex + 1) : '',
         code: lineIndex === 0 ? item.quoteItemCode || item.productCode : '',
         drawingXml: lineIndex === 0 ? imageXml : null,
@@ -346,24 +373,24 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
 
     const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
     if (fixed && templates.fixedSet) {
-      rows.push(renderQuoteFixedSetRow(templates.fixedSet.row, fixed));
+      itemRows.push(renderQuoteFixedSetRow(templates.fixedSet.row, fixed));
       if (templates.fixedItem && Array.isArray(fixed.items)) {
         fixed.items
           .map((entry) => entry as Record<string, unknown>)
           .filter((entry) => String(entry.name || '').trim())
-          .forEach((entry) => rows.push(renderQuoteFixedItemRow(templates.fixedItem!.row, entry.name, entry.quantity)));
+          .forEach((entry) => itemRows.push(renderQuoteFixedItemRow(templates.fixedItem!.row, entry.name, entry.quantity)));
       }
     } else if (templates.fixedSet) {
       item.accessories
         .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
         .forEach((accessory) => {
-          rows.push(renderLegacyAccessoryAsFixed(templates.fixedSet!.row, accessory));
+          itemRows.push(renderLegacyAccessoryAsFixed(templates.fixedSet!.row, accessory));
           if (templates.fixedItem && accessory.note) {
             accessory.note
               .split(/\r?\n|,/)
               .map((line) => line.trim())
               .filter(Boolean)
-              .forEach((line) => rows.push(renderQuoteFixedItemRow(templates.fixedItem!.row, line, '')));
+              .forEach((line) => itemRows.push(renderQuoteFixedItemRow(templates.fixedItem!.row, line, '')));
           }
         });
     }
@@ -373,8 +400,13 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
       extras
         .map((entry) => entry as Record<string, unknown>)
         .filter((entry) => String(entry.name || '').trim())
-        .forEach((entry) => rows.push(renderQuoteExtraRow(templates.extra!.row, entry)));
+        .forEach((entry) => itemRows.push(renderQuoteExtraRow(templates.extra!.row, entry)));
     }
+
+    rows.push(...itemRows.map((rowXml, rowIndex) => {
+      if (itemRows.length <= 1) return rowXml;
+      return applyQuoteIdentityMerge(rowXml, rowIndex === 0 ? 'restart' : 'continue');
+    }));
   }
 
   documentXml = documentXml.slice(0, blockStart) + rows.join('') + documentXml.slice(blockEnd);
@@ -472,7 +504,7 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
     } else if (row.rowType === 'product') {
       let imageXml = imageCache.get(row.imagePath);
       if (!imageCache.has(row.imagePath)) {
-        imageXml = await embedImage(row.imagePath, { widthPx: 142, heightPx: 108 });
+        imageXml = await embedImage(row.imagePath, { widthPx: 160, heightPx: 142 });
         imageCache.set(row.imagePath, imageXml);
       }
       renderedRows.push(renderCatalogueProductRow(templates.product.row, row, imageXml || null));
