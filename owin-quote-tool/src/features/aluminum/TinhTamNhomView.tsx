@@ -445,25 +445,25 @@ function AluminumActions({
         <FileText size={16} /> Word tất cả
       </button>
       <button className="btn btn-ghost" type="button" onClick={onPrintPdfCurrent}>
-        <Printer size={16} /> In/PDF hệ này
+        <Printer size={16} /> In hệ này
       </button>
       <button className="btn btn-ghost" type="button" onClick={onPrintPdfAll}>
-        <Printer size={16} /> In/PDF tất cả
+        <Printer size={16} /> In tất cả
       </button>
       <button className="btn btn-ghost" type="button" onClick={onCopyTotal}>
         <ClipboardCopy size={16} /> Copy tổng
       </button>
       <button className="btn btn-ghost" type="button" onClick={onCopyCurrentSystem}>
-        <FileText size={16} /> Copy hệ này
+        <ClipboardCopy size={16} /> Copy hệ
       </button>
       <button className="btn btn-ghost" type="button" onClick={onExportCsv}>
         <Download size={16} /> CSV
       </button>
       <button className="btn btn-ghost" type="button" onClick={onClearCurrentSystem}>
-        <RotateCcw size={16} /> Xóa hệ này
+        <RotateCcw size={16} /> Xóa hệ
       </button>
       <button className="btn btn-danger" type="button" onClick={onClearAll}>
-        <Trash2 size={16} /> Xóa toàn bộ
+        <Trash2 size={16} /> Xóa hết
       </button>
       {copyStatus && <span className="aluminum-status">{copyStatus}</span>}
     </div>
