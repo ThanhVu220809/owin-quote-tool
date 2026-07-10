@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import type { ProductUnit } from '@/types/models';
 import { AutoSuggestInput } from './AutoSuggestInput';
 import { CurrencyInput } from './CurrencyInput';
@@ -15,6 +15,18 @@ import {
 interface AccessoryEditorSuggestions {
   accessoryName: string[];
   packageName?: string[];
+}
+
+function moveRow<T>(rows: T[], index: number, direction: -1 | 1): T[] {
+  const target = index + direction;
+  if (target < 0 || target >= rows.length) return rows;
+  const next = [...rows];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
+function reindexExtraAccessories(rows: ExtraAccessoryDraft[]): ExtraAccessoryDraft[] {
+  return rows.map((item, sortOrder) => ({ ...item, sortOrder }));
 }
 
 export function FixedAccessoryPackageEditor({
@@ -85,14 +97,34 @@ export function FixedAccessoryPackageEditor({
                   }}
                 />
               </div>
-              <button
-                className="icon-btn danger"
-                type="button"
-                onClick={() => patch({ items: value.items.filter((_, itemIndex) => itemIndex !== index) })}
-                aria-label="Xóa món phụ kiện"
-              >
-                <Trash2 size={16} />
-              </button>
+              <div className="row-action-group">
+                <button
+                  className="icon-btn"
+                  type="button"
+                  disabled={index === 0}
+                  onClick={() => patch({ items: moveRow(value.items, index, -1) })}
+                  aria-label="Đưa món phụ kiện lên"
+                >
+                  <ChevronUp size={15} />
+                </button>
+                <button
+                  className="icon-btn"
+                  type="button"
+                  disabled={index === value.items.length - 1}
+                  onClick={() => patch({ items: moveRow(value.items, index, 1) })}
+                  aria-label="Đưa món phụ kiện xuống"
+                >
+                  <ChevronDown size={15} />
+                </button>
+                <button
+                  className="icon-btn danger"
+                  type="button"
+                  onClick={() => patch({ items: value.items.filter((_, itemIndex) => itemIndex !== index) })}
+                  aria-label="Xóa món phụ kiện"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))
         )}
@@ -224,14 +256,34 @@ export function ExtraAccessoriesEditor({
                 <label>Thành tiền</label>
                 <div className="readonly-money">{formatVND(item.amount)}</div>
               </div>
-              <button
-                className="icon-btn danger"
-                type="button"
-                onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
-                aria-label="Xóa phụ kiện phát sinh"
-              >
-                <Trash2 size={16} />
-              </button>
+              <div className="row-action-group">
+                <button
+                  className="icon-btn"
+                  type="button"
+                  disabled={index === 0}
+                  onClick={() => onChange(reindexExtraAccessories(moveRow(value, index, -1)))}
+                  aria-label="Đưa phụ kiện phát sinh lên"
+                >
+                  <ChevronUp size={15} />
+                </button>
+                <button
+                  className="icon-btn"
+                  type="button"
+                  disabled={index === value.length - 1}
+                  onClick={() => onChange(reindexExtraAccessories(moveRow(value, index, 1)))}
+                  aria-label="Đưa phụ kiện phát sinh xuống"
+                >
+                  <ChevronDown size={15} />
+                </button>
+                <button
+                  className="icon-btn danger"
+                  type="button"
+                  onClick={() => onChange(reindexExtraAccessories(value.filter((_, itemIndex) => itemIndex !== index)))}
+                  aria-label="Xóa phụ kiện phát sinh"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

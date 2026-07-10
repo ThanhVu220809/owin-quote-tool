@@ -605,16 +605,13 @@
 }
 .autosuggest-toggle:hover { background: rgba(15, 42, 61, 0.06); color: var(--owin-primary); }
 .autosuggest-menu {
-  position: absolute;
-  z-index: 60;
-  left: 0;
-  right: 0;
-  top: calc(100% - 8px);
+  position: fixed;
+  z-index: 2200;
   max-height: 220px;
   overflow-y: auto;
   background: #fff;
   border: 1px solid var(--owin-border);
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: 0 14px 34px rgba(15, 42, 61, 0.16);
   padding: 5px;
 }
@@ -663,7 +660,7 @@
   border-radius: 16px;
   background: #fff;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: 14px;
   text-align: left;
 }
@@ -753,7 +750,7 @@
   align-items: end;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(160px, 0.85fr) minmax(180px, 1fr) 40px;
+  grid-template-columns: minmax(150px, 0.85fr) minmax(170px, 1fr) 104px;
 }
 .spec-table-head {
   color: var(--owin-ink-muted);
@@ -841,7 +838,7 @@
 .accessory-items { display: grid; gap: 8px; margin-bottom: 10px; }
 .accessory-item-line {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 88px 40px;
+  grid-template-columns: 28px minmax(0, 1fr) 84px 104px;
   gap: 8px;
   align-items: end;
 }
@@ -901,10 +898,10 @@
 .extra-accessory-head,
 .extra-accessory-line {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) 86px 72px 90px minmax(130px, 1fr) minmax(140px, 1fr) 40px;
+  grid-template-columns: minmax(210px, 1.45fr) 78px 68px 82px minmax(122px, 1fr) minmax(132px, 1fr) 104px;
   gap: 8px;
   align-items: end;
-  min-width: 860px;
+  min-width: 900px;
 }
 .extra-accessory-head {
   color: var(--owin-ink-muted);
@@ -919,6 +916,20 @@
   border: 1px solid var(--owin-border);
   border-radius: 12px;
   background: #fff;
+}
+.row-action-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.row-action-group .icon-btn {
+  height: 30px;
+  width: 30px;
+}
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
 }
 @media (max-width: 1180px) {
   .product-basic-grid {
@@ -1601,7 +1612,7 @@
 }
 .bang-gia-table {
   width: 100%;
-  min-width: 1040px;
+  min-width: 900px;
   border-collapse: collapse;
   table-layout: fixed;
   font-family: 'Times New Roman', Times, serif;
@@ -2008,7 +2019,12 @@
 @page { size: A4 landscape; margin: 10mm; }
 
 @media print {
-  body.printing-quote { background: #fff; }
+  html,
+  body.printing-quote {
+    background: #fff;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   body.printing-quote .admin-shell > *:not(:has(.preview-doc)),
   body.printing-quote .no-print { display: none !important; }
 
@@ -2021,6 +2037,7 @@
     left: 0;
     top: 0;
     width: 100%;
+    margin: 0 !important;
     box-shadow: none;
     border: none;
     border-radius: 0;
@@ -2029,6 +2046,7 @@
   body.printing-quote .preview-doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .quote-print-doc {
     font-size: 9pt;
+    margin-top: 0 !important;
   }
   .quote-print-doc table {
     font-size: 8.5pt;

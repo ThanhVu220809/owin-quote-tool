@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import type {
   ProductAccessoryRecord,
   ProductRecord,
@@ -142,6 +142,14 @@ function generateProductCode(): string {
   ].join('');
 }
 
+function moveRow<T>(rows: T[], index: number, direction: -1 | 1): T[] {
+  const target = index + direction;
+  if (target < 0 || target >= rows.length) return rows;
+  const next = [...rows];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
 export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const initialSize = parseRawSizeText(editing?.rawSizeText);
   const [name, setName] = useState(editing?.name ?? '');
@@ -175,22 +183,24 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
 
   const updateSpec = (index: number, patch: Partial<ProductSpecRecord>) =>
     setSpecs((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const moveSpec = (index: number, direction: -1 | 1) =>
+    setSpecs((rows) => moveRow(rows, index, direction));
 
   const specValueSuggestions = (key: string) => {
     const normalized = normalizeSpecKey(key);
     const specific = (() => {
       if (normalized.includes('mau')) return suggestions.specValueColor ?? [];
-      if (normalized.includes('khung')) return suggestions.specValueFrame ?? [];
+      if (normalized.includes('song') || normalized.includes('bao ve')) {
+        return suggestions.specValueProtectionBar ?? [];
+      }
+      if (normalized.includes('khung') || normalized.includes('khuon')) return suggestions.specValueFrame ?? [];
       if (normalized.includes('canh')) return suggestions.specValueSash ?? [];
       if (normalized.includes('day')) return suggestions.specValueThickness ?? [];
       if (normalized.includes('kinh')) return suggestions.specValueGlass ?? [];
       if (normalized.includes('phao')) return suggestions.specValueMolding ?? [];
-      if (normalized.includes('song') || normalized.includes('bao ve')) {
-        return suggestions.specValueProtectionBar ?? [];
-      }
-      return [];
+      return null;
     })();
-    return [...specific, ...suggestions.specValue];
+    return specific ?? suggestions.specValue;
   };
 
   const save = async () => {
@@ -335,9 +345,17 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                   onChange={(value) => updateSpec(index, { value })}
                   suggestions={specValueSuggestions(spec.key)}
                 />
-                <button className="icon-btn danger" type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} aria-label="Xóa thông số">
-                  <Trash2 size={16} />
-                </button>
+                <div className="row-action-group">
+                  <button className="icon-btn" type="button" disabled={index === 0} onClick={() => moveSpec(index, -1)} aria-label="Đưa thông số lên">
+                    <ChevronUp size={15} />
+                  </button>
+                  <button className="icon-btn" type="button" disabled={index === specs.length - 1} onClick={() => moveSpec(index, 1)} aria-label="Đưa thông số xuống">
+                    <ChevronDown size={15} />
+                  </button>
+                  <button className="icon-btn danger" type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} aria-label="Xóa thông số">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

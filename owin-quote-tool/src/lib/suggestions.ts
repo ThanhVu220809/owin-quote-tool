@@ -43,7 +43,7 @@ const suggestionStore = localforage.createInstance({
 });
 
 const SEED_KEY = '__seeded__';
-const REFERENCE_SEED_KEY = '__reference_suggestions_seed_v2__';
+const REFERENCE_SEED_KEY = '__reference_suggestions_seed_v3__';
 const seedModules = import.meta.glob('../data/suggestions/*.json', {
   eager: true,
   import: 'default',
@@ -241,12 +241,12 @@ function suggestionTypeForSpecKey(key: string): SuggestionType {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
   if (normalized.includes('mau')) return 'spec_value_color';
-  if (normalized.includes('khung')) return 'spec_value_frame';
+  if (normalized.includes('song') || normalized.includes('bao ve')) return 'spec_value_protection_bar';
+  if (normalized.includes('khung') || normalized.includes('khuon')) return 'spec_value_frame';
   if (normalized.includes('canh')) return 'spec_value_sash';
   if (normalized.includes('day')) return 'spec_value_thickness';
   if (normalized.includes('kinh')) return 'spec_value_glass';
   if (normalized.includes('phao')) return 'spec_value_molding';
-  if (normalized.includes('song') || normalized.includes('bao ve')) return 'spec_value_protection_bar';
   return 'spec_value';
 }
 

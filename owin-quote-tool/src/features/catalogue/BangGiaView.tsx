@@ -2,6 +2,7 @@ import { BookOpen, FileDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useProducts } from '@/features/products/useProducts';
 import { ProductThumb } from '@/features/products/ProductThumb';
+import { printPreviewDocument } from '@/features/export/pdfExport';
 import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue/catalogueRows';
 import { formatVND } from '@/utils/format';
 
@@ -69,7 +70,7 @@ export function BangGiaView() {
         >
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? 'Đang xuất…' : 'Tải Excel (.xlsx)'}
         </button>
-        <button className="btn btn-primary" onClick={() => window.print()}>
+        <button className="btn btn-primary" onClick={printPreviewDocument}>
           <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> In / PDF
         </button>
       </div>

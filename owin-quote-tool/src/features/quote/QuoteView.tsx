@@ -1026,6 +1026,14 @@ function compactNumber(value: unknown): string {
     : parsed.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 }
 
+function moveRow<T>(rows: T[], index: number, direction: -1 | 1): T[] {
+  const target = index + direction;
+  if (target < 0 || target >= rows.length) return rows;
+  const next = [...rows];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
 function normalizeSpecKey(value: string): string {
   return value
     .normalize('NFD')
@@ -1037,17 +1045,17 @@ function specValueSuggestionsForKey(key: string, suggestions: Record<string, str
   const normalized = normalizeSpecKey(key);
   const specific = (() => {
     if (normalized.includes('mau')) return suggestions.spec_value_color ?? [];
-    if (normalized.includes('khung')) return suggestions.spec_value_frame ?? [];
+    if (normalized.includes('song') || normalized.includes('bao ve')) {
+      return suggestions.spec_value_protection_bar ?? [];
+    }
+    if (normalized.includes('khung') || normalized.includes('khuon')) return suggestions.spec_value_frame ?? [];
     if (normalized.includes('canh')) return suggestions.spec_value_sash ?? [];
     if (normalized.includes('day')) return suggestions.spec_value_thickness ?? [];
     if (normalized.includes('kinh')) return suggestions.spec_value_glass ?? [];
     if (normalized.includes('phao')) return suggestions.spec_value_molding ?? [];
-    if (normalized.includes('song') || normalized.includes('bao ve')) {
-      return suggestions.spec_value_protection_bar ?? [];
-    }
-    return [];
+    return null;
   })();
-  return [...specific, ...(suggestions.spec_value ?? [])];
+  return specific ?? (suggestions.spec_value ?? []);
 }
 
 function accessoryItemText(name: unknown, quantity: unknown): string {
@@ -1253,6 +1261,11 @@ function QuoteItemCard({
       ),
     });
   };
+  const moveSpec = (specIndex: number, direction: -1 | 1) => {
+    onUpdate({
+      specs: moveRow(specs, specIndex, direction).map((spec, sortOrder) => ({ ...spec, sortOrder })),
+    });
+  };
   return (
     <div className="card quote-item-card">
       <div className="quote-item-card-header">
@@ -1404,14 +1417,40 @@ function QuoteItemCard({
                     onChange={(value) => updateSpec(specIndex, { value })}
                     suggestions={specValueSuggestionsForKey(spec.key, suggestions)}
                   />
-                  <button
-                    className="icon-btn danger"
-                    type="button"
-                    onClick={() => onUpdate({ specs: specs.filter((_, currentIndex) => currentIndex !== specIndex) })}
-                    aria-label="Xóa thông số"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="row-action-group">
+                    <button
+                      className="icon-btn"
+                      type="button"
+                      disabled={specIndex === 0}
+                      onClick={() => moveSpec(specIndex, -1)}
+                      aria-label="Đưa thông số lên"
+                    >
+                      <ChevronUp size={15} />
+                    </button>
+                    <button
+                      className="icon-btn"
+                      type="button"
+                      disabled={specIndex === specs.length - 1}
+                      onClick={() => moveSpec(specIndex, 1)}
+                      aria-label="Đưa thông số xuống"
+                    >
+                      <ChevronDown size={15} />
+                    </button>
+                    <button
+                      className="icon-btn danger"
+                      type="button"
+                      onClick={() =>
+                        onUpdate({
+                          specs: specs
+                            .filter((_, currentIndex) => currentIndex !== specIndex)
+                            .map((spec, sortOrder) => ({ ...spec, sortOrder })),
+                        })
+                      }
+                      aria-label="Xóa thông số"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}

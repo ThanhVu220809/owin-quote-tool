@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import { normalizeSuggestionText, rankSuggestionValues } from '@/lib/suggestionEngine';
 
@@ -50,6 +50,7 @@ export function AutoSuggestInput({
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   const [hidden, setHidden] = useState<Set<string>>(() => readHiddenSuggestions(label));
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const uniqueSuggestions = useMemo(
     () => {
       const byNormalized = new Map<string, string>();
@@ -80,6 +81,38 @@ export function AutoSuggestInput({
   useEffect(() => {
     setHidden(readHiddenSuggestions(label));
   }, [label]);
+
+  const updateMenuPosition = useCallback(() => {
+    if (!containerRef.current || typeof window === 'undefined') return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const gap = 6;
+    const desiredHeight = Math.min(220, filtered.length * 38 + 12);
+    const below = window.innerHeight - rect.bottom - gap;
+    const above = rect.top - gap;
+    const placeAbove = below < Math.min(desiredHeight, 170) && above > below;
+    const available = Math.max(72, Math.min(placeAbove ? above : below, desiredHeight, 260));
+    const top = placeAbove
+      ? Math.max(gap, rect.top - gap - available)
+      : Math.min(rect.bottom + gap, window.innerHeight - gap - available);
+
+    setMenuStyle({
+      left: rect.left,
+      top,
+      width: rect.width,
+      maxHeight: available,
+    });
+  }, [filtered.length]);
+
+  useEffect(() => {
+    if (!open || filtered.length === 0) return undefined;
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [filtered.length, open, updateMenuPosition]);
 
   const selectSuggestion = (item: string) => {
     onChange(item);
@@ -140,7 +173,7 @@ export function AutoSuggestInput({
         </button>
       </div>
       {open && filtered.length > 0 && !disabled && (
-        <div className="autosuggest-menu">
+        <div className="autosuggest-menu" style={menuStyle}>
           {filtered.map((item, index) => (
             <div key={item} className={`autosuggest-row ${index === highlighted ? 'active' : ''}`}>
               <button

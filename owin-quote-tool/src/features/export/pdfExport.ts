@@ -5,7 +5,7 @@
  *
  * Quy ước: thêm class 'printing-quote' lên <body>; CSS chỉ hiện .preview-doc khi in.
  */
-export function exportQuotePDF(): void {
+export function printPreviewDocument(): void {
   const body = document.body;
   body.classList.add('printing-quote');
 
@@ -18,7 +18,11 @@ export function exportQuotePDF(): void {
   // In (người dùng chọn "Save as PDF"). setTimeout đảm bảo class kịp áp dụng.
   setTimeout(() => {
     window.print();
-    // Dự phòng nếu trình duyệt không bắn afterprint.
-    setTimeout(cleanup, 1500);
+    // Dự phòng nếu trình duyệt không bắn afterprint; để lâu để Chrome kịp dựng preview.
+    setTimeout(cleanup, 30000);
   }, 50);
+}
+
+export function exportQuotePDF(): void {
+  printPreviewDocument();
 }

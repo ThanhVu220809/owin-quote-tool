@@ -28,11 +28,6 @@ export interface ExtraAccessoryDraft {
 }
 
 export const DEFAULT_FIXED_ACCESSORY_ITEMS: FixedAccessoryItemDraft[] = [
-  { name: 'Khóa', quantity: 0 },
-  { name: 'Bản lề', quantity: 0 },
-  { name: 'Tay nắm', quantity: 0 },
-  { name: 'Chốt cánh phụ', quantity: 0 },
-  { name: 'Thanh chuyển động', quantity: 0 },
   { name: 'Vật tư phụ', quantity: 0 },
 ];
 

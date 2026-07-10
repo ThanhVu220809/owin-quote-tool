@@ -133,6 +133,18 @@ function removeLeftoverTokens(xml: string): string {
     .replace(/undefined(?=<\/w:tr>)/g, '');
 }
 
+function removeParagraphContaining(xml: string, token: string): string {
+  const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return xml.replace(new RegExp(`<w:p\\b(?:(?!</w:p>)[\\s\\S])*?${escapedToken}(?:(?!</w:p>)[\\s\\S])*?</w:p>`, 'g'), '');
+}
+
+function removeBlankQuoteContactLines(xml: string, quote: CalculatedQuote): string {
+  let next = repairSplitEmailToken(xml);
+  if (!String(quote.customerPhone || '').trim()) next = removeParagraphContaining(next, '{sdt}');
+  if (!String(quote.customerEmail || '').trim()) next = removeParagraphContaining(next, '{email}');
+  return next;
+}
+
 function rowMatches(documentXml: string): XmlRowMatch[] {
   return [...documentXml.matchAll(/<w:tr\b[\s\S]*?<\/w:tr>/g)].map((match) => ({
     row: match[0],
@@ -373,24 +385,33 @@ function renderQuoteProductRow(
   return removeLeftoverTokens(xml);
 }
 
+function quoteFixedItemLines(fixed: Record<string, unknown>): string[] {
+  const items = Array.isArray(fixed.items) ? fixed.items : [];
+  return items
+    .map((entry) => entry as Record<string, unknown>)
+    .map((entry) => {
+      const name = String(entry.name || '').trim();
+      if (!name) return '';
+      const quantity = Number(entry.quantity ?? 0);
+      return quantity > 1 ? `- ${name} x${formatDecimal(quantity)}` : `- ${name}`;
+    })
+    .filter(Boolean);
+}
+
 function renderQuoteFixedSetRow(template: string, fixed: Record<string, unknown>): string {
   const quantity = Number(fixed.packageQuantity ?? fixed.quantity ?? 1) || 1;
   const unitPrice = Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) || 0;
+  const itemLines = quoteFixedItemLines(fixed);
+  const description = [
+    `${String(fixed.name || 'Bộ phụ kiện đi kèm').trim()}${itemLines.length ? ':' : ''}`,
+    ...itemLines,
+  ].join('\n');
   let xml = template;
-  xml = replaceToken(xml, '{bo_pk_ten}', String(fixed.name || 'Bộ phụ kiện đi kèm'));
+  xml = replaceMultilineToken(xml, '{bo_pk_ten}', description);
   xml = replaceToken(xml, '{bo_pk_dv}', 'Bộ');
   xml = replaceToken(xml, '{bo_pk_sl}', formatDecimal(quantity));
   xml = replaceToken(xml, '{bo_pk_dg}', formatSoVND(unitPrice));
   xml = replaceToken(xml, '{bo_pk_tt}', formatSoVND(quantity * unitPrice));
-  return removeLeftoverTokens(xml);
-}
-
-function renderQuoteFixedItemRow(template: string, name: unknown, quantity: unknown): string {
-  let xml = template;
-  const hasQuantity = Number(quantity ?? 0) > 0;
-  if (!hasQuantity) xml = xml.replace(/\s*x\{pk_sl_item\}/g, '{pk_sl_item}');
-  xml = replaceToken(xml, '{pk_ten}', String(name || '').trim());
-  xml = replaceToken(xml, '{pk_sl_item}', hasQuantity ? formatDecimal(Number(quantity)) : '');
   return removeLeftoverTokens(xml);
 }
 
@@ -409,8 +430,14 @@ function renderQuoteExtraRow(template: string, extra: Record<string, unknown>): 
 }
 
 function renderLegacyAccessoryAsFixed(template: string, accessory: CalculatedQuote['items'][number]['accessories'][number]): string {
+  const noteItems = String(accessory.note || '')
+    .split(/\r?\n|,/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((name) => ({ name, quantity: 0 }));
   return renderQuoteFixedSetRow(template, {
     name: accessory.name,
+    items: noteItems,
     packageQuantity: accessory.totalSet || accessory.quantityPerSet,
     unitPrice: accessory.unitPriceVnd,
   });
@@ -449,25 +476,10 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
     const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
     if (fixed && templates.fixedSet) {
       itemRows.push(renderQuoteFixedSetRow(templates.fixedSet.row, fixed));
-      if (templates.fixedItem && Array.isArray(fixed.items)) {
-        fixed.items
-          .map((entry) => entry as Record<string, unknown>)
-          .filter((entry) => String(entry.name || '').trim())
-          .forEach((entry) => itemRows.push(renderQuoteFixedItemRow(templates.fixedItem!.row, entry.name, entry.quantity)));
-      }
     } else if (templates.fixedSet) {
       item.accessories
         .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
-        .forEach((accessory) => {
-          itemRows.push(renderLegacyAccessoryAsFixed(templates.fixedSet!.row, accessory));
-          if (templates.fixedItem && accessory.note) {
-            accessory.note
-              .split(/\r?\n|,/)
-              .map((line) => line.trim())
-              .filter(Boolean)
-              .forEach((line) => itemRows.push(renderQuoteFixedItemRow(templates.fixedItem!.row, line, '')));
-          }
-        });
+        .forEach((accessory) => itemRows.push(renderLegacyAccessoryAsFixed(templates.fixedSet!.row, accessory)));
     }
 
     const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
@@ -485,6 +497,7 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
   }
 
   documentXml = documentXml.slice(0, blockStart) + rows.join('') + documentXml.slice(blockEnd);
+  documentXml = removeBlankQuoteContactLines(documentXml, quote);
   documentXml = replaceTokens(documentXml, buildQuoteWordData(quote));
   return removeLeftoverTokens(documentXml);
 }

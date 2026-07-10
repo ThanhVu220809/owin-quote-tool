@@ -4,6 +4,7 @@ import { DEFAULT_FIXED_ACCESSORY_ITEMS, parseFixedAccessoriesJson } from './acce
 describe('fixed accessory draft normalization', () => {
   it('defaults fixed accessory item quantities to zero', () => {
     expect(DEFAULT_FIXED_ACCESSORY_ITEMS.every((item) => item.quantity === 0)).toBe(true);
+    expect(DEFAULT_FIXED_ACCESSORY_ITEMS.map((item) => item.name)).toEqual(['Vật tư phụ']);
   });
 
   it('normalizes imported all-one placeholder item quantities to zero while keeping package pricing', () => {
