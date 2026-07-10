@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Copy, Eye, FileDown, Package, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronsUpDown, Copy, Eye, FileDown, Package, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -72,6 +72,54 @@ const todayInputValue = () => new Date().toISOString().slice(0, 10);
 
 function makeItemCode(index: number): string {
   return `HM-${String(index + 1).padStart(2, '0')}`;
+}
+
+function makeItemUiKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `qi-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/** Normalize a quote item for lock/save: drop blank draft rows, keep empty-value specs. */
+function confirmNormalizeItem(item: QuoteItemInput): QuoteItemInput {
+  const cleaned = cleanItemAccessoriesForPersist(item);
+  const dimensions = (cleaned.dimensions || [])
+    .map((line) => ({
+      ...line,
+      quantity: Math.max(0, Number(line.quantity || 0)),
+      unitPriceVnd: Number(line.unitPriceVnd ?? cleaned.unitPriceVnd ?? 0) || 0,
+      widthM: line.widthM == null || Number.isNaN(Number(line.widthM)) ? null : Number(line.widthM),
+      heightM: line.heightM == null || Number.isNaN(Number(line.heightM)) ? null : Number(line.heightM),
+      description: line.description?.trim() || null,
+    }))
+    .filter((line) => {
+      const qty = Number(line.quantity || 0);
+      const w = Number(line.widthM || 0);
+      const h = Number(line.heightM || 0);
+      const price = Number(line.unitPriceVnd || 0);
+      return qty > 0 || w > 0 || h > 0 || price > 0 || Boolean(line.description);
+    });
+
+  return {
+    ...cleaned,
+    itemName: String(cleaned.itemName || '').trim() || 'Hạng mục',
+    unitPriceVnd: Number(cleaned.unitPriceVnd || 0) || 0,
+    dimensions:
+      dimensions.length > 0
+        ? dimensions
+        : [
+            {
+              unit: cleaned.unit,
+              widthM: cleaned.unit === 'BO' ? null : 0,
+              heightM: cleaned.unit === 'BO' ? null : 0,
+              quantity: 1,
+              unitPriceVnd: Number(cleaned.unitPriceVnd || 0) || 0,
+              description: null,
+            },
+          ],
+    accessories: (cleaned.accessories || []).filter((accessory) => String(accessory.name || '').trim()),
+  };
 }
 
 function unitLabel(unit: ProductUnit): string {
@@ -157,6 +205,10 @@ export function QuoteView() {
   const [quoteStatusFilter, setQuoteStatusFilter] = useState<QuoteRecord['status'] | ''>('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  /** Stable UI keys parallel to items — used for expand/collapse without data loss. */
+  const [itemUiKeys, setItemUiKeys] = useState<string[]>([]);
+  /** Expanded (editing) item keys. Missing key = locked compact card. */
+  const [expandedItemKeys, setExpandedItemKeys] = useState<Set<string>>(() => new Set());
 
   const refreshHistory = async () => setHistory(await getAllQuotes());
 
@@ -223,6 +275,8 @@ export function QuoteView() {
     setQuoteDate(todayInputValue());
     setDepositVnd(0);
     setItems([]);
+    setItemUiKeys([]);
+    setExpandedItemKeys(new Set());
     setMessage('');
   };
 
@@ -233,17 +287,82 @@ export function QuoteView() {
     scrollPageTop();
   };
 
+  const appendItem = (item: QuoteItemInput, options?: { expand?: boolean }) => {
+    const key = makeItemUiKey();
+    setItems((current) => [...current, item]);
+    setItemUiKeys((current) => [...current, key]);
+    if (options?.expand !== false) {
+      setExpandedItemKeys((current) => new Set(current).add(key));
+    }
+  };
+
   const addProduct = (productId: string) => {
     const product = productRecords.find((item) => item.id === productId);
     if (!product) return;
-    setItems((current) => [...current, createQuoteItemFromProduct(product, makeItemCode(current.length))]);
+    appendItem(createQuoteItemFromProduct(product, makeItemCode(items.length)), { expand: true });
     setProductPickerOpen(false);
   };
 
-  const addCustom = () => setItems((current) => [...current, createCustomQuoteItem(makeItemCode(current.length))]);
+  const addCustom = () =>
+    appendItem(createCustomQuoteItem(makeItemCode(items.length)), { expand: true });
 
   const updateItem = (index: number, patch: Partial<QuoteItemInput>) =>
     setItems((current) => current.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+
+  const confirmItem = (index: number) => {
+    const key = itemUiKeys[index];
+    setItems((current) =>
+      current.map((item, i) => (i === index ? confirmNormalizeItem(item) : item)),
+    );
+    if (key) {
+      setExpandedItemKeys((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
+  const expandItem = (index: number) => {
+    const key = itemUiKeys[index];
+    if (!key) return;
+    setExpandedItemKeys((current) => new Set(current).add(key));
+  };
+
+  const removeItemAt = (index: number) => {
+    const key = itemUiKeys[index];
+    setItems((current) => current.filter((_, i) => i !== index));
+    setItemUiKeys((current) => current.filter((_, i) => i !== index));
+    if (key) {
+      setExpandedItemKeys((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
+  const moveItem = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= items.length) return;
+    setItems((current) => moveRow(current, index, direction));
+    setItemUiKeys((current) => moveRow(current, index, direction));
+  };
+
+  const duplicateItemAt = (index: number) => {
+    const source = items[index];
+    if (!source) return;
+    const key = makeItemUiKey();
+    const code = makeItemCode(items.length);
+    const clone: QuoteItemInput = {
+      ...confirmNormalizeItem(source),
+      productCode: code,
+      quoteItemCode: code,
+    };
+    setItems((current) => [...current.slice(0, index + 1), clone, ...current.slice(index + 1)]);
+    setItemUiKeys((current) => [...current.slice(0, index + 1), key, ...current.slice(index + 1)]);
+    setExpandedItemKeys((current) => new Set(current).add(key));
+  };
 
   const updateDimension = (itemIndex: number, lineIndex: number, patch: Partial<DimensionInput>) =>
     setItems((current) =>
@@ -471,7 +590,11 @@ export function QuoteView() {
     setCustomerAddress(quote.customerAddress);
     setQuoteDate((quote.quoteDate || quote.createdAt).slice(0, 10));
     setDepositVnd(quote.depositVnd);
-    setItems(snapshotToInputs(quote));
+    const loaded = snapshotToInputs(quote).map((item) => confirmNormalizeItem(item));
+    setItems(loaded);
+    // Loaded items start locked (compact). User taps Sửa/Mở rộng to edit.
+    setItemUiKeys(loaded.map(() => makeItemUiKey()));
+    setExpandedItemKeys(new Set());
     setMessage(duplicate ? `Đã nhân bản từ ${quote.code}` : `Đã tải ${quote.code}`);
     setView('form');
     setDetailQuote(null);
@@ -600,11 +723,15 @@ export function QuoteView() {
           <div className="muted" style={{ padding: 12 }}>Chưa có hạng mục nào.</div>
         ) : (
           <div className="stack">
-            {items.map((item, index) => (
+            {items.map((item, index) => {
+              const uiKey = itemUiKeys[index] || `fallback-${index}`;
+              const locked = !expandedItemKeys.has(uiKey);
+              return (
               <QuoteItemCard
-                key={`${item.productCode}-${index}`}
+                key={uiKey}
                 index={index}
                 item={item}
+                locked={locked}
                 calculated={calculated.items[index]}
                 suggestions={seededSuggestions}
                 onUpdate={(patch) => updateItem(index, patch)}
@@ -623,12 +750,15 @@ export function QuoteView() {
                     accessories: [...item.accessories, { name: '', quantityPerSet: 0, unitPriceVnd: 0, note: null, isEnabled: true }],
                   })
                 }
-                onDuplicate={() => setItems((current) => [...current.slice(0, index + 1), { ...item, productCode: makeItemCode(current.length), quoteItemCode: makeItemCode(current.length) }, ...current.slice(index + 1)])}
-                onMoveUp={() => index > 0 && setItems((current) => current.map((row, i) => (i === index - 1 ? current[index] : i === index ? current[index - 1] : row)))}
-                onMoveDown={() => index < items.length - 1 && setItems((current) => current.map((row, i) => (i === index + 1 ? current[index] : i === index ? current[index + 1] : row)))}
-                onDelete={() => setItems((current) => current.filter((_, i) => i !== index))}
+                onConfirm={() => confirmItem(index)}
+                onExpand={() => expandItem(index)}
+                onDuplicate={() => duplicateItemAt(index)}
+                onMoveUp={() => moveItem(index, -1)}
+                onMoveDown={() => moveItem(index, 1)}
+                onDelete={() => removeItemAt(index)}
               />
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -1337,6 +1467,7 @@ function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote
 function QuoteItemCard({
   index,
   item,
+  locked,
   calculated,
   suggestions,
   onUpdate,
@@ -1344,6 +1475,8 @@ function QuoteItemCard({
   onAccessory,
   onAddDimension,
   onAddAccessory,
+  onConfirm,
+  onExpand,
   onDuplicate,
   onMoveUp,
   onMoveDown,
@@ -1351,6 +1484,7 @@ function QuoteItemCard({
 }: {
   index: number;
   item: QuoteItemInput;
+  locked: boolean;
   calculated: ReturnType<typeof calculateQuote>['items'][number] | undefined;
   suggestions: Record<string, string[]>;
   onUpdate: (patch: Partial<QuoteItemInput>) => void;
@@ -1358,6 +1492,8 @@ function QuoteItemCard({
   onAccessory: (accIndex: number, patch: Partial<AccessoryInput>) => void;
   onAddDimension: () => void;
   onAddAccessory: () => void;
+  onConfirm: () => void;
+  onExpand: () => void;
   onDuplicate: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -1388,6 +1524,7 @@ function QuoteItemCard({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const imagePath = item.coverImagePath || item.image || null;
+  const canConfirm = Boolean(String(item.itemName || '').trim());
 
   useEffect(() => {
     let revoked: string | null = null;
@@ -1407,8 +1544,57 @@ function QuoteItemCard({
     };
   }, [imagePath]);
 
+  if (locked) {
+    return (
+      <div className="card quote-item-card quote-item-card-locked">
+        <div className="quote-item-locked-row">
+          <button
+            type="button"
+            className="quote-item-thumb quote-item-thumb-btn quote-item-thumb-compact"
+            onClick={() => setLightboxOpen(true)}
+            aria-label="Xem ảnh lớn"
+            title="Bấm để xem ảnh lớn"
+          >
+            <ProductThumb imagePath={imagePath} fill />
+          </button>
+          <div className="quote-item-locked-main">
+            <div className="quote-item-locked-title">
+              <span className="quote-item-locked-index">#{index + 1}</span>
+              <strong>{item.itemName || 'Hạng mục'}</strong>
+            </div>
+            <div className="quote-item-locked-meta">
+              <span>{unitLabel(item.unit)}</span>
+              <span>{item.quoteItemCode || item.productCode}</span>
+              <span className="quote-item-locked-total">{formatVND(calculated?.itemTotalVnd ?? 0)}</span>
+            </div>
+          </div>
+          <div className="quote-item-actions quote-item-locked-actions">
+            <button className="btn btn-ghost btn-sm" type="button" onClick={onExpand}>
+              Sửa
+            </button>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={onExpand}>
+              <ChevronsUpDown size={15} /> Mở rộng
+            </button>
+            <button className="icon-btn" type="button" onClick={onDuplicate} aria-label="Nhân bản">
+              <Copy size={16} />
+            </button>
+            <button className="icon-btn danger" type="button" onClick={onDelete} aria-label="Xóa">
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </div>
+        <ImageLightbox
+          open={lightboxOpen}
+          src={lightboxUrl}
+          alt={item.itemName || 'Ảnh hạng mục'}
+          onClose={() => setLightboxOpen(false)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="card quote-item-card">
+    <div className="card quote-item-card quote-item-card-editing">
       <div className="quote-item-card-header">
         <button
           type="button"
@@ -1422,7 +1608,7 @@ function QuoteItemCard({
         <div className="quote-item-card-main">
           <div className="quote-item-titleline">
             <div>
-              <div className="section-label" style={{ margin: 0 }}>#{index + 1}</div>
+              <div className="section-label" style={{ margin: 0 }}>#{index + 1} · Đang sửa</div>
               <div className="product-sub">Tổng {formatVND(calculated?.itemTotalVnd ?? 0)}</div>
             </div>
             <div className="quote-item-actions">
@@ -1653,6 +1839,20 @@ function QuoteItemCard({
         <QuoteSummaryMetric label="Tiền sản phẩm" value={formatVND(calculated?.productSubtotalVnd ?? 0)} />
         <QuoteSummaryMetric label="Tiền phụ kiện" value={formatVND(calculated?.accessorySubtotalVnd ?? 0)} />
         <QuoteSummaryMetric label="Tổng hạng mục" value={formatVND(calculated?.itemTotalVnd ?? 0)} strong />
+      </div>
+
+      <div className="quote-item-confirm-bar">
+        <div className="product-sub">
+          Xác nhận sẽ dọn dòng trống, khóa thẻ gọn (ảnh · tên · ĐVT · tổng). Bấm Sửa để mở lại đúng dữ liệu đã lưu.
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!canConfirm}
+          onClick={onConfirm}
+        >
+          <Check size={16} /> Xác nhận hạng mục
+        </button>
       </div>
     </div>
   );
