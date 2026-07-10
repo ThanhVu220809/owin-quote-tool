@@ -140,5 +140,16 @@ describe('reference Word catalogue template renderer', () => {
     // Category + product + accessory block keep-together markers.
     expect(xml).toContain('w:cantSplit');
     expect(xml).toContain('w:keepNext');
+    // Catalogue product images use rect geometry + EMU sizes ≤ REF max (42mm x 38mm).
+    expect(xml).toContain('prst="rect"');
+    const extents = [...xml.matchAll(/<wp:extent\s+cx="(\d+)"\s+cy="(\d+)"/g)].map((m) => ({
+      cx: Number(m[1]),
+      cy: Number(m[2]),
+    }));
+    // Product images (not header logo) must respect REF caps 1512000 x 1368000.
+    for (const e of extents) {
+      expect(e.cx).toBeLessThanOrEqual(1_512_000);
+      expect(e.cy).toBeLessThanOrEqual(1_368_000);
+    }
   });
 });

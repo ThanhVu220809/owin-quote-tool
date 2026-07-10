@@ -21,10 +21,39 @@ import tplBaoGiaUrl from '@/assets/templates/Template_Bao_Gia.docx?url';
 import tplBangGiaUrl from '@/assets/templates/Template_Bang_Gia.docx?url';
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const PX_TO_EMU = 9525;
+
+/**
+ * Image size caps measured from real REFERENCE exports
+ * (review-screenshots/docx-qa/reference-real-output/REAL_DOCX_STRUCTURE.json):
+ * - catalogue product images: max cx=1512000 (42mm), cy=1368000 (38mm)
+ * - quote product images: max cx≈1438148 (column 2600dxa * 0.95 contain)
+ * Source: Web catalogue-export-docx IMG_MAX_CX/CY = 4.2*360000 / 3.8*360000
+ *         Web quote-export-docx IMAGE_COLUMN_DXA=2600, FILL=0.95, DXA_TO_EMU=635
+ */
+const MM_TO_EMU = 36000;
+const CATALOGUE_IMG_MAX_CX = Math.round(4.2 * 360000); // 1_512_000 — matches REF export
+const CATALOGUE_IMG_MAX_CY = Math.round(3.8 * 360000); // 1_368_000
+const QUOTE_IMAGE_COLUMN_DXA = 2600;
+const QUOTE_IMAGE_CELL_MARGIN_DXA = 108;
+const DXA_TO_EMU = 635;
+const QUOTE_IMG_FILL = 0.95;
+const QUOTE_IMG_MAX_CX = Math.round(
+  (QUOTE_IMAGE_COLUMN_DXA - 2 * QUOTE_IMAGE_CELL_MARGIN_DXA) * DXA_TO_EMU * QUOTE_IMG_FILL,
+); // ≈ 1_438_148
+const QUOTE_IMG_PAGE_SAFE_MAX_CY = Math.round(170 * MM_TO_EMU);
+const IMG_CORNER_ADJ = 8000;
+const CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS = 1530; // measured in REF export
+const CATALOGUE_EXTRA_ROW_HEIGHT_TWIPS = 340;
 
 type XmlRowMatch = { row: string; index: number; end: number };
-type ImageEmbedder = (path: string | null | undefined, options?: { widthPx?: number; heightPx?: number }) => Promise<string | null>;
+type ImageEmbedOptions = {
+  maxCx?: number;
+  maxCy?: number;
+  /** catalogue uses rect (REF); quote uses roundRect (REF) */
+  geometry?: 'rect' | 'roundRect';
+  fallbackLogo?: boolean;
+};
+type ImageEmbedder = (path: string | null | undefined, options?: ImageEmbedOptions) => Promise<string | null>;
 
 async function fetchTemplateZip(url: string): Promise<PizZip> {
   const response = await fetch(url);
@@ -171,32 +200,35 @@ function imageInfoFromDataUrl(dataUrl: string): { ext: string; contentType: stri
 }
 
 /**
- * Fit image to ~95% of the target frame using object-fit: contain semantics:
- * scale until width OR height reaches 95% of the box (whichever first), preserve aspect ratio.
- * Allows upscaling so images are not tiny in large cells.
+ * Contain-fit into max EMU box — same algorithm as REFERENCE getContainExtent:
+ * start at full max width, shrink if height exceeds max height.
+ * Returns EMU extents (not px) for Word drawing XML.
  */
-async function fitImageDataUrlToBox(
+async function fitImageDataUrlToEmuBox(
   dataUrl: string,
-  maxWidthPx: number,
-  maxHeightPx: number,
-): Promise<{ widthPx: number; heightPx: number }> {
-  const targetW = Math.max(1, Math.round(maxWidthPx * 0.95));
-  const targetH = Math.max(1, Math.round(maxHeightPx * 0.95));
-  if (typeof Image === 'undefined') return { widthPx: targetW, heightPx: targetH };
-  return new Promise((resolve) => {
+  maxCx: number,
+  maxCy: number,
+): Promise<{ cx: number; cy: number }> {
+  const natural = await new Promise<{ w: number; h: number }>((resolve) => {
+    if (typeof Image === 'undefined') {
+      resolve({ w: maxCx, h: maxCy });
+      return;
+    }
     const image = new Image();
-    image.onload = () => {
-      const width = image.naturalWidth || targetW;
-      const height = image.naturalHeight || targetH;
-      const scale = Math.min(targetW / width, targetH / height);
-      resolve({
-        widthPx: Math.max(1, Math.round(width * scale)),
-        heightPx: Math.max(1, Math.round(height * scale)),
-      });
-    };
-    image.onerror = () => resolve({ widthPx: targetW, heightPx: targetH });
+    image.onload = () => resolve({ w: image.naturalWidth || 1, h: image.naturalHeight || 1 });
+    image.onerror = () => resolve({ w: 1, h: 1 });
     image.src = dataUrl;
   });
+  const ratio = natural.w / natural.h;
+  if (!Number.isFinite(ratio) || ratio <= 0) return { cx: maxCx, cy: maxCy };
+  // REFERENCE: fill width first, then constrain height.
+  let cx = maxCx;
+  let cy = Math.round(cx / ratio);
+  if (cy > maxCy) {
+    cy = maxCy;
+    cx = Math.round(cy * ratio);
+  }
+  return { cx: Math.max(1, cx), cy: Math.max(1, cy) };
 }
 
 function ensureContentType(zip: PizZip, ext: string, contentType: string): void {
@@ -221,18 +253,21 @@ function createImageEmbedder(zip: PizZip): ImageEmbedder {
   let nextImageId = 1;
 
   return async (path, options = {}) => {
-    // Prefer product/quote image; fall back to OWIN logo (browser-safe).
-    const dataUrl = await getImageDataUrlByPath(path, { fallbackLogo: true });
+    const fallbackLogo = options.fallbackLogo !== false;
+    const dataUrl = await getImageDataUrlByPath(path, { fallbackLogo });
     if (!dataUrl) return null;
     const { ext, contentType } = imageInfoFromDataUrl(dataUrl);
     const imageName = `owin-browser-${nextImageId++}.${ext}`;
     const relId = `rId${nextRelId++}`;
     const docPrId = nextDocPrId++;
-    const fitted = await fitImageDataUrlToBox(dataUrl, options.widthPx ?? 112, options.heightPx ?? 82);
-    const widthPx = fitted.widthPx;
-    const heightPx = fitted.heightPx;
-    const cx = Math.round(widthPx * PX_TO_EMU);
-    const cy = Math.round(heightPx * PX_TO_EMU);
+    const maxCx = options.maxCx ?? CATALOGUE_IMG_MAX_CX;
+    const maxCy = options.maxCy ?? CATALOGUE_IMG_MAX_CY;
+    const { cx, cy } = await fitImageDataUrlToEmuBox(dataUrl, maxCx, maxCy);
+    const geometry = options.geometry ?? 'rect';
+    const geomXml =
+      geometry === 'roundRect'
+        ? `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${IMG_CORNER_ADJ}"/></a:avLst></a:prstGeom>`
+        : `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>`;
 
     zip.file(`word/media/${imageName}`, dataUrlToUint8Array(dataUrl));
     ensureContentType(zip, ext, contentType);
@@ -253,7 +288,7 @@ function createImageEmbedder(zip: PizZip): ImageEmbedder {
       `<pic:pic><pic:nvPicPr><pic:cNvPr id="${docPrId}" name="${xmlEscape(imageName)}"/><pic:cNvPicPr/></pic:nvPicPr>` +
       `<pic:blipFill><a:blip r:embed="${relId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
       `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
-      `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 8000"/></a:avLst></a:prstGeom>` +
+      `${geomXml}` +
       `</pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`
     );
   };
@@ -606,10 +641,12 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
     const dataRows = buildQuoteItemDocRows(item, itemIndex);
     if (dataRows.length === 0) continue;
 
-    // Image once per item block (logo fallback if missing) — 95% contain via fit helper.
+    // Image once per item block — EMU caps from real REF quote export (column 95% contain).
     const imageXml = await embedImage(item.image || item.coverImagePath, {
-      widthPx: 190,
-      heightPx: Math.max(120, 48 * dataRows.length),
+      maxCx: QUOTE_IMG_MAX_CX,
+      maxCy: Math.min(QUOTE_IMG_PAGE_SAFE_MAX_CY, Math.round(QUOTE_IMG_MAX_CX * 1.4)),
+      geometry: 'roundRect',
+      fallbackLogo: true,
     });
 
     const itemXmlRows = dataRows.map((row, rowIndex) => {
@@ -719,49 +756,50 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
   const rows = buildCatalogueBlockRows(products);
   const embedImage = createImageEmbedder(zip);
   const imageCache = new Map<string, string | null>();
-  // Blocks keep category with first product and product with accessories via keepNext.
+  // Block model matched to REAL REF export (exportCatalogueV8ToDocx):
+  // - category = its own cantSplit block
+  // - product + accessories = one keepNext block (image not orphaned from accessories)
   const blocks: string[][] = [];
   let currentBlock: string[] | null = null;
-  let currentBlockHasProduct = false;
 
   for (const row of rows) {
     if (row.rowType === 'category') {
-      if (currentBlock) blocks.push(currentBlock);
-      // Start a block with the category heading so it stays with the first product.
-      currentBlock = [ensureCantSplit(renderCatalogueCategoryRow(templates.category.row, row))];
-      currentBlockHasProduct = false;
-    } else if (row.rowType === 'product') {
-      if (currentBlock && currentBlockHasProduct) {
+      if (currentBlock) {
         blocks.push(currentBlock);
         currentBlock = null;
       }
+      blocks.push([ensureCantSplit(renderCatalogueCategoryRow(templates.category.row, row))]);
+    } else if (row.rowType === 'product') {
+      if (currentBlock) blocks.push(currentBlock);
       const imageKey = row.imagePath || `__logo__${row.productCode}`;
       let imageXml = imageCache.get(imageKey);
       if (!imageCache.has(imageKey)) {
-        // Logo fallback when product has no cover (browser-safe).
+        // Real REF catalogue: max 42mm x 38mm EMU contain-fit, rect geometry (not roundRect).
         imageXml = await embedImage(row.imagePath || 'owin-user-assets/logo/logo.webp', {
-          widthPx: 190,
-          heightPx: 270,
+          maxCx: CATALOGUE_IMG_MAX_CX,
+          maxCy: CATALOGUE_IMG_MAX_CY,
+          geometry: 'rect',
+          fallbackLogo: true,
         });
         imageCache.set(imageKey, imageXml);
       }
-      const productRow = ensureCantSplit(
+      let productRow = ensureCantSplit(
         ensureBoldFontRuns(renderCatalogueProductRow(templates.product.row, row, imageXml || null)),
       );
-      if (currentBlock && !currentBlockHasProduct) {
-        currentBlock.push(productRow);
-      } else {
-        currentBlock = [productRow];
-      }
-      currentBlockHasProduct = true;
+      // REF export product rows ~1530 twips.
+      productRow = setMinRowHeight(productRow, CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS);
+      currentBlock = [productRow];
     } else {
-      if (!currentBlock) {
-        currentBlock = [];
-        currentBlockHasProduct = false;
-      }
+      if (!currentBlock) currentBlock = [];
       const accessoryRow = renderCatalogueAccessoryRow(templates.accessory.row, row);
-      // Avoid orphan accessory rows by attaching them to the product block.
-      currentBlock.push(ensureCantSplit(row.rowType === 'extraAccessory' ? setMinRowHeight(accessoryRow, 340) : accessoryRow));
+      // REF: accessory rows keep product height; extraAccessory min 340 twips.
+      currentBlock.push(
+        ensureCantSplit(
+          row.rowType === 'extraAccessory'
+            ? setMinRowHeight(accessoryRow, CATALOGUE_EXTRA_ROW_HEIGHT_TWIPS)
+            : setMinRowHeight(accessoryRow, CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS),
+        ),
+      );
     }
   }
   if (currentBlock) blocks.push(currentBlock);
