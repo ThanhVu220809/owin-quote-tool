@@ -27,7 +27,9 @@ import {
 } from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
 import { exportQuotePDF } from '@/features/export/pdfExport';
-import { ProductThumb } from '@/features/products/ProductThumb';
+import { ProductThumb, OWIN_LOGO } from '@/features/products/ProductThumb';
+import { ImageLightbox } from '@/components/ImageLightbox';
+import { resolveImageUrl } from '@/utils/imagePaths';
 import {
   createEmptyFixedAccessoryDraft,
   parseExtraAccessoriesJson,
@@ -45,6 +47,7 @@ const QUOTE_SUGGESTION_TYPES = [
   'category',
   'color',
   'frame',
+  'jamb',
   'sash',
   'thickness',
   'glass',
@@ -53,6 +56,7 @@ const QUOTE_SUGGESTION_TYPES = [
   'spec_value',
   'spec_value_color',
   'spec_value_frame',
+  'spec_value_jamb',
   'spec_value_glass',
   'spec_value_molding',
   'spec_value_protection_bar',
@@ -669,6 +673,42 @@ function ProductPickerModal({
   onSelect: (productId: string) => void;
   onClose: () => void;
 }) {
+  const [categoriesCollapsed, setCategoriesCollapsed] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [previewPath, setPreviewPath] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCategoriesCollapsed(false);
+      setLightboxOpen(false);
+      setPreviewPath(null);
+      setPreviewUrl(null);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    let revoked: string | null = null;
+    let active = true;
+    if (!lightboxOpen) {
+      setPreviewUrl(null);
+      return undefined;
+    }
+    if (!previewPath) {
+      setPreviewUrl(OWIN_LOGO);
+      return undefined;
+    }
+    void resolveImageUrl(previewPath).then((resolved) => {
+      if (!active) return;
+      if (resolved.revoke) revoked = resolved.url;
+      setPreviewUrl(resolved.url || OWIN_LOGO);
+    });
+    return () => {
+      active = false;
+      if (revoked) URL.revokeObjectURL(revoked);
+    };
+  }, [lightboxOpen, previewPath]);
+
   if (!isOpen) return null;
 
   return (
@@ -678,8 +718,8 @@ function ProductPickerModal({
           <div className="quote-picker-title">
             <div className="quote-picker-icon"><Package size={20} /></div>
             <div>
-              <h2>Chọn sản phẩm nhôm kính</h2>
-              <p>{productCount} sản phẩm trong kho · chọn bằng ảnh hoặc thẻ sản phẩm</p>
+              <h2>Chọn sản phẩm</h2>
+              <p>{productCount} sản phẩm · bấm ảnh để xem lớn · bấm thẻ để chọn</p>
             </div>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Đóng chọn sản phẩm">
@@ -695,25 +735,36 @@ function ProductPickerModal({
               onSearch(event.target.value);
               onCategoryFilter('');
             }}
-            placeholder="Tìm theo tên, mã sản phẩm hoặc nhóm..."
+            placeholder="Tìm theo tên hoặc nhóm..."
             autoFocus
           />
         </div>
 
-        <div className="quote-picker-categories">
-          <button className={!categoryFilter ? 'active' : ''} onClick={() => onCategoryFilter('')} type="button">
-            Tất cả ({productCount})
+        <div className={`quote-picker-categories${categoriesCollapsed ? ' is-collapsed' : ''}`}>
+          <button
+            type="button"
+            className="quote-picker-cat-toggle"
+            onClick={() => setCategoriesCollapsed((v) => !v)}
+          >
+            {categoriesCollapsed ? 'Hiện danh mục' : 'Thu gọn danh mục'}
           </button>
-          {categories.map((category) => (
-            <button
-              key={category}
-              className={categoryFilter === category ? 'active' : ''}
-              onClick={() => onCategoryFilter(category)}
-              type="button"
-            >
-              {category}
-            </button>
-          ))}
+          {!categoriesCollapsed && (
+            <>
+              <button className={!categoryFilter ? 'active' : ''} onClick={() => onCategoryFilter('')} type="button">
+                Tất cả ({productCount})
+              </button>
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  className={categoryFilter === category ? 'active' : ''}
+                  onClick={() => onCategoryFilter(category)}
+                  type="button"
+                >
+                  {category}
+                </button>
+              ))}
+            </>
+          )}
         </div>
 
         <div className="quote-picker-results">
@@ -722,26 +773,45 @@ function ProductPickerModal({
           ) : (
             <div className="quote-picker-grid">
               {filteredProducts.map((product) => (
-                <button
-                  key={product.id}
-                  className="quote-picker-card"
-                  type="button"
-                  onClick={() => onSelect(product.id)}
-                >
-                  <div className="quote-picker-thumb image-fit-frame">
+                <div key={product.id} className="quote-picker-card">
+                  <button
+                    type="button"
+                    className="quote-picker-thumb image-fit-frame"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setPreviewPath(product.coverImagePath || null);
+                      setLightboxOpen(true);
+                      setCategoriesCollapsed(true);
+                    }}
+                    aria-label={`Xem ảnh ${product.name}`}
+                  >
                     <ProductThumb imagePath={product.coverImagePath} fill />
-                  </div>
-                  <div className="quote-picker-card-body">
+                  </button>
+                  <button
+                    type="button"
+                    className="quote-picker-card-body"
+                    onClick={() => onSelect(product.id)}
+                  >
                     <strong>{product.name}</strong>
                     {product.category ? <span className="quote-picker-meta">{product.category}</span> : null}
                     <span className="quote-picker-choose">Chọn</span>
-                  </div>
-                </button>
+                  </button>
+                </div>
               ))}
             </div>
           )}
         </div>
       </div>
+      <ImageLightbox
+        open={lightboxOpen}
+        src={previewUrl}
+        alt="Ảnh sản phẩm"
+        onClose={() => {
+          setLightboxOpen(false);
+          setPreviewPath(null);
+          setPreviewUrl(null);
+        }}
+      />
     </div>
   );
 }
@@ -1073,6 +1143,9 @@ function specValueSuggestionsForKey(key: string, suggestions: Record<string, str
   if (primary === 'frame' || primary === 'spec_value_frame') {
     return mergeSuggestionLists(suggestions.frame, suggestions.spec_value_frame);
   }
+  if (primary === 'jamb' || primary === 'spec_value_jamb') {
+    return mergeSuggestionLists(suggestions.jamb, suggestions.spec_value_jamb);
+  }
   if (primary === 'sash' || primary === 'spec_value_sash') {
     return mergeSuggestionLists(suggestions.sash, suggestions.spec_value_sash);
   }
@@ -1312,17 +1385,45 @@ function QuoteItemCard({
       specs: moveRow(specs, specIndex, direction).map((spec, sortOrder) => ({ ...spec, sortOrder })),
     });
   };
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const imagePath = item.coverImagePath || item.image || null;
+
+  useEffect(() => {
+    let revoked: string | null = null;
+    let active = true;
+    if (!imagePath) {
+      setLightboxUrl(OWIN_LOGO);
+      return undefined;
+    }
+    void resolveImageUrl(imagePath).then((resolved) => {
+      if (!active) return;
+      if (resolved.revoke) revoked = resolved.url;
+      setLightboxUrl(resolved.url || OWIN_LOGO);
+    });
+    return () => {
+      active = false;
+      if (revoked) URL.revokeObjectURL(revoked);
+    };
+  }, [imagePath]);
+
   return (
     <div className="card quote-item-card">
       <div className="quote-item-card-header">
-        <div className="quote-item-thumb">
-          <ProductThumb imagePath={item.coverImagePath || item.image || null} fill />
-        </div>
+        <button
+          type="button"
+          className="quote-item-thumb quote-item-thumb-btn"
+          onClick={() => setLightboxOpen(true)}
+          aria-label="Xem ảnh lớn"
+          title="Bấm để xem ảnh lớn"
+        >
+          <ProductThumb imagePath={imagePath} fill />
+        </button>
         <div className="quote-item-card-main">
           <div className="quote-item-titleline">
             <div>
-              <div className="section-label" style={{ margin: 0 }}>#{index + 1} · {item.productCode}</div>
-              <div className="product-sub">Tổng hạng mục {formatVND(calculated?.itemTotalVnd ?? 0)}</div>
+              <div className="section-label" style={{ margin: 0 }}>#{index + 1}</div>
+              <div className="product-sub">Tổng {formatVND(calculated?.itemTotalVnd ?? 0)}</div>
             </div>
             <div className="quote-item-actions">
               <button className="icon-btn" onClick={onMoveUp} aria-label="Lên"><ChevronUp size={16} /></button>
@@ -1332,7 +1433,8 @@ function QuoteItemCard({
             </div>
           </div>
 
-          <div className="quote-item-basic-grid quote-item-basic-grid-compact">
+          {/* Bỏ trường Nhóm — giữ category ẩn từ sản phẩm; UI gọn cho người dùng. */}
+          <div className="quote-item-basic-grid quote-item-basic-grid-simple">
             <Field
               label="Tên hạng mục"
               fieldKey="item_name"
@@ -1340,15 +1442,8 @@ function QuoteItemCard({
               onChange={(value) => onUpdate({ itemName: value })}
               suggestions={mergeSuggestionLists(suggestions.item_name, suggestions.product_name)}
             />
-            <Field
-              label="Nhóm"
-              fieldKey="category"
-              value={item.category || ''}
-              onChange={(value) => onUpdate({ category: value, groupName: value })}
-              suggestions={suggestions.category}
-            />
             <div className="field">
-              <label>ĐVT chính</label>
+              <label>ĐVT</label>
               <select className="input" value={item.unit} onChange={(e) => onUpdate({ unit: e.target.value as ProductUnit })}>
                 <option value="M2">m²</option>
                 <option value="BO">Bộ</option>
@@ -1358,6 +1453,12 @@ function QuoteItemCard({
           </div>
         </div>
       </div>
+      <ImageLightbox
+        open={lightboxOpen}
+        src={lightboxUrl}
+        alt={item.itemName || 'Ảnh hạng mục'}
+        onClose={() => setLightboxOpen(false)}
+      />
 
       <div className="quote-card-section">
         <div className="toolbar" style={{ margin: '0 0 8px' }}>

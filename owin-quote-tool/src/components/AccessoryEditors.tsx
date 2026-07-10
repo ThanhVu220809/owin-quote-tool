@@ -64,7 +64,7 @@ export function FixedAccessoryPackageEditor({
         value={value.name}
         onChange={(name) => patch({ name })}
         suggestions={suggestions.packageName ?? []}
-        placeholder="Có thể để trống khi soạn…"
+        placeholder="Gợi ý tên bộ (không lẫn món phụ kiện)…"
       />
 
       <div className="accessory-items">
@@ -75,15 +75,15 @@ export function FixedAccessoryPackageEditor({
             <div key={item.id} className="accessory-item-line" data-row-id={item.id}>
               <span className="line-index">{index + 1}</span>
               <AutoSuggestInput
-                label="Món"
-                fieldKey="accessory_name"
+                label="Tên món trong bộ"
+                fieldKey="fixed_accessory_item"
                 value={item.name}
                 onChange={(name) => {
                   const items = value.items.map((row, i) => (i === index ? { ...row, name } : row));
                   patch({ items });
                 }}
                 suggestions={suggestions.accessoryName}
-                placeholder="Tên phụ kiện…"
+                placeholder="Khóa, Bản lề, Tay nắm…"
               />
               <div className="field">
                 <label>SL</label>
@@ -204,12 +204,12 @@ export function ExtraAccessoriesEditor({
           {value.map((item, index) => (
             <div key={item.id} className="extra-accessory-line" data-row-id={item.id}>
               <AutoSuggestInput
-                label="Tên"
-                fieldKey="accessory_name"
+                label="Tên phụ kiện phát sinh"
+                fieldKey="extra_accessory_name"
                 value={item.name}
                 onChange={(name) => onChange(updateAccessoryDraftAtIndex(value, index, { name }))}
                 suggestions={suggestions.accessoryName}
-                placeholder="Tên phụ kiện…"
+                placeholder="Phào, Nẹp, Ray…"
               />
               <div className="field">
                 <label>DV</label>

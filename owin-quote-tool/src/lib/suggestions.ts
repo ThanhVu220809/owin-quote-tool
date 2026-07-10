@@ -28,6 +28,7 @@ export const SUGGESTION_TYPES = [
   'spec_label',
   'spec_value_color',
   'spec_value_frame',
+  'spec_value_jamb',
   'spec_value_glass',
   'spec_value_molding',
   'spec_value_protection_bar',
@@ -60,11 +61,12 @@ export const SUGGESTION_TYPE_ALIASES: Record<string, string[]> = {
   spec_value_molding: ['spec_value_molding', 'molding'],
   protection_bar: ['protection_bar', 'spec_value_protection_bar'],
   spec_value_protection_bar: ['spec_value_protection_bar', 'protection_bar'],
-  // Fixed package items: may include legacy accessory_name seeds, never extras.
+  // Fixed package items: never mix with extra accessories or package title.
   accessory_name: ['accessory_name', 'fixed_accessory_item'],
   fixed_accessory_item: ['fixed_accessory_item', 'accessory_name'],
   accessory_package_name: ['accessory_package_name'],
   jamb: ['jamb', 'spec_value_jamb'],
+  spec_value_jamb: ['spec_value_jamb', 'jamb'],
   // Extra accessories: isolated bucket only.
   extra_accessory_name: ['extra_accessory_name'],
   customer_name: ['customer_name'],

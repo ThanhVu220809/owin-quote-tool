@@ -134,10 +134,11 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         ...(seededSuggestions.spec_value_color ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('mau')),
       ],
+      // Khung Bao ≠ Khuôn Bao — never mix these pools.
       specValueFrame: [
         ...(seededSuggestions.frame ?? []),
         ...(seededSuggestions.spec_value_frame ?? []),
-        ...specValuesByKey(productRecords, (key) => key.includes('khung') || key.includes('khuon')),
+        ...specValuesByKey(productRecords, (key) => key.includes('khung') && !key.includes('khuon')),
       ],
       specValueJamb: [
         ...(seededSuggestions.jamb ?? []),
