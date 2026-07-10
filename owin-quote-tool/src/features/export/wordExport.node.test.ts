@@ -14,6 +14,7 @@ function fixedPackage() {
     items: [
       { name: 'Tay nắm', quantity: 2 },
       { name: 'Bản lề', quantity: 4 },
+      { name: 'Keo silicone', quantity: 0 },
     ],
     packageQuantity: 2,
     unit: 'BO',
@@ -74,6 +75,8 @@ describe('reference Word quote template renderer', () => {
     expect(xml).toContain('4.296.000');
     expect(xml).toContain('Bộ phụ kiện Kinlong');
     expect(xml).toContain('Tay nắm');
+    expect(xml).toContain('Keo silicone');
+    expect(xml).not.toContain('Keo silicone x');
     expect(xml).toContain('Nẹp phát sinh');
     expect(xml).toContain('5.496.000');
     expect(xml).toContain('5.400.000');

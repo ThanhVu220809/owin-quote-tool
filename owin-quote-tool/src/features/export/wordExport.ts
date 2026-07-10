@@ -277,6 +277,57 @@ function applyQuoteIdentityMerge(rowXml: string, mode: 'restart' | 'continue'): 
   });
 }
 
+function addVerticalMergeToCell(cellXml: string, mode: 'restart' | 'continue'): string {
+  const mergeXml = mode === 'restart' ? '<w:vMerge w:val="restart"/>' : '<w:vMerge/>';
+  return upsertCellProperty(cellXml, mergeXml, 'vMerge');
+}
+
+function applyCatalogueVerticalMerges(rowXml: string, mode: 'restart' | 'continue'): string {
+  let cellIndex = 0;
+  return rowXml.replace(/<w:tc\b[\s\S]*?<\/w:tc>/g, (cellXml) => {
+    const currentIndex = cellIndex;
+    cellIndex += 1;
+    return currentIndex === 0 || currentIndex === 1 || currentIndex === 9
+      ? addVerticalMergeToCell(cellXml, mode)
+      : cellXml;
+  });
+}
+
+function removeKeepNext(rowXml: string): string {
+  return rowXml.replace(/<w:keepNext\b[^>]*\/>/g, '');
+}
+
+function addKeepNextToParagraph(paragraphXml: string): string {
+  if (/<w:keepNext\b[^>]*\/>/.test(paragraphXml)) return paragraphXml;
+  if (/<w:pPr\b[^>]*>/.test(paragraphXml)) {
+    return paragraphXml.replace('</w:pPr>', '<w:keepNext/></w:pPr>');
+  }
+  return paragraphXml.replace(/<w:p\b([^>]*)>/, '<w:p$1><w:pPr><w:keepNext/></w:pPr>');
+}
+
+function addKeepNextToAllParagraphsInRow(rowXml: string): string {
+  return removeKeepNext(rowXml).replace(/<w:p\b[\s\S]*?<\/w:p>/g, addKeepNextToParagraph);
+}
+
+function ensureCantSplit(rowXml: string): string {
+  if (/<w:cantSplit\b[^>]*\/>/.test(rowXml)) return rowXml;
+  if (/<w:trPr\b[^>]*>/.test(rowXml)) {
+    return rowXml.replace(/<w:trPr\b([^>]*)>/, '<w:trPr$1><w:cantSplit/>');
+  }
+  return rowXml.replace(/<w:tr\b([^>]*)>/, '<w:tr$1><w:trPr><w:cantSplit/></w:trPr>');
+}
+
+function setMinRowHeight(rowXml: string, heightTwips: number): string {
+  const heightXml = `<w:trHeight w:val="${heightTwips}" w:hRule="atLeast"/>`;
+  if (/<w:trHeight\b[^>]*\/>/.test(rowXml)) {
+    return rowXml.replace(/<w:trHeight\b[^>]*\/>/, heightXml);
+  }
+  if (/<w:trPr\b[^>]*>/.test(rowXml)) {
+    return rowXml.replace(/<w:trPr\b([^>]*)>/, `<w:trPr$1>${heightXml}`);
+  }
+  return rowXml.replace(/<w:tr\b([^>]*)>/, `<w:tr$1><w:trPr>${heightXml}</w:trPr>`);
+}
+
 function quoteDescription(item: CalculatedQuote['items'][number], lineDescription?: string | null): string {
   return [
     item.itemName,
@@ -336,8 +387,10 @@ function renderQuoteFixedSetRow(template: string, fixed: Record<string, unknown>
 
 function renderQuoteFixedItemRow(template: string, name: unknown, quantity: unknown): string {
   let xml = template;
+  const hasQuantity = Number(quantity ?? 0) > 0;
+  if (!hasQuantity) xml = xml.replace(/\s*x\{pk_sl_item\}/g, '{pk_sl_item}');
   xml = replaceToken(xml, '{pk_ten}', String(name || '').trim());
-  xml = replaceToken(xml, '{pk_sl_item}', Number(quantity ?? 0) > 0 ? formatDecimal(Number(quantity)) : '');
+  xml = replaceToken(xml, '{pk_sl_item}', hasQuantity ? formatDecimal(Number(quantity)) : '');
   return removeLeftoverTokens(xml);
 }
 
@@ -494,7 +547,7 @@ function renderCatalogueProductRow(template: string, row: CatalogueBlockRow, ima
   xml = replaceToken(xml, '{don_gia}', money(row.unitPriceVnd));
   xml = replaceToken(xml, '{thanh_tien}', money(row.amountVnd));
   xml = replaceToken(xml, '{tong_tien}', money(row.completedTotalVnd));
-  return removeLeftoverTokens(xml);
+  return applyCatalogueVerticalMerges(removeLeftoverTokens(xml), 'restart');
 }
 
 function renderCatalogueAccessoryRow(template: string, row: CatalogueBlockRow): string {
@@ -504,7 +557,7 @@ function renderCatalogueAccessoryRow(template: string, row: CatalogueBlockRow): 
   xml = replaceToken(xml, '{pk_kl}', row.weight);
   xml = replaceToken(xml, '{pk_don_gia}', money(row.unitPriceVnd));
   xml = replaceToken(xml, '{pk_thanh_tien}', money(row.amountVnd));
-  return removeLeftoverTokens(xml);
+  return applyCatalogueVerticalMerges(removeLeftoverTokens(xml), 'continue');
 }
 
 export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRecord[]): Promise<string> {
@@ -518,22 +571,37 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
   const rows = buildCatalogueBlockRows(products);
   const embedImage = createImageEmbedder(zip);
   const imageCache = new Map<string, string | null>();
-  const renderedRows: string[] = [];
+  const blocks: string[][] = [];
+  let currentBlock: string[] | null = null;
 
   for (const row of rows) {
     if (row.rowType === 'category') {
-      renderedRows.push(renderCatalogueCategoryRow(templates.category.row, row));
+      if (currentBlock) {
+        blocks.push(currentBlock);
+        currentBlock = null;
+      }
+      blocks.push([ensureCantSplit(renderCatalogueCategoryRow(templates.category.row, row))]);
     } else if (row.rowType === 'product') {
+      if (currentBlock) blocks.push(currentBlock);
       let imageXml = imageCache.get(row.imagePath);
       if (!imageCache.has(row.imagePath)) {
         imageXml = await embedImage(row.imagePath, { widthPx: 190, heightPx: 270 });
         imageCache.set(row.imagePath, imageXml);
       }
-      renderedRows.push(renderCatalogueProductRow(templates.product.row, row, imageXml || null));
+      currentBlock = [ensureCantSplit(renderCatalogueProductRow(templates.product.row, row, imageXml || null))];
     } else {
-      renderedRows.push(renderCatalogueAccessoryRow(templates.accessory.row, row));
+      if (!currentBlock) currentBlock = [];
+      const accessoryRow = renderCatalogueAccessoryRow(templates.accessory.row, row);
+      currentBlock.push(ensureCantSplit(row.rowType === 'extraAccessory' ? setMinRowHeight(accessoryRow, 340) : accessoryRow));
     }
   }
+  if (currentBlock) blocks.push(currentBlock);
+
+  const renderedRows = blocks.flatMap((block) =>
+    block.map((rowXml, rowIndex) =>
+      rowIndex < block.length - 1 ? addKeepNextToAllParagraphsInRow(rowXml) : rowXml,
+    ),
+  );
 
   documentXml = documentXml.slice(0, blockStart) + renderedRows.join('') + documentXml.slice(blockEnd);
   return removeLeftoverTokens(documentXml);
