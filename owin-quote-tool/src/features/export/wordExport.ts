@@ -170,24 +170,31 @@ function imageInfoFromDataUrl(dataUrl: string): { ext: string; contentType: stri
   return { ext: 'png', contentType: 'image/png' };
 }
 
+/**
+ * Fit image to ~95% of the target frame using object-fit: contain semantics:
+ * scale until width OR height reaches 95% of the box (whichever first), preserve aspect ratio.
+ * Allows upscaling so images are not tiny in large cells.
+ */
 async function fitImageDataUrlToBox(
   dataUrl: string,
   maxWidthPx: number,
   maxHeightPx: number,
 ): Promise<{ widthPx: number; heightPx: number }> {
-  if (typeof Image === 'undefined') return { widthPx: maxWidthPx, heightPx: maxHeightPx };
+  const targetW = Math.max(1, Math.round(maxWidthPx * 0.95));
+  const targetH = Math.max(1, Math.round(maxHeightPx * 0.95));
+  if (typeof Image === 'undefined') return { widthPx: targetW, heightPx: targetH };
   return new Promise((resolve) => {
     const image = new Image();
     image.onload = () => {
-      const width = image.naturalWidth || maxWidthPx;
-      const height = image.naturalHeight || maxHeightPx;
-      const scale = Math.min(maxWidthPx / width, maxHeightPx / height, 1);
+      const width = image.naturalWidth || targetW;
+      const height = image.naturalHeight || targetH;
+      const scale = Math.min(targetW / width, targetH / height);
       resolve({
         widthPx: Math.max(1, Math.round(width * scale)),
         heightPx: Math.max(1, Math.round(height * scale)),
       });
     };
-    image.onerror = () => resolve({ widthPx: maxWidthPx, heightPx: maxHeightPx });
+    image.onerror = () => resolve({ widthPx: targetW, heightPx: targetH });
     image.src = dataUrl;
   });
 }
@@ -464,7 +471,15 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
 
     const itemRows: string[] = [];
     const imageXml = await embedImage(item.image || item.coverImagePath, { widthPx: 190, heightPx: 160 });
-    item.dimensions.forEach((line, lineIndex) => {
+    // Do not clone blank dimension rows.
+    const dimensions = item.dimensions.filter((line) => {
+      const qty = Number(line.quantity || 0);
+      const w = Number(line.widthM || 0);
+      const h = Number(line.heightM || 0);
+      return qty > 0 || w > 0 || h > 0 || Number(line.lineTotalVnd || 0) > 0;
+    });
+    const lines = dimensions.length > 0 ? dimensions : item.dimensions.slice(0, 1);
+    lines.forEach((line, lineIndex) => {
       itemRows.push(renderQuoteProductRow(templates.product.row, item, line, {
         stt: lineIndex === 0 ? String(itemIndex + 1) : '',
         code: lineIndex === 0 ? item.quoteItemCode || item.productCode : '',
@@ -474,8 +489,13 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
     });
 
     const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
-    if (fixed && templates.fixedSet) {
-      itemRows.push(renderQuoteFixedSetRow(templates.fixedSet.row, fixed));
+    // Fixed package item lines stay inside the fixed package row (accepted behavior).
+    if (fixed && templates.fixedSet && (String(fixed.name || '').trim() || Array.isArray(fixed.items))) {
+      const hasContent =
+        String(fixed.name || '').trim()
+        || (Array.isArray(fixed.items) && fixed.items.some((entry) => String((entry as Record<string, unknown>).name || '').trim()))
+        || Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) > 0;
+      if (hasContent) itemRows.push(renderQuoteFixedSetRow(templates.fixedSet.row, fixed));
     } else if (templates.fixedSet) {
       item.accessories
         .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
@@ -490,9 +510,14 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
         .forEach((entry) => itemRows.push(renderQuoteExtraRow(templates.extra!.row, entry)));
     }
 
+    // keepNext/cantSplit: keep product + accessory rows of one item together where possible.
     rows.push(...itemRows.map((rowXml, rowIndex) => {
-      if (itemRows.length <= 1) return rowXml;
-      return applyQuoteIdentityMerge(rowXml, rowIndex === 0 ? 'restart' : 'continue');
+      let next = itemRows.length > 1
+        ? applyQuoteIdentityMerge(rowXml, rowIndex === 0 ? 'restart' : 'continue')
+        : rowXml;
+      next = ensureCantSplit(next);
+      if (rowIndex < itemRows.length - 1) next = addKeepNextToAllParagraphsInRow(next);
+      return next;
     }));
   }
 
@@ -584,27 +609,41 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
   const rows = buildCatalogueBlockRows(products);
   const embedImage = createImageEmbedder(zip);
   const imageCache = new Map<string, string | null>();
+  // Blocks keep category with first product and product with accessories via keepNext.
   const blocks: string[][] = [];
   let currentBlock: string[] | null = null;
+  let currentBlockHasProduct = false;
 
   for (const row of rows) {
     if (row.rowType === 'category') {
-      if (currentBlock) {
+      if (currentBlock) blocks.push(currentBlock);
+      // Start a block with the category heading so it stays with the first product.
+      currentBlock = [ensureCantSplit(renderCatalogueCategoryRow(templates.category.row, row))];
+      currentBlockHasProduct = false;
+    } else if (row.rowType === 'product') {
+      if (currentBlock && currentBlockHasProduct) {
         blocks.push(currentBlock);
         currentBlock = null;
       }
-      blocks.push([ensureCantSplit(renderCatalogueCategoryRow(templates.category.row, row))]);
-    } else if (row.rowType === 'product') {
-      if (currentBlock) blocks.push(currentBlock);
       let imageXml = imageCache.get(row.imagePath);
       if (!imageCache.has(row.imagePath)) {
         imageXml = await embedImage(row.imagePath, { widthPx: 190, heightPx: 270 });
         imageCache.set(row.imagePath, imageXml);
       }
-      currentBlock = [ensureCantSplit(renderCatalogueProductRow(templates.product.row, row, imageXml || null))];
+      const productRow = ensureCantSplit(renderCatalogueProductRow(templates.product.row, row, imageXml || null));
+      if (currentBlock && !currentBlockHasProduct) {
+        currentBlock.push(productRow);
+      } else {
+        currentBlock = [productRow];
+      }
+      currentBlockHasProduct = true;
     } else {
-      if (!currentBlock) currentBlock = [];
+      if (!currentBlock) {
+        currentBlock = [];
+        currentBlockHasProduct = false;
+      }
       const accessoryRow = renderCatalogueAccessoryRow(templates.accessory.row, row);
+      // Avoid orphan accessory rows by attaching them to the product block.
       currentBlock.push(ensureCantSplit(row.rowType === 'extraAccessory' ? setMinRowHeight(accessoryRow, 340) : accessoryRow));
     }
   }

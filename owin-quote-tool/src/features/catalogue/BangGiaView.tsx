@@ -26,15 +26,34 @@ export function BangGiaView() {
   const [exporting, setExporting] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const rows = useMemo(() => buildCatalogueBlockRows(productRecords), [productRecords]);
+  // Group so category stays with first product and accessories stay with product for print keep-together.
   const blocks = useMemo(() => {
     const out: CatalogueBlockRow[][] = [];
+    let current: CatalogueBlockRow[] | null = null;
+    let hasProduct = false;
     rows.forEach((row) => {
-      if (row.rowType === 'category' || row.rowType === 'product' || out.length === 0) {
-        out.push([row]);
-      } else {
-        out[out.length - 1].push(row);
+      if (row.rowType === 'category') {
+        if (current) out.push(current);
+        current = [row];
+        hasProduct = false;
+        return;
       }
+      if (row.rowType === 'product') {
+        if (current && hasProduct) {
+          out.push(current);
+          current = [row];
+        } else if (current) {
+          current.push(row);
+        } else {
+          current = [row];
+        }
+        hasProduct = true;
+        return;
+      }
+      if (!current) current = [];
+      current.push(row);
     });
+    if (current) out.push(current);
     return out;
   }, [rows]);
 
@@ -126,17 +145,6 @@ export function BangGiaView() {
 }
 
 function CatalogueBlock({ block }: { block: CatalogueBlockRow[] }) {
-  const first = block[0];
-  if (first.rowType === 'category') {
-    return (
-      <tbody className="catalogue-item-block">
-        <tr className="category-row">
-          <td colSpan={10}>{first.categoryName}</td>
-        </tr>
-      </tbody>
-    );
-  }
-
   return (
     <tbody className="catalogue-item-block">
       {block.map((row, index) => (
@@ -148,7 +156,11 @@ function CatalogueBlock({ block }: { block: CatalogueBlockRow[] }) {
 
 function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
   if (row.rowType === 'category') {
-    return null;
+    return (
+      <tr className="category-row">
+        <td colSpan={10}>{row.categoryName}</td>
+      </tr>
+    );
   }
 
   const isProduct = row.rowType === 'product';

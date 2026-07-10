@@ -82,6 +82,9 @@ describe('reference Word quote template renderer', () => {
     expect(xml).toContain('5.400.000');
     expect(xml).toContain('4.400.000');
     expect(xml).not.toMatch(/\{(?:stt|ma_sp|anh_sp|mo_ta|bo_pk_ten|pk_ten|ps_ten|tong_tien)\}/);
+    // Product block rows should prefer staying together across page breaks.
+    expect(xml).toContain('w:cantSplit');
+    expect(xml).toContain('w:keepNext');
   });
 });
 
@@ -123,5 +126,8 @@ describe('reference Word catalogue template renderer', () => {
     expect(xml).toContain('4.200.000');
     expect(xml).toContain('5.400.000');
     expect(xml).not.toMatch(/\{(?:category|product_info_block|accessory_block|tong_tien)\}/);
+    // Category + product + accessory block keep-together markers.
+    expect(xml).toContain('w:cantSplit');
+    expect(xml).toContain('w:keepNext');
   });
 });
