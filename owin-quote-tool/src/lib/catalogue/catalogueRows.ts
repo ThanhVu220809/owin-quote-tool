@@ -65,22 +65,30 @@ function unitLabel(unit: string): string {
   return 'm²';
 }
 
+function formatSpecLine(label: string, value: string): string {
+  const key = titleCase(label.trim());
+  const text = value.trim();
+  // Empty value: keep the key only (no ugly trailing colon).
+  return text ? `- ${key}: ${titleCase(text)}` : `- ${key}`;
+}
+
 function productDescription(product: ProductRecord): string[] {
+  // Keep rows that have a key even when value is empty (e.g. "Song Nhôm Bảo Vệ").
   const specs = product.specs
     .map((spec, originalIndex) => ({ ...spec, originalIndex }))
-    .filter((spec) => spec.key.trim() && spec.value.trim());
+    .filter((spec) => spec.key.trim());
   const used = new Set<number>();
   const lines = [titleCase(product.name)];
 
   SPEC_ORDER.forEach((rule) => {
     const match = specs.find((spec) => !used.has(spec.originalIndex) && specMatches(spec.key, rule.keys));
     if (!match) return;
-    lines.push(`- ${rule.label}: ${titleCase(match.value)}`);
+    lines.push(formatSpecLine(rule.label, match.value));
     used.add(match.originalIndex);
   });
 
   specs.forEach((spec) => {
-    if (!used.has(spec.originalIndex)) lines.push(`- ${titleCase(spec.key)}: ${titleCase(spec.value)}`);
+    if (!used.has(spec.originalIndex)) lines.push(formatSpecLine(spec.key, spec.value));
   });
 
   if (product.shortDesc?.trim()) lines.push(`- Ghi Chú: ${titleCase(product.shortDesc)}`);

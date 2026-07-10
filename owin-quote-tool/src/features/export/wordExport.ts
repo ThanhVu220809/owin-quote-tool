@@ -347,11 +347,21 @@ function setMinRowHeight(rowXml: string, heightTwips: number): string {
   return rowXml.replace(/<w:tr\b([^>]*)>/, `<w:tr$1><w:trPr>${heightXml}</w:trPr>`);
 }
 
+function formatQuoteSpecLine(key: string, value: string): string {
+  const label = String(key || '').trim();
+  if (!label) return '';
+  const text = String(value || '').trim();
+  // Empty value: keep the key only (no trailing colon).
+  return text ? `- ${label}: ${text}` : `- ${label}`;
+}
+
 function quoteDescription(item: CalculatedQuote['items'][number], lineDescription?: string | null): string {
   return [
     item.itemName,
     lineDescription,
-    ...(item.specs || []).filter((spec) => spec.value).map((spec) => `- ${spec.key}: ${spec.value}`),
+    ...(item.specs || [])
+      .filter((spec) => String(spec.key || '').trim())
+      .map((spec) => formatQuoteSpecLine(spec.key, spec.value)),
   ].filter(Boolean).join('\n');
 }
 

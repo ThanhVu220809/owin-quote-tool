@@ -105,7 +105,10 @@ describe('reference Word catalogue template renderer', () => {
       gallery: [],
       rawSizeText: '1.196 x 1.796',
       rawPriceText: null,
-      specs: [{ key: 'Loại Kính', value: 'Kính cường lực 8mm', sortOrder: 0 }],
+      specs: [
+        { key: 'Loại Kính', value: 'Kính cường lực 8mm', sortOrder: 0 },
+        { key: 'Song Nhôm Bảo Vệ', value: '', sortOrder: 1 },
+      ],
       accessories: [],
       fixedAccessoryPackage: fixedPackage(),
       extraAccessories: extraAccessories(),
@@ -121,6 +124,9 @@ describe('reference Word catalogue template renderer', () => {
     expect(xml).toContain('I. CỬA SỔ');
     expect(xml).toContain('Cửa Sổ Mở Quay 1 Cánh');
     expect(xml).toContain('Kính Cường Lực 8mm');
+    // Empty-value specs keep the key only (no trailing colon).
+    expect(xml).toContain('Song Nhôm Bảo Vệ');
+    expect(xml).not.toMatch(/Song Nhôm Bảo Vệ:\s*</);
     expect(xml).toContain('Bộ phụ kiện Kinlong');
     expect(xml).toContain('Nẹp Phát Sinh');
     expect(xml).toContain('4.200.000');
