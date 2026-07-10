@@ -39,6 +39,7 @@ interface Suggestions {
   specValue: string[];
   specValueColor?: string[];
   specValueFrame?: string[];
+  specValueJamb?: string[];
   specValueSash?: string[];
   specValueThickness?: string[];
   specValueGlass?: string[];
@@ -197,6 +198,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
       return suggestions.specValueProtectionBar ?? [];
     }
     if (primary === 'frame' || primary === 'spec_value_frame') return suggestions.specValueFrame ?? [];
+    if (primary === 'jamb' || primary === 'spec_value_jamb') return suggestions.specValueJamb ?? [];
     if (primary === 'sash' || primary === 'spec_value_sash') return suggestions.specValueSash ?? [];
     if (primary === 'thickness' || primary === 'spec_value_thickness') return suggestions.specValueThickness ?? [];
     if (primary === 'glass' || primary === 'spec_value_glass') return suggestions.specValueGlass ?? [];

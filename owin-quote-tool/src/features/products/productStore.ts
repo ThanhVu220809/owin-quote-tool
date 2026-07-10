@@ -19,6 +19,7 @@ import type {
 import initialData from '@/data/initialData.json';
 import importedProducts from '@/data/imported/products.json';
 import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
+import { notifyProductsChanged } from './productEvents';
 
 const productStore = localforage.createInstance({
   name: 'owin-quote-tool',
@@ -164,7 +165,9 @@ function specsFromLegacy(input: ProductInput): ProductSpecRecord[] {
         value: normalizeString((item as ProductSpecRecord).value),
         sortOrder: normalizeNumber((item as ProductSpecRecord).sortOrder, index),
       }))
-      .filter((item) => item.key && item.value);
+      // Keep an explicitly named spec even when its value is empty. Exporters
+      // render this as the key alone (for example, "Song Nhôm Bảo Vệ").
+      .filter((item) => item.key);
   }
 
   return [
@@ -381,6 +384,25 @@ export async function deleteProduct(id: string): Promise<void> {
     deletedAt: existing.deletedAt ?? nowIso(),
     updatedAt: nowIso(),
   } satisfies ProductRecord);
+}
+
+/**
+ * Adjust active product prices in one atomic-looking store pass.
+ * Tombstones are deliberately skipped so deleted products are never revived
+ * or mutated by a catalogue-wide price operation.
+ */
+export async function bulkAdjustProductPrices(percent: number): Promise<ProductRecord[]> {
+  if (!Number.isFinite(percent)) throw new Error('Phần trăm điều chỉnh không hợp lệ.');
+  const all = await getAllProductsRaw();
+  const active = all.filter((product) => !product.deleted && !product.deletedAt);
+  const updated = active.map((product) => ({
+    ...product,
+    unitPriceVnd: Math.max(0, Math.round(product.unitPriceVnd * (1 + percent / 100))),
+    updatedAt: nowIso(),
+  }));
+  for (const product of updated) await productStore.setItem(product.id, product);
+  notifyProductsChanged();
+  return updated;
 }
 
 /** Ghi hàng loạt ProductRecord sau merge sync. */

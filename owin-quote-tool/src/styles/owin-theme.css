@@ -481,6 +481,36 @@
   background: #fff;
   box-shadow: 0 22px 64px rgba(15, 42, 61, 0.24);
 }
+
+.bulk-price-modal {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+  overflow: auto;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 24px 80px rgba(25, 35, 55, .22);
+}
+
+.bulk-price-body { padding: 20px 24px 24px; }
+.bulk-price-preview {
+  margin: 16px 0 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-subtle, #fafbfc);
+}
+.bulk-price-preview > div,
+.bulk-price-preview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.bulk-price-preview-head { font-size: 12px; font-weight: 700; color: var(--text-muted); background: rgba(0,0,0,.025); }
+.bulk-price-preview > div:last-of-type { border-bottom: 0; }
+.bulk-price-preview > small { display: block; padding: 9px 12px; color: var(--text-muted); }
 .product-preview-header {
   display: flex;
   align-items: center;
@@ -654,30 +684,6 @@
   text-align: left;
   font-size: 13px;
   cursor: pointer;
-}
-/* Hide-suggestion (EyeOff): visually separate from clear-value X and row trash. */
-.autosuggest-hide,
-.autosuggest-remove {
-  width: 26px;
-  height: 26px;
-  margin-right: 3px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--owin-ink-muted);
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex: 0 0 auto;
-  opacity: 0.65;
-}
-.autosuggest-hide:hover,
-.autosuggest-remove:hover {
-  background: rgba(15, 42, 61, 0.08);
-  border-color: rgba(15, 42, 61, 0.1);
-  color: var(--owin-ink);
-  opacity: 1;
 }
 .accessory-editor-panel {
   min-width: 0;

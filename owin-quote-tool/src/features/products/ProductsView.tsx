@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, BookOpen, Pencil, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Pencil, Plus, Search, X, Percent } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { useProducts } from './useProducts';
-import { getProductRecord } from './productStore';
+import { bulkAdjustProductPrices, getProductRecord } from './productStore';
 import { ProductForm } from './ProductForm';
 import { ProductList } from './ProductList';
 import { ProductThumb } from './ProductThumb';
@@ -34,6 +34,8 @@ const PRODUCT_SUGGESTION_TYPES = [
   'spec_value_sash',
   'spec_value_thickness',
   'accessory_name',
+  'jamb',
+  'spec_value_jamb',
 ] as const;
 
 function normalizeSpecKey(value: string): string {
@@ -106,6 +108,9 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
   const [previewProduct, setPreviewProduct] = useState<ProductRecord | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
+  const [bulkPercent, setBulkPercent] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   // Field-specific suggestion pools (no noisy global bucket for all fields).
   const suggestions = useMemo(
@@ -133,6 +138,11 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         ...(seededSuggestions.frame ?? []),
         ...(seededSuggestions.spec_value_frame ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('khung') || key.includes('khuon')),
+      ],
+      specValueJamb: [
+        ...(seededSuggestions.jamb ?? []),
+        ...(seededSuggestions.spec_value_jamb ?? []),
+        ...specValuesByKey(productRecords, (key) => key.includes('khuon')),
       ],
       specValueSash: [
         ...(seededSuggestions.sash ?? []),
@@ -262,6 +272,28 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
     return saved;
   };
 
+  const bulkPercentValue = Number(bulkPercent.replace(',', '.'));
+  const bulkPreview = Number.isFinite(bulkPercentValue)
+    ? productRecords.map((product) => ({
+        product,
+        nextPrice: Math.max(0, Math.round(product.unitPriceVnd * (1 + bulkPercentValue / 100))),
+      }))
+    : [];
+
+  const applyBulkPrice = async () => {
+    if (!Number.isFinite(bulkPercentValue) || bulkPercent.trim() === '') return;
+    if (!confirm(`Áp dụng thay đổi ${bulkPercentValue}% cho ${productRecords.length} sản phẩm đang hoạt động?`)) return;
+    setBulkSaving(true);
+    try {
+      await bulkAdjustProductPrices(bulkPercentValue);
+      setMessage(`Đã cập nhật giá ${productRecords.length} sản phẩm.`);
+      setBulkPriceOpen(false);
+      setBulkPercent('');
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
   if (showForm) {
     return (
       <section className="admin-page product-workflow-page">
@@ -299,6 +331,9 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         <div className="product-header-actions">
           <button className="btn btn-ghost" onClick={onOpenCatalogue}>
             <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> Bảng giá
+          </button>
+          <button className="btn btn-ghost" onClick={() => setBulkPriceOpen(true)} disabled={!productRecords.length}>
+            <Percent size={17} style={{ verticalAlign: '-3px' }} /> Cập nhật giá hàng loạt
           </button>
           <button className="btn btn-primary" onClick={openNew}>
             <Plus size={18} style={{ verticalAlign: '-3px' }} /> Thêm sản phẩm
@@ -339,6 +374,38 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         onDuplicate={(product) => void handleDuplicate(product)}
         onPreview={setPreviewProduct}
       />
+
+      {bulkPriceOpen && (
+        <div className="modal-backdrop" role="presentation" onClick={() => !bulkSaving && setBulkPriceOpen(false)}>
+          <div className="bulk-price-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-price-title" onClick={(event) => event.stopPropagation()}>
+            <div className="product-preview-header">
+              <div>
+                <div className="product-name" id="bulk-price-title">Cập nhật giá hàng loạt</div>
+                <div className="product-sub">Chỉ áp dụng cho sản phẩm đang hoạt động · không chạm sản phẩm đã xoá</div>
+              </div>
+              <button className="icon-btn" onClick={() => setBulkPriceOpen(false)} aria-label="Đóng"><X size={17} /></button>
+            </div>
+            <div className="bulk-price-body">
+              <div className="field">
+                <label htmlFor="bulk-percent">Điều chỉnh (%)</label>
+                <input id="bulk-percent" className="input" inputMode="decimal" value={bulkPercent} onChange={(event) => setBulkPercent(event.target.value)} placeholder="Ví dụ: 5 hoặc -3" autoFocus />
+              </div>
+              {bulkPercent.trim() !== '' && Number.isFinite(bulkPercentValue) && (
+                <div className="bulk-price-preview">
+                  <div className="bulk-price-preview-head"><span>Sản phẩm</span><span>Giá cũ → giá mới</span></div>
+                  {bulkPreview.slice(0, 8).map(({ product, nextPrice }) => <div key={product.id}><span>{product.name}</span><strong>{formatVND(product.unitPriceVnd)} → {formatVND(nextPrice)}</strong></div>)}
+                  {bulkPreview.length > 8 && <small>… và {bulkPreview.length - 8} sản phẩm khác</small>}
+                </div>
+              )}
+              <div className="toolbar">
+                <div className="spacer" />
+                <button className="btn btn-ghost" onClick={() => setBulkPriceOpen(false)} disabled={bulkSaving}>Huỷ</button>
+                <button className="btn btn-primary" onClick={() => void applyBulkPrice()} disabled={bulkSaving || bulkPercent.trim() === '' || !Number.isFinite(bulkPercentValue)}>{bulkSaving ? 'Đang cập nhật…' : 'Xác nhận áp dụng'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {previewProduct && (
         <div className="modal-backdrop" role="presentation" onClick={() => setPreviewProduct(null)}>

@@ -12,6 +12,7 @@ export const SUGGESTION_TYPES = [
   'fixed_accessory_item',
   /** Extra/phụ kiện phát sinh names (Phào, Nẹp…) — not mixed with fixed package. */
   'extra_accessory_name',
+  'jamb',
   'category',
   'color',
   'customer_address',
@@ -63,6 +64,7 @@ export const SUGGESTION_TYPE_ALIASES: Record<string, string[]> = {
   accessory_name: ['accessory_name', 'fixed_accessory_item'],
   fixed_accessory_item: ['fixed_accessory_item', 'accessory_name'],
   accessory_package_name: ['accessory_package_name'],
+  jamb: ['jamb', 'spec_value_jamb'],
   // Extra accessories: isolated bucket only.
   extra_accessory_name: ['extra_accessory_name'],
   customer_name: ['customer_name'],
@@ -81,6 +83,7 @@ export function getSuggestionTypeAliases(type: string): string[] {
 export const DEFAULT_SPEC_KEYS = [
   'Màu',
   'Khung Bao',
+  'Khuôn Bao',
   'Bản Cánh',
   'Độ Dày',
   'Loại Kính',
@@ -291,7 +294,8 @@ export function suggestionTypesForSpecKey(key: string): SuggestionType[] {
   if (normalized.includes('song') || normalized.includes('bao ve')) {
     return ['protection_bar', 'spec_value_protection_bar'];
   }
-  if (normalized.includes('khung') || normalized.includes('khuon')) return ['frame', 'spec_value_frame'];
+  if (normalized.includes('khuon')) return ['jamb', 'spec_value_jamb'];
+  if (normalized.includes('khung')) return ['frame', 'spec_value_frame'];
   if (normalized.includes('canh')) return ['sash', 'spec_value_sash'];
   if (normalized.includes('day')) return ['thickness', 'spec_value_thickness'];
   if (normalized.includes('kinh')) return ['glass', 'spec_value_glass'];
