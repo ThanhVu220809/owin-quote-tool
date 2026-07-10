@@ -221,7 +221,8 @@ function createImageEmbedder(zip: PizZip): ImageEmbedder {
   let nextImageId = 1;
 
   return async (path, options = {}) => {
-    const dataUrl = await getImageDataUrlByPath(path);
+    // Prefer product/quote image; fall back to OWIN logo (browser-safe).
+    const dataUrl = await getImageDataUrlByPath(path, { fallbackLogo: true });
     if (!dataUrl) return null;
     const { ext, contentType } = imageInfoFromDataUrl(dataUrl);
     const imageName = `owin-browser-${nextImageId++}.${ext}`;
@@ -365,6 +366,15 @@ function quoteDescription(item: CalculatedQuote['items'][number], lineDescriptio
   ].filter(Boolean).join('\n');
 }
 
+/**
+ * REFERENCE quote-export-docx strategy (browser-safe port):
+ * - Marker rows {nhom}/{stt}/{bo_pk_*}/{pk_*}/{ps_*} only define the injection span.
+ * - ALL data rows (product, fixed package, extra) are rendered with the PRODUCT template row.
+ * - Fixed accessory item lines are multiline description inside the fixed package row.
+ * - Never clone blank {pk_ten} rows (orphan "x" source in REFERENCE notes).
+ * - STT / Mã SP / Ảnh vMerge across the whole item block.
+ * - keepNext + cantSplit on all but last row of each item block.
+ */
 function findQuoteTemplateRows(documentXml: string) {
   const rows = rowMatches(documentXml);
   const group = rows.find((entry) => entry.row.includes('{nhom}'));
@@ -372,6 +382,7 @@ function findQuoteTemplateRows(documentXml: string) {
   const fixedSet = rows.find((entry) => entry.row.includes('{bo_pk_ten}'));
   const fixedItem = rows.find((entry) => entry.row.includes('{pk_ten}'));
   const extra = rows.find((entry) => entry.row.includes('{ps_ten}'));
+  // Include ALL marker data rows so blank fixed-item/extra shells are removed from the table.
   const matches = [group, product, fixedSet, fixedItem, extra].filter((entry): entry is XmlRowMatch => Boolean(entry));
   if (!product || matches.length === 0) throw new Error('Template báo giá thiếu dòng placeholder sản phẩm.');
   return { group, product, fixedSet, fixedItem, extra, matches };
@@ -381,26 +392,20 @@ function renderQuoteGroupRow(template: string, groupName: string): string {
   return removeLeftoverTokens(replaceToken(template, '{nhom}', groupName));
 }
 
-function renderQuoteProductRow(
-  template: string,
-  item: CalculatedQuote['items'][number],
-  line: CalculatedQuote['items'][number]['dimensions'][number],
-  rowMeta: { stt: string; code: string; drawingXml: string | null; includeDescription: boolean },
-): string {
-  let xml = template;
-  xml = replaceToken(xml, '{stt}', rowMeta.stt);
-  xml = replaceToken(xml, '{ma_sp}', rowMeta.code);
-  xml = fillImageToken(xml, '{anh_sp}', rowMeta.drawingXml);
-  xml = replaceMultilineToken(xml, '{mo_ta}', rowMeta.includeDescription ? quoteDescription(item, line.description) : '');
-  xml = replaceToken(xml, '{dv}', unitLabel(line.unit));
-  xml = replaceToken(xml, '{rong}', line.unit === 'BO' ? '' : formatDecimal(line.widthM));
-  xml = replaceToken(xml, '{cao}', line.unit === 'BO' ? '' : formatDecimal(line.heightM));
-  xml = replaceToken(xml, '{sl}', formatDecimal(line.quantity));
-  xml = replaceToken(xml, '{kl}', formatDecimal(line.calculatedQty));
-  xml = replaceToken(xml, '{dg}', formatSoVND(line.unitPriceVnd));
-  xml = replaceToken(xml, '{tt}', formatSoVND(line.lineTotalVnd));
-  return removeLeftoverTokens(xml);
-}
+type QuoteDocDataRow = {
+  kind: 'product' | 'fixedAccessory' | 'extraAccessory';
+  stt: string;
+  code: string;
+  description: string;
+  unit: string;
+  width: string;
+  height: string;
+  quantity: string;
+  weight: string;
+  unitPrice: string;
+  amount: string;
+  showImage: boolean;
+};
 
 function quoteFixedItemLines(fixed: Record<string, unknown>): string[] {
   const items = Array.isArray(fixed.items) ? fixed.items : [];
@@ -410,53 +415,168 @@ function quoteFixedItemLines(fixed: Record<string, unknown>): string[] {
       const name = String(entry.name || '').trim();
       if (!name) return '';
       const quantity = Number(entry.quantity ?? 0);
+      // REFERENCE: only show "xN" when quantity > 1; qty 0/1 = name only.
       return quantity > 1 ? `- ${name} x${formatDecimal(quantity)}` : `- ${name}`;
     })
     .filter(Boolean);
 }
 
-function renderQuoteFixedSetRow(template: string, fixed: Record<string, unknown>): string {
-  const quantity = Number(fixed.packageQuantity ?? fixed.quantity ?? 1) || 1;
-  const unitPrice = Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) || 0;
+function fixedPackageDescription(fixed: Record<string, unknown>): string {
+  const name = String(fixed.name || 'Bộ phụ kiện đi kèm').trim() || 'Bộ phụ kiện đi kèm';
   const itemLines = quoteFixedItemLines(fixed);
-  const description = [
-    `${String(fixed.name || 'Bộ phụ kiện đi kèm').trim()}${itemLines.length ? ':' : ''}`,
-    ...itemLines,
-  ].join('\n');
+  return [`${name}:`, ...itemLines].join('\n');
+}
+
+/** Build ordered document rows for one quote item (REFERENCE print-group shape). */
+function buildQuoteItemDocRows(
+  item: CalculatedQuote['items'][number],
+  itemIndex: number,
+): QuoteDocDataRow[] {
+  const rows: QuoteDocDataRow[] = [];
+  const stt = String(itemIndex + 1);
+  const code = item.quoteItemCode || item.productCode || `HM-${String(itemIndex + 1).padStart(2, '0')}`;
+
+  const dimensions = item.dimensions.filter((line) => {
+    const qty = Number(line.quantity || 0);
+    const w = Number(line.widthM || 0);
+    const h = Number(line.heightM || 0);
+    return qty > 0 || w > 0 || h > 0 || Number(line.lineTotalVnd || 0) > 0;
+  });
+  const lines = dimensions.length > 0 ? dimensions : item.dimensions.slice(0, 1);
+
+  lines.forEach((line, lineIndex) => {
+    rows.push({
+      kind: 'product',
+      stt: lineIndex === 0 ? stt : '',
+      code: lineIndex === 0 ? code : '',
+      description: lineIndex === 0 ? quoteDescription(item, line.description) : String(line.description || ''),
+      unit: unitLabel(line.unit),
+      width: line.unit === 'BO' ? '' : formatDecimal(line.widthM),
+      height: line.unit === 'BO' ? '' : formatDecimal(line.heightM),
+      quantity: formatDecimal(line.quantity),
+      weight: formatDecimal(line.calculatedQty),
+      unitPrice: formatSoVND(line.unitPriceVnd),
+      amount: formatSoVND(line.lineTotalVnd),
+      showImage: lineIndex === 0,
+    });
+  });
+
+  const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
+  if (fixed) {
+    const quantity = Number(fixed.packageQuantity ?? fixed.quantity ?? 1) || 1;
+    const unitPrice = Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) || 0;
+    const hasContent =
+      String(fixed.name || '').trim()
+      || (Array.isArray(fixed.items) && fixed.items.some((entry) => String((entry as Record<string, unknown>).name || '').trim()))
+      || unitPrice > 0;
+    if (hasContent) {
+      rows.push({
+        kind: 'fixedAccessory',
+        stt: '',
+        code: '',
+        description: fixedPackageDescription(fixed),
+        unit: 'Bộ',
+        width: '',
+        height: '',
+        quantity: formatDecimal(quantity),
+        weight: '',
+        unitPrice: formatSoVND(unitPrice),
+        amount: formatSoVND(quantity * unitPrice),
+        showImage: false,
+      });
+    }
+  } else {
+    item.accessories
+      .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
+      .forEach((accessory) => {
+        const noteItems = String(accessory.note || '')
+          .split(/\r?\n|,/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((name) => `- ${name}`);
+        const quantity = accessory.totalSet || accessory.quantityPerSet || 1;
+        rows.push({
+          kind: 'fixedAccessory',
+          stt: '',
+          code: '',
+          description: [`${accessory.name}:`, ...noteItems].join('\n'),
+          unit: 'Bộ',
+          width: '',
+          height: '',
+          quantity: formatDecimal(quantity),
+          weight: '',
+          unitPrice: formatSoVND(accessory.unitPriceVnd),
+          amount: formatSoVND(accessory.lineTotalVnd),
+          showImage: false,
+        });
+      });
+  }
+
+  const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
+  if (Array.isArray(extras)) {
+    extras
+      .map((entry) => entry as Record<string, unknown>)
+      .filter((entry) => String(entry.name || '').trim())
+      .forEach((entry) => {
+        const unit = normalizeUnit(entry.unit);
+        const quantity = Number(entry.quantity ?? entry.quantityPerSet ?? 0) || 0;
+        const weight = unit === 'BO' ? quantity : Number(entry.weight ?? entry.kl ?? 0) || 0;
+        const unitPrice = Number(entry.unitPrice ?? entry.unitPriceVnd ?? 0) || 0;
+        const amount = (unit === 'BO' ? quantity : weight) * unitPrice;
+        rows.push({
+          kind: 'extraAccessory',
+          stt: '',
+          code: '',
+          description: String(entry.name || 'Phụ kiện phát sinh').trim(),
+          unit: unitLabel(unit),
+          width: '',
+          height: '',
+          quantity: unit === 'BO' ? formatDecimal(quantity) : '',
+          weight: unit === 'BO' ? '' : formatDecimal(weight),
+          unitPrice: formatSoVND(unitPrice),
+          amount: formatSoVND(amount),
+          showImage: false,
+        });
+      });
+  }
+
+  return rows;
+}
+
+/** Render any quote data row using the product marker template (REFERENCE approach). */
+function renderQuoteUnifiedProductRow(
+  template: string,
+  row: QuoteDocDataRow,
+  drawingXml: string | null,
+): string {
   let xml = template;
-  xml = replaceMultilineToken(xml, '{bo_pk_ten}', description);
-  xml = replaceToken(xml, '{bo_pk_dv}', 'Bộ');
-  xml = replaceToken(xml, '{bo_pk_sl}', formatDecimal(quantity));
-  xml = replaceToken(xml, '{bo_pk_dg}', formatSoVND(unitPrice));
-  xml = replaceToken(xml, '{bo_pk_tt}', formatSoVND(quantity * unitPrice));
+  xml = replaceToken(xml, '{stt}', row.stt);
+  xml = replaceToken(xml, '{ma_sp}', row.code);
+  xml = fillImageToken(xml, '{anh_sp}', drawingXml);
+  xml = replaceMultilineToken(xml, '{mo_ta}', row.description);
+  xml = replaceToken(xml, '{dv}', row.unit);
+  xml = replaceToken(xml, '{rong}', row.width);
+  xml = replaceToken(xml, '{cao}', row.height);
+  xml = replaceToken(xml, '{sl}', row.quantity);
+  xml = replaceToken(xml, '{kl}', row.weight);
+  xml = replaceToken(xml, '{dg}', row.unitPrice);
+  xml = replaceToken(xml, '{tt}', row.amount);
   return removeLeftoverTokens(xml);
 }
 
-function renderQuoteExtraRow(template: string, extra: Record<string, unknown>): string {
-  const unit = normalizeUnit(extra.unit);
-  const quantity = Number(extra.quantity ?? extra.quantityPerSet ?? 1) || 1;
-  const weight = unit === 'BO' ? quantity : Number(extra.weight ?? extra.kl ?? 0) || 0;
-  const unitPrice = Number(extra.unitPrice ?? extra.unitPriceVnd ?? 0) || 0;
-  let xml = template;
-  xml = replaceToken(xml, '{ps_ten}', String(extra.name || 'Phụ kiện phát sinh').trim());
-  xml = replaceToken(xml, '{ps_dv}', unitLabel(unit));
-  xml = replaceToken(xml, '{ps_sl}', formatDecimal(unit === 'BO' ? quantity : weight));
-  xml = replaceToken(xml, '{ps_dg}', formatSoVND(unitPrice));
-  xml = replaceToken(xml, '{ps_tt}', formatSoVND((unit === 'BO' ? quantity : weight) * unitPrice));
-  return removeLeftoverTokens(xml);
-}
-
-function renderLegacyAccessoryAsFixed(template: string, accessory: CalculatedQuote['items'][number]['accessories'][number]): string {
-  const noteItems = String(accessory.note || '')
-    .split(/\r?\n|,/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((name) => ({ name, quantity: 0 }));
-  return renderQuoteFixedSetRow(template, {
-    name: accessory.name,
-    items: noteItems,
-    packageQuantity: accessory.totalSet || accessory.quantityPerSet,
-    unitPrice: accessory.unitPriceVnd,
+function ensureBoldFontRuns(rowXml: string): string {
+  return rowXml.replace(/<w:r\b[^>]*>[\s\S]*?<\/w:r>/g, (runXml) => {
+    if (!/<w:t\b/.test(runXml)) return runXml;
+    if (/<w:rPr\b[^>]*>/.test(runXml)) {
+      let next = /<w:b\b[^>]*\/>/.test(runXml)
+        ? runXml
+        : runXml.replace(/<w:rPr\b([^>]*)>/, '<w:rPr$1><w:b/>');
+      next = /<w:sz\b[^>]*\/>/.test(next)
+        ? next.replace(/<w:sz\b[^>]*\/>/g, '<w:sz w:val="20"/>')
+        : next.replace('</w:rPr>', '<w:sz w:val="20"/></w:rPr>');
+      return next;
+    }
+    return runXml.replace(/<w:r\b([^>]*)>/, '<w:r$1><w:rPr><w:b/><w:sz w:val="20"/></w:rPr>');
   });
 }
 
@@ -465,6 +585,10 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
   if (!documentFile) throw new Error('Template báo giá không có word/document.xml.');
 
   let documentXml = repairSplitEmailToken(documentFile.asText());
+  // Drop blank phone/email paragraphs before token fill (REFERENCE order).
+  documentXml = removeBlankQuoteContactLines(documentXml, quote);
+  documentXml = replaceTokens(documentXml, buildQuoteWordData(quote));
+
   const templates = findQuoteTemplateRows(documentXml);
   const blockStart = Math.min(...templates.matches.map((match) => match.index));
   const blockEnd = Math.max(...templates.matches.map((match) => match.end));
@@ -475,66 +599,40 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
   for (const [itemIndex, item] of quote.items.entries()) {
     const groupName = item.groupName || item.category || '';
     if (templates.group && groupName && groupName !== previousGroup) {
-      rows.push(renderQuoteGroupRow(templates.group.row, groupName));
+      rows.push(ensureCantSplit(ensureBoldFontRuns(renderQuoteGroupRow(templates.group.row, groupName))));
       previousGroup = groupName;
     }
 
-    const itemRows: string[] = [];
-    const imageXml = await embedImage(item.image || item.coverImagePath, { widthPx: 190, heightPx: 160 });
-    // Do not clone blank dimension rows.
-    const dimensions = item.dimensions.filter((line) => {
-      const qty = Number(line.quantity || 0);
-      const w = Number(line.widthM || 0);
-      const h = Number(line.heightM || 0);
-      return qty > 0 || w > 0 || h > 0 || Number(line.lineTotalVnd || 0) > 0;
-    });
-    const lines = dimensions.length > 0 ? dimensions : item.dimensions.slice(0, 1);
-    lines.forEach((line, lineIndex) => {
-      itemRows.push(renderQuoteProductRow(templates.product.row, item, line, {
-        stt: lineIndex === 0 ? String(itemIndex + 1) : '',
-        code: lineIndex === 0 ? item.quoteItemCode || item.productCode : '',
-        drawingXml: lineIndex === 0 ? imageXml : null,
-        includeDescription: lineIndex === 0,
-      }));
+    const dataRows = buildQuoteItemDocRows(item, itemIndex);
+    if (dataRows.length === 0) continue;
+
+    // Image once per item block (logo fallback if missing) — 95% contain via fit helper.
+    const imageXml = await embedImage(item.image || item.coverImagePath, {
+      widthPx: 190,
+      heightPx: Math.max(120, 48 * dataRows.length),
     });
 
-    const fixed = parseJsonMaybe<Record<string, unknown> | null>(item.fixedAccessoryPackage, null);
-    // Fixed package item lines stay inside the fixed package row (accepted behavior).
-    if (fixed && templates.fixedSet && (String(fixed.name || '').trim() || Array.isArray(fixed.items))) {
-      const hasContent =
-        String(fixed.name || '').trim()
-        || (Array.isArray(fixed.items) && fixed.items.some((entry) => String((entry as Record<string, unknown>).name || '').trim()))
-        || Number(fixed.unitPrice ?? fixed.unitPriceVnd ?? 0) > 0;
-      if (hasContent) itemRows.push(renderQuoteFixedSetRow(templates.fixedSet.row, fixed));
-    } else if (templates.fixedSet) {
-      item.accessories
-        .filter((accessory) => accessory.enabled !== false && accessory.lineTotalVnd > 0)
-        .forEach((accessory) => itemRows.push(renderLegacyAccessoryAsFixed(templates.fixedSet!.row, accessory)));
-    }
+    const itemXmlRows = dataRows.map((row, rowIndex) => {
+      const drawing = row.showImage ? imageXml : null;
+      let xml = renderQuoteUnifiedProductRow(templates.product.row, row, drawing);
+      xml = ensureBoldFontRuns(xml);
+      if (dataRows.length > 1) {
+        xml = applyQuoteIdentityMerge(xml, rowIndex === 0 ? 'restart' : 'continue');
+      }
+      xml = ensureCantSplit(xml);
+      if (rowIndex < dataRows.length - 1) xml = addKeepNextToAllParagraphsInRow(xml);
+      return xml;
+    });
 
-    const extras = parseJsonMaybe<unknown[]>(item.extraAccessories, []);
-    if (templates.extra && Array.isArray(extras)) {
-      extras
-        .map((entry) => entry as Record<string, unknown>)
-        .filter((entry) => String(entry.name || '').trim())
-        .forEach((entry) => itemRows.push(renderQuoteExtraRow(templates.extra!.row, entry)));
-    }
-
-    // keepNext/cantSplit: keep product + accessory rows of one item together where possible.
-    rows.push(...itemRows.map((rowXml, rowIndex) => {
-      let next = itemRows.length > 1
-        ? applyQuoteIdentityMerge(rowXml, rowIndex === 0 ? 'restart' : 'continue')
-        : rowXml;
-      next = ensureCantSplit(next);
-      if (rowIndex < itemRows.length - 1) next = addKeepNextToAllParagraphsInRow(next);
-      return next;
-    }));
+    rows.push(...itemXmlRows);
   }
 
   documentXml = documentXml.slice(0, blockStart) + rows.join('') + documentXml.slice(blockEnd);
-  documentXml = removeBlankQuoteContactLines(documentXml, quote);
-  documentXml = replaceTokens(documentXml, buildQuoteWordData(quote));
-  return removeLeftoverTokens(documentXml);
+  // Strip any leftover marker tokens (including empty pk_ten "x" shells).
+  documentXml = removeLeftoverTokens(documentXml)
+    .replace(/\s+x\s*(?=<\/w:t>)/gi, '')
+    .replace(/>\s*x\s*</g, '><');
+  return documentXml;
 }
 
 export function buildQuoteWordData(quote: CalculatedQuote): Record<string, string> {
@@ -575,7 +673,9 @@ function findCatalogueTemplateRows(documentXml: string) {
 }
 
 function renderCatalogueCategoryRow(template: string, row: CatalogueBlockRow): string {
-  return removeLeftoverTokens(replaceMultilineToken(template, '{category}', row.categoryName || row.description));
+  return ensureBoldFontRuns(
+    removeLeftoverTokens(replaceMultilineToken(template, '{category}', row.categoryName || row.description)),
+  );
 }
 
 function money(value: number | null | undefined): string {
@@ -605,7 +705,7 @@ function renderCatalogueAccessoryRow(template: string, row: CatalogueBlockRow): 
   xml = replaceToken(xml, '{pk_kl}', row.weight);
   xml = replaceToken(xml, '{pk_don_gia}', money(row.unitPriceVnd));
   xml = replaceToken(xml, '{pk_thanh_tien}', money(row.amountVnd));
-  return applyCatalogueVerticalMerges(removeLeftoverTokens(xml), 'continue');
+  return ensureBoldFontRuns(applyCatalogueVerticalMerges(removeLeftoverTokens(xml), 'continue'));
 }
 
 export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRecord[]): Promise<string> {
@@ -635,12 +735,19 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
         blocks.push(currentBlock);
         currentBlock = null;
       }
-      let imageXml = imageCache.get(row.imagePath);
-      if (!imageCache.has(row.imagePath)) {
-        imageXml = await embedImage(row.imagePath, { widthPx: 190, heightPx: 270 });
-        imageCache.set(row.imagePath, imageXml);
+      const imageKey = row.imagePath || `__logo__${row.productCode}`;
+      let imageXml = imageCache.get(imageKey);
+      if (!imageCache.has(imageKey)) {
+        // Logo fallback when product has no cover (browser-safe).
+        imageXml = await embedImage(row.imagePath || 'owin-user-assets/logo/logo.webp', {
+          widthPx: 190,
+          heightPx: 270,
+        });
+        imageCache.set(imageKey, imageXml);
       }
-      const productRow = ensureCantSplit(renderCatalogueProductRow(templates.product.row, row, imageXml || null));
+      const productRow = ensureCantSplit(
+        ensureBoldFontRuns(renderCatalogueProductRow(templates.product.row, row, imageXml || null)),
+      );
       if (currentBlock && !currentBlockHasProduct) {
         currentBlock.push(productRow);
       } else {

@@ -81,10 +81,15 @@ describe('reference Word quote template renderer', () => {
     expect(xml).toContain('5.496.000');
     expect(xml).toContain('5.400.000');
     expect(xml).toContain('4.400.000');
+    // Unified product-row pipeline: no leftover marker shells / orphan x.
     expect(xml).not.toMatch(/\{(?:stt|ma_sp|anh_sp|mo_ta|bo_pk_ten|pk_ten|ps_ten|tong_tien)\}/);
+    expect(xml).not.toMatch(/>\s*x\s*</);
+    expect(xml).not.toContain('{pk_sl_item}');
     // Product block rows should prefer staying together across page breaks.
     expect(xml).toContain('w:cantSplit');
     expect(xml).toContain('w:keepNext');
+    // Identity merge present for multi-row item blocks.
+    expect(xml).toContain('w:vMerge');
   });
 });
 
