@@ -10,18 +10,29 @@ interface Props {
   imagePath?: string | null;
   /** Gọi khi nén+lưu xong, trả id mới để form gắn vào sản phẩm. */
   onImageStored: (id: string) => void;
+  /** Optional class for layout variants. */
+  className?: string;
+}
+
+function isImageFile(file: File | null | undefined): file is File {
+  if (!file) return false;
+  if (file.type.startsWith('image/')) return true;
+  // Some browsers omit type for clipboard PNG/JPG/WebP.
+  return /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name || '');
 }
 
 /**
- * iOS Image Dropzone. Chọn/kéo-thả ảnh → nén (EXIF auto, BR-5) → lưu IndexedDB (BR-9)
- * → trả imageId. Hiển thị preview từ IndexedDB.
+ * iOS Image Dropzone. Chọn/kéo-thả/Ctrl+V ảnh → nén → lưu IndexedDB → trả imageId.
+ * Text paste in inputs is never intercepted; only clipboard image files.
  */
-export function ImageDropzone({ imageId, imagePath, onImageStored }: Props) {
+export function ImageDropzone({ imageId, imagePath, onImageStored, className }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragover, setDragover] = useState(false);
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // Nạp preview từ IndexedDB khi imageId đổi; revoke URL cũ khi unmount/đổi.
   useEffect(() => {
@@ -63,9 +74,59 @@ export function ImageDropzone({ imageId, imagePath, onImageStored }: Props) {
     [onImageStored],
   );
 
+  // Ctrl+V image paste: only when dropzone (or product form) has focus context and clipboard has image files.
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      // Never intercept normal text paste inside inputs/textareas/contenteditable.
+      if (
+        target
+        && (target.tagName === 'INPUT'
+          || target.tagName === 'TEXTAREA'
+          || target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const items = event.clipboardData?.items;
+      const files = event.clipboardData?.files;
+      let imageFile: File | null = null;
+
+      if (items) {
+        for (const item of Array.from(items)) {
+          if (item.kind === 'file' && item.type.startsWith('image/')) {
+            imageFile = item.getAsFile();
+            if (imageFile) break;
+          }
+        }
+      }
+      if (!imageFile && files) {
+        imageFile = Array.from(files).find(isImageFile) || null;
+      }
+      if (!imageFile) return;
+
+      // Only handle when the dropzone is focused, hovered, or inside the product form card.
+      const root = rootRef.current;
+      const active = document.activeElement;
+      const inDropzone = root && (root.contains(active) || focused || root.matches(':hover'));
+      const inProductForm = root?.closest('.product-editor-card, .quote-item-card');
+      if (!inDropzone && !inProductForm) return;
+
+      event.preventDefault();
+      void handleFile(imageFile);
+    };
+
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [focused, handleFile]);
+
   return (
     <div
-      className={`dropzone ${dragover ? 'dragover' : ''}`}
+      ref={rootRef}
+      className={`dropzone image-fit-frame ${dragover ? 'dragover' : ''} ${className || ''}`.trim()}
+      tabIndex={0}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       onClick={() => inputRef.current?.click()}
       onDragOver={(e) => {
         e.preventDefault();
@@ -76,17 +137,17 @@ export function ImageDropzone({ imageId, imagePath, onImageStored }: Props) {
         e.preventDefault();
         setDragover(false);
         const f = e.dataTransfer.files?.[0];
-        if (f) handleFile(f);
+        if (f && isImageFile(f)) void handleFile(f);
       }}
     >
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp,image/*"
         style={{ display: 'none' }}
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) handleFile(f);
+          if (f) void handleFile(f);
           e.target.value = '';
         }}
       />
@@ -95,11 +156,11 @@ export function ImageDropzone({ imageId, imagePath, onImageStored }: Props) {
           <LoaderCircle size={22} className="spin" /> Đang nén ảnh…
         </div>
       ) : url ? (
-        <img src={url} alt="Ảnh sản phẩm" />
+        <img className="image-fit-contain" src={url} alt="Ảnh sản phẩm" />
       ) : (
         <div className="hint">
           <ImagePlus size={26} />
-          <div>Chạm để chọn ảnh hoặc kéo-thả vào đây</div>
+          <div>Chạm để chọn ảnh, kéo-thả, hoặc Ctrl+V</div>
         </div>
       )}
       {error && <div style={{ color: 'var(--ios-red)', fontSize: 13, marginTop: 8 }}>{error}</div>}

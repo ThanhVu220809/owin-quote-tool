@@ -589,14 +589,15 @@
 .autosuggest { position: relative; }
 .autosuggest-control { position: relative; display: flex; align-items: center; }
 .autosuggest-control .input { padding-right: 42px; }
+.autosuggest-control.has-value .input { padding-right: 68px; }
 .autosuggest-toggle {
   position: absolute;
-  right: 8px;
+  right: 6px;
   border: none;
   background: transparent;
   color: var(--owin-ink-muted);
-  height: 30px;
-  width: 30px;
+  height: 28px;
+  width: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -604,6 +605,26 @@
   cursor: pointer;
 }
 .autosuggest-toggle:hover { background: rgba(15, 42, 61, 0.06); color: var(--owin-primary); }
+/* Clear-value X: only clears the field, never deletes the parent row. */
+.autosuggest-clear {
+  position: absolute;
+  right: 34px;
+  border: none;
+  background: rgba(15, 42, 61, 0.05);
+  color: var(--owin-ink-muted);
+  height: 24px;
+  width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 1;
+}
+.autosuggest-clear:hover {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--owin-danger);
+}
 .autosuggest-menu {
   position: fixed;
   z-index: 2200;
@@ -638,22 +659,29 @@
   font-size: 13px;
   cursor: pointer;
 }
+/* Hide-suggestion X: visually separate from clear-value and row trash. */
+.autosuggest-hide,
 .autosuggest-remove {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   margin-right: 3px;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--owin-ink-muted);
-  border-radius: 999px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex: 0 0 auto;
+  opacity: 0.72;
 }
+.autosuggest-hide:hover,
 .autosuggest-remove:hover {
   background: rgba(15, 42, 61, 0.08);
+  border-color: rgba(15, 42, 61, 0.08);
   color: var(--owin-danger);
+  opacity: 1;
 }
 .editor-panel {
   border: 1px solid var(--owin-border);
@@ -701,13 +729,36 @@
   display: flex;
   justify-content: center;
   padding: 8px;
+  border-radius: 16px;
 }
-.product-image-panel .dropzone img {
+.product-image-panel .dropzone img,
+.product-image-panel .dropzone .image-fit-contain {
   border-radius: 12px;
-  height: 100%;
-  max-height: none;
-  object-fit: cover;
-  width: 100%;
+  height: 95%;
+  max-height: 95%;
+  max-width: 95%;
+  object-fit: contain;
+  width: 95%;
+  background: #fafafa;
+}
+/* Shared 95% contain frame for product/quote/picker/catalogue images. */
+.image-fit-frame {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+.image-fit-frame .ph,
+.image-fit-frame .image-fit-contain,
+.image-fit-contain {
+  display: block;
+  height: 95%;
+  max-height: 95%;
+  max-width: 95%;
+  object-fit: contain;
+  width: 95%;
+  border-radius: 12px;
+  margin: auto;
 }
 .product-basic-panel {
   display: grid;
@@ -1168,13 +1219,13 @@
 }
 .quote-picker-grid {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .quote-picker-card {
   background: #fff;
   border: 1px solid var(--owin-border);
-  border-radius: 16px;
+  border-radius: 18px;
   cursor: pointer;
   display: grid;
   gap: 10px;
@@ -1190,45 +1241,59 @@
   transform: translateY(-1px);
 }
 .quote-picker-thumb {
-  aspect-ratio: 1.35 / 1;
+  aspect-ratio: 1.15 / 1;
   background: var(--owin-bg);
   border: 1px solid var(--owin-border);
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   width: 100%;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 160px;
 }
 .quote-picker-thumb .ph {
-  height: 100%;
-  object-fit: cover;
-  width: 100%;
+  height: 95%;
+  max-height: 95%;
+  max-width: 95%;
+  object-fit: contain;
+  width: 95%;
+  border-radius: 12px;
+  background: #fafafa;
 }
 .quote-picker-card-body {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
   padding: 0 2px 2px;
+  justify-items: start;
 }
 .quote-picker-card-body strong {
   color: var(--owin-ink);
   font-size: 14px;
   line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.quote-picker-card-body span {
+.quote-picker-meta {
   color: var(--owin-ink-muted);
   font-size: 11px;
-}
-.quote-picker-card-body b {
-  color: var(--owin-gold);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
+  font-weight: 600;
 }
 .quote-picker-choose {
-  background: var(--owin-primary);
+  background: rgba(15, 42, 61, 0.06);
   border-radius: 999px;
-  color: #fff;
-  font-size: 12px;
+  color: var(--owin-primary);
+  font-size: 11px;
   font-weight: 800;
-  padding: 8px 14px;
+  padding: 6px 12px;
+  margin-top: 2px;
+}
+.quote-picker-card:hover .quote-picker-choose {
+  background: var(--owin-primary);
+  color: #fff;
 }
 .quote-item-card {
   box-shadow: none;
@@ -1273,11 +1338,21 @@
   border: 1px solid var(--owin-border);
   border-radius: 14px;
   overflow: hidden;
+  align-items: center;
+  display: flex;
+  justify-content: center;
 }
 .quote-item-thumb .ph {
-  height: 100%;
-  object-fit: cover;
-  width: 100%;
+  height: 95%;
+  max-height: 95%;
+  max-width: 95%;
+  object-fit: contain;
+  width: 95%;
+  border-radius: 12px;
+  background: #fafafa;
+}
+.quote-item-basic-grid-compact {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(120px, 0.7fr) !important;
 }
 .quote-item-card-main {
   display: grid;
@@ -1416,14 +1491,19 @@
   vertical-align: middle;
 }
 .quote-print-doc .quote-image-cell .ph {
-  max-height: 92px;
+  max-height: 95%;
+  max-width: 95%;
+  height: 95%;
+  width: 95%;
   object-fit: contain;
+  border-radius: 10px;
 }
 .quote-print-doc .description-cell {
   text-align: left;
   line-height: 1.35;
 }
-.quote-item-block {
+.quote-item-block,
+.quote-print-doc tbody.quote-item-block {
   break-inside: avoid;
   page-break-inside: avoid;
 }

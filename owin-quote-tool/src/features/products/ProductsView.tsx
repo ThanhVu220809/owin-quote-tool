@@ -15,7 +15,14 @@ const PRODUCT_SUGGESTION_TYPES = [
   'accessory_package_name',
   'category',
   'product_name',
-  'spec_label',
+  'item_name',
+  'color',
+  'frame',
+  'sash',
+  'thickness',
+  'glass',
+  'molding',
+  'protection_bar',
   'spec_value',
   'spec_value_color',
   'spec_value_frame',
@@ -93,7 +100,7 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
 
-  // Gợi ý auto-suggest rút từ các giá trị đã nhập trong catalog.
+  // Field-specific suggestion pools (no noisy global bucket for all fields).
   const suggestions = useMemo(
     () => ({
       category: [
@@ -102,41 +109,46 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
       ],
       productName: [
         ...(seededSuggestions.product_name ?? []),
+        ...(seededSuggestions.item_name ?? []),
         ...productRecords.map((p) => p.name).filter(Boolean),
       ],
-      specKey: [
-        ...(seededSuggestions.spec_label ?? []),
-        ...productRecords.flatMap((p) => p.specs.map((s) => s.key)).filter(Boolean),
-      ],
+      // Spec keys are strict presets only — never mix random learned labels.
+      specKey: [] as string[],
       specValue: [
         ...(seededSuggestions.spec_value ?? []),
-        ...productRecords.flatMap((p) => p.specs.map((s) => s.value)).filter(Boolean),
       ],
       specValueColor: [
+        ...(seededSuggestions.color ?? []),
         ...(seededSuggestions.spec_value_color ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('mau')),
       ],
       specValueFrame: [
+        ...(seededSuggestions.frame ?? []),
         ...(seededSuggestions.spec_value_frame ?? []),
-        ...specValuesByKey(productRecords, (key) => key.includes('khung')),
+        ...specValuesByKey(productRecords, (key) => key.includes('khung') || key.includes('khuon')),
       ],
       specValueSash: [
+        ...(seededSuggestions.sash ?? []),
         ...(seededSuggestions.spec_value_sash ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('canh')),
       ],
       specValueThickness: [
+        ...(seededSuggestions.thickness ?? []),
         ...(seededSuggestions.spec_value_thickness ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('day')),
       ],
       specValueGlass: [
+        ...(seededSuggestions.glass ?? []),
         ...(seededSuggestions.spec_value_glass ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('kinh')),
       ],
       specValueMolding: [
+        ...(seededSuggestions.molding ?? []),
         ...(seededSuggestions.spec_value_molding ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('phao')),
       ],
       specValueProtectionBar: [
+        ...(seededSuggestions.protection_bar ?? []),
         ...(seededSuggestions.spec_value_protection_bar ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('song') || key.includes('bao ve')),
       ],

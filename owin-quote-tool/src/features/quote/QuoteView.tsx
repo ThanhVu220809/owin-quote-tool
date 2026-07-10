@@ -19,7 +19,7 @@ import { calculateQuote } from '@/lib/quote/quoteCalculator';
 import { generateQuoteCode } from '@/lib/quote/quoteCode';
 import { generateSnapshot } from '@/lib/quote/quoteSnapshot';
 import { createCustomQuoteItem, createQuoteItemFromProduct } from '@/lib/quote/productToQuoteItem';
-import { rememberQuoteSuggestions } from '@/lib/suggestions';
+import { DEFAULT_SPEC_KEYS, mergeSuggestionLists, rememberQuoteSuggestions } from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
 import { exportQuotePDF } from '@/features/export/pdfExport';
 import { ProductThumb } from '@/features/products/ProductThumb';
@@ -35,8 +35,15 @@ const QUOTE_SUGGESTION_TYPES = [
   'customer_name',
   'customer_address',
   'item_name',
+  'product_name',
   'category',
-  'spec_label',
+  'color',
+  'frame',
+  'sash',
+  'thickness',
+  'glass',
+  'molding',
+  'protection_bar',
   'spec_value',
   'spec_value_color',
   'spec_value_frame',
@@ -48,16 +55,6 @@ const QUOTE_SUGGESTION_TYPES = [
   'accessory_name',
   'accessory_package_name',
 ] as const;
-
-const DEFAULT_SPEC_KEYS = [
-  'Màu',
-  'Khung Bao',
-  'Bản Cánh',
-  'Độ Dày',
-  'Loại Kính',
-  'Phào',
-  'Song Nhôm Bảo Vệ',
-];
 
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
 
@@ -723,13 +720,13 @@ function ProductPickerModal({
                   type="button"
                   onClick={() => onSelect(product.id)}
                 >
-                  <div className="quote-picker-thumb">
+                  <div className="quote-picker-thumb image-fit-frame">
                     <ProductThumb imagePath={product.coverImagePath} fill />
                   </div>
                   <div className="quote-picker-card-body">
                     <strong>{product.name}</strong>
-                    <span>{product.category}</span>
-                    <b>{formatVND(product.unitPriceVnd)}/{unitLabel(product.unit)}</b>
+                    {product.category ? <span className="quote-picker-meta">{product.category}</span> : null}
+                    <span className="quote-picker-choose">Chọn</span>
                   </div>
                 </button>
               ))}
@@ -1043,19 +1040,28 @@ function normalizeSpecKey(value: string): string {
 
 function specValueSuggestionsForKey(key: string, suggestions: Record<string, string[]>): string[] {
   const normalized = normalizeSpecKey(key);
-  const specific = (() => {
-    if (normalized.includes('mau')) return suggestions.spec_value_color ?? [];
-    if (normalized.includes('song') || normalized.includes('bao ve')) {
-      return suggestions.spec_value_protection_bar ?? [];
-    }
-    if (normalized.includes('khung') || normalized.includes('khuon')) return suggestions.spec_value_frame ?? [];
-    if (normalized.includes('canh')) return suggestions.spec_value_sash ?? [];
-    if (normalized.includes('day')) return suggestions.spec_value_thickness ?? [];
-    if (normalized.includes('kinh')) return suggestions.spec_value_glass ?? [];
-    if (normalized.includes('phao')) return suggestions.spec_value_molding ?? [];
-    return null;
-  })();
-  return specific ?? (suggestions.spec_value ?? []);
+  if (normalized.includes('mau')) {
+    return mergeSuggestionLists(suggestions.color, suggestions.spec_value_color);
+  }
+  if (normalized.includes('song') || normalized.includes('bao ve')) {
+    return mergeSuggestionLists(suggestions.protection_bar, suggestions.spec_value_protection_bar);
+  }
+  if (normalized.includes('khung') || normalized.includes('khuon')) {
+    return mergeSuggestionLists(suggestions.frame, suggestions.spec_value_frame);
+  }
+  if (normalized.includes('canh')) {
+    return mergeSuggestionLists(suggestions.sash, suggestions.spec_value_sash);
+  }
+  if (normalized.includes('day')) {
+    return mergeSuggestionLists(suggestions.thickness, suggestions.spec_value_thickness);
+  }
+  if (normalized.includes('kinh')) {
+    return mergeSuggestionLists(suggestions.glass, suggestions.spec_value_glass);
+  }
+  if (normalized.includes('phao')) {
+    return mergeSuggestionLists(suggestions.molding, suggestions.spec_value_molding);
+  }
+  return suggestions.spec_value ?? [];
 }
 
 function accessoryItemText(name: unknown, quantity: unknown): string {
@@ -1286,13 +1292,19 @@ function QuoteItemCard({
             </div>
           </div>
 
-          <div className="quote-item-basic-grid">
-            <Field label="Mã SP" value={item.productCode} onChange={(value) => onUpdate({ productCode: value, quoteItemCode: value })} />
-            <Field label="Tên hạng mục" value={item.itemName} onChange={(value) => onUpdate({ itemName: value })} suggestions={suggestions.item_name} />
-          </div>
-
-          <div className="quote-item-meta-grid">
-            <Field label="Nhóm" value={item.category || ''} onChange={(value) => onUpdate({ category: value, groupName: value })} suggestions={suggestions.category} />
+          <div className="quote-item-basic-grid quote-item-basic-grid-compact">
+            <Field
+              label="Tên hạng mục"
+              value={item.itemName}
+              onChange={(value) => onUpdate({ itemName: value })}
+              suggestions={mergeSuggestionLists(suggestions.item_name, suggestions.product_name)}
+            />
+            <Field
+              label="Nhóm"
+              value={item.category || ''}
+              onChange={(value) => onUpdate({ category: value, groupName: value })}
+              suggestions={suggestions.category}
+            />
             <div className="field">
               <label>ĐVT chính</label>
               <select className="input" value={item.unit} onChange={(e) => onUpdate({ unit: e.target.value as ProductUnit })}>
@@ -1409,7 +1421,7 @@ function QuoteItemCard({
                     label="Tên"
                     value={spec.key}
                     onChange={(key) => updateSpec(specIndex, { key })}
-                    suggestions={[...DEFAULT_SPEC_KEYS, ...(suggestions.spec_label ?? [])]}
+                    suggestions={[...DEFAULT_SPEC_KEYS]}
                   />
                   <AutoSuggestInput
                     label="Giá trị"
@@ -1457,10 +1469,15 @@ function QuoteItemCard({
           </div>
         </div>
 
-        {item.fixedAccessoryPackage ? (
+        {item.fixedAccessoryPackage != null && item.fixedAccessoryPackage !== '' ? (
           <FixedAccessoryPackageEditor
             value={fixedDraft}
-            onChange={(draft) => onUpdate({ fixedAccessoryPackage: serializeFixedAccessoriesJson(draft) })}
+            onChange={(draft) =>
+              onUpdate({
+                // keepEmpty so clearing package name never collapses the editor mid-edit.
+                fixedAccessoryPackage: serializeFixedAccessoriesJson(draft, { keepEmpty: true }),
+              })
+            }
             suggestions={{
               accessoryName: suggestions.accessory_name ?? [],
               packageName: suggestions.accessory_package_name ?? [],
@@ -1469,11 +1486,15 @@ function QuoteItemCard({
         ) : (
           <div className="editor-panel">
             <div className="section-label">Bộ phụ kiện cố định</div>
-            <div className="empty-line">Item này chưa dùng bộ phụ kiện cố định.</div>
+            <div className="empty-line">Thêm bộ phụ kiện cố định (tên có thể để trống khi soạn).</div>
             <button
               className="btn-link"
               type="button"
-              onClick={() => onUpdate({ fixedAccessoryPackage: serializeFixedAccessoriesJson(fixedDraft) })}
+              onClick={() =>
+                onUpdate({
+                  fixedAccessoryPackage: serializeFixedAccessoriesJson(fixedDraft, { keepEmpty: true }) || '{"name":"","items":[],"packageQuantity":1,"unit":"BO","unitPrice":0,"total":0}',
+                })
+              }
             >
               <Plus size={15} /> Thêm bộ phụ kiện
             </button>
@@ -1484,7 +1505,12 @@ function QuoteItemCard({
       <div className="quote-item-extra">
         <ExtraAccessoriesEditor
           value={extraDraft}
-          onChange={(drafts) => onUpdate({ extraAccessories: serializeExtraAccessoriesJson(drafts) })}
+          onChange={(drafts) =>
+            onUpdate({
+              // Keep empty array while editing so blank rows stay available.
+              extraAccessories: serializeExtraAccessoriesJson(drafts) ?? (drafts.length ? JSON.stringify(drafts) : '[]'),
+            })
+          }
           suggestions={{ accessoryName: suggestions.accessory_name ?? [] }}
           title="Phụ kiện phát sinh riêng"
         />

@@ -35,6 +35,51 @@ export const SUGGESTION_TYPES = [
 
 export type SuggestionType = (typeof SUGGESTION_TYPES)[number] | string;
 
+/** Field-specific type aliases so dropdowns never fall into one noisy global bucket. */
+export const SUGGESTION_TYPE_ALIASES: Record<string, string[]> = {
+  category: ['category'],
+  product_name: ['product_name', 'item_name'],
+  item_name: ['item_name', 'product_name'],
+  unit: ['unit'],
+  color: ['color', 'spec_value_color'],
+  spec_value_color: ['spec_value_color', 'color'],
+  frame: ['frame', 'spec_value_frame'],
+  spec_value_frame: ['spec_value_frame', 'frame'],
+  sash: ['sash', 'spec_value_sash'],
+  spec_value_sash: ['spec_value_sash', 'sash'],
+  thickness: ['thickness', 'spec_value_thickness'],
+  spec_value_thickness: ['spec_value_thickness', 'thickness'],
+  glass: ['glass', 'spec_value_glass'],
+  spec_value_glass: ['spec_value_glass', 'glass'],
+  molding: ['molding', 'spec_value_molding'],
+  spec_value_molding: ['spec_value_molding', 'molding'],
+  protection_bar: ['protection_bar', 'spec_value_protection_bar'],
+  spec_value_protection_bar: ['spec_value_protection_bar', 'protection_bar'],
+  accessory_name: ['accessory_name'],
+  accessory_package_name: ['accessory_package_name'],
+  customer_name: ['customer_name'],
+  customer_address: ['customer_address'],
+  // Spec keys stay strict presets in UI — do not alias to noisy learned labels.
+  spec_label: ['spec_label'],
+  spec_value: ['spec_value'],
+};
+
+export function getSuggestionTypeAliases(type: string): string[] {
+  const trimmed = type.trim();
+  return Array.from(new Set([trimmed, ...(SUGGESTION_TYPE_ALIASES[trimmed] || [])].filter(Boolean)));
+}
+
+/** Canonical fixed list for technical-spec key dropdowns. Never mix random learned labels. */
+export const DEFAULT_SPEC_KEYS = [
+  'Màu',
+  'Khung Bao',
+  'Bản Cánh',
+  'Độ Dày',
+  'Loại Kính',
+  'Phào',
+  'Song Nhôm Bảo Vệ',
+] as const;
+
 const suggestionStore = localforage.createInstance({
   name: 'owin-quote-tool',
   storeName: 'suggestions',
@@ -43,7 +88,7 @@ const suggestionStore = localforage.createInstance({
 });
 
 const SEED_KEY = '__seeded__';
-const REFERENCE_SEED_KEY = '__reference_suggestions_seed_v3__';
+const REFERENCE_SEED_KEY = '__reference_suggestions_seed_v4__';
 const seedModules = import.meta.glob('../data/suggestions/*.json', {
   eager: true,
   import: 'default',
@@ -87,10 +132,10 @@ function collectProductLikeSuggestionEntries(source: Record<string, unknown>): A
   const specs = Array.isArray(source.specs) ? source.specs : [];
   specs.forEach((entry) => {
     const spec = entry as Record<string, unknown>;
-    const key = spec.key || spec.label;
-    entries.push(['spec_label', key]);
-    entries.push(['spec_value', spec.value]);
-    entries.push([suggestionTypeForSpecKey(String(key || '')), spec.value]);
+    const key = String(spec.key || spec.label || '');
+    // Learn into field-specific buckets only — not a noisy global value bag for known keys.
+    const valueTypes = suggestionTypesForSpecKey(key);
+    valueTypes.forEach((type) => entries.push([type, spec.value]));
   });
 
   const accessories = Array.isArray(source.accessories) ? source.accessories : [];
@@ -199,10 +244,11 @@ export async function seedSuggestionsIfEmpty(): Promise<void> {
 
 export async function getSuggestions(type: SuggestionType, query = ''): Promise<string[]> {
   await seedSuggestionsIfEmpty();
+  const aliases = new Set(getSuggestionTypeAliases(String(type)));
   const out: SuggestionRecord[] = [];
   await suggestionStore.iterate<SuggestionRecord | boolean, void>((value, key) => {
     if (key === SEED_KEY || key === REFERENCE_SEED_KEY || !value || typeof value === 'boolean') return;
-    if (value.type === type) out.push(value);
+    if (aliases.has(value.type)) out.push(value);
   });
   return rankSuggestionCandidates(query, out, 60).map((item) => item.value);
 }
@@ -210,6 +256,37 @@ export async function getSuggestions(type: SuggestionType, query = ''): Promise<
 export async function getSuggestionMap(types: SuggestionType[]): Promise<Record<string, string[]>> {
   const entries = await Promise.all(types.map(async (type) => [type, await getSuggestions(type)] as const));
   return Object.fromEntries(entries);
+}
+
+/** Merge field-specific pools (e.g. color + spec_value_color) without a global bucket. */
+export function mergeSuggestionLists(...lists: Array<string[] | undefined>): string[] {
+  const byNormalized = new Map<string, string>();
+  for (const list of lists) {
+    for (const value of list || []) {
+      const text = String(value || '').trim();
+      if (!text) continue;
+      const key = normalizeSuggestionText(text);
+      if (!byNormalized.has(key)) byNormalized.set(key, text);
+    }
+  }
+  return Array.from(byNormalized.values());
+}
+
+export function suggestionTypesForSpecKey(key: string): SuggestionType[] {
+  const normalized = key
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (normalized.includes('mau')) return ['color', 'spec_value_color'];
+  if (normalized.includes('song') || normalized.includes('bao ve')) {
+    return ['protection_bar', 'spec_value_protection_bar'];
+  }
+  if (normalized.includes('khung') || normalized.includes('khuon')) return ['frame', 'spec_value_frame'];
+  if (normalized.includes('canh')) return ['sash', 'spec_value_sash'];
+  if (normalized.includes('day')) return ['thickness', 'spec_value_thickness'];
+  if (normalized.includes('kinh')) return ['glass', 'spec_value_glass'];
+  if (normalized.includes('phao')) return ['molding', 'spec_value_molding'];
+  return ['spec_value'];
 }
 
 export async function rememberSuggestion(type: SuggestionType, value: unknown): Promise<void> {
@@ -233,21 +310,6 @@ export async function rememberSuggestions(entries: Array<[SuggestionType, unknow
   for (const [type, value] of entries) {
     await rememberSuggestion(type, value);
   }
-}
-
-function suggestionTypeForSpecKey(key: string): SuggestionType {
-  const normalized = key
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-  if (normalized.includes('mau')) return 'spec_value_color';
-  if (normalized.includes('song') || normalized.includes('bao ve')) return 'spec_value_protection_bar';
-  if (normalized.includes('khung') || normalized.includes('khuon')) return 'spec_value_frame';
-  if (normalized.includes('canh')) return 'spec_value_sash';
-  if (normalized.includes('day')) return 'spec_value_thickness';
-  if (normalized.includes('kinh')) return 'spec_value_glass';
-  if (normalized.includes('phao')) return 'spec_value_molding';
-  return 'spec_value';
 }
 
 function collectAccessorySuggestionEntries(
@@ -284,12 +346,11 @@ export async function rememberProductSuggestions(product: ProductRecord): Promis
   const entries: Array<[SuggestionType, unknown]> = [
     ['category', product.category],
     ['product_name', product.name],
+    ['item_name', product.name],
     ['unit', product.unit],
   ];
   product.specs.forEach((spec) => {
-    entries.push(['spec_label', spec.key]);
-    entries.push(['spec_value', spec.value]);
-    entries.push([suggestionTypeForSpecKey(spec.key), spec.value]);
+    suggestionTypesForSpecKey(spec.key).forEach((type) => entries.push([type, spec.value]));
   });
   product.accessories.forEach((accessory) => entries.push(['accessory_name', accessory.name]));
   entries.push(...collectAccessorySuggestionEntries(product.fixedAccessoryPackage, product.extraAccessories));
@@ -310,9 +371,7 @@ export async function rememberQuoteSuggestions(quote: QuoteInput): Promise<void>
     item.dimensions.forEach((dimension) => entries.push(['unit', dimension.unit || item.unit]));
     item.accessories.forEach((accessory) => entries.push(['accessory_name', accessory.name]));
     item.specs?.forEach((spec) => {
-      entries.push(['spec_label', spec.key]);
-      entries.push(['spec_value', spec.value]);
-      entries.push([suggestionTypeForSpecKey(spec.key), spec.value]);
+      suggestionTypesForSpecKey(spec.key).forEach((type) => entries.push([type, spec.value]));
     });
     entries.push(...collectAccessorySuggestionEntries(item.fixedAccessoryPackage, item.extraAccessories));
   });

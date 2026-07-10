@@ -221,10 +221,10 @@ export function ExtraAccessoriesEditor({
                 <input
                   className="input"
                   type="number"
-                  min={1}
+                  min={0}
                   value={item.quantity}
                   onChange={(event) =>
-                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity: Number(event.target.value) || 1 }))
+                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity: Number(event.target.value) || 0 }))
                   }
                 />
               </div>

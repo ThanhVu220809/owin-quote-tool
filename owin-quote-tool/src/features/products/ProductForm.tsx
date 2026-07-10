@@ -21,6 +21,7 @@ import {
   serializeExtraAccessoriesJson,
   serializeFixedAccessoriesJson,
 } from '@/lib/quote/accessoryDrafts';
+import { DEFAULT_SPEC_KEYS } from '@/lib/suggestions';
 
 type SaveProductInput = Parameters<typeof import('@/features/products/productStore').saveProduct>[0];
 
@@ -53,16 +54,6 @@ const UNIT_OPTIONS: { label: string; value: ProductUnit }[] = [
   { label: 'md', value: 'METER' },
 ];
 
-const DEFAULT_SPEC_KEYS = [
-  'Màu',
-  'Khung Bao',
-  'Bản Cánh',
-  'Độ Dày',
-  'Loại Kính',
-  'Phào',
-  'Song Nhôm Bảo Vệ',
-];
-
 function legacyImageId(path: string | null): string | undefined {
   const prefix = 'legacy-images/';
   return path?.startsWith(prefix) ? path.slice(prefix.length) : undefined;
@@ -88,7 +79,7 @@ async function coverPathFromImageId(
 
 function normalizeSpecs(editing: ProductRecord | null): ProductSpecRecord[] {
   if (editing?.specs?.length) return editing.specs.map((spec) => ({ ...spec }));
-  return DEFAULT_SPEC_KEYS.map((key, sortOrder) => ({ key, value: '', sortOrder }));
+  return DEFAULT_SPEC_KEYS.map((key, sortOrder) => ({ key, value: '', sortOrder: sortOrder }));
 }
 
 function normalizeSpecKey(value: string): string {
@@ -337,7 +328,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                   label="Tên"
                   value={spec.key}
                   onChange={(value) => updateSpec(index, { key: value })}
-                  suggestions={[...DEFAULT_SPEC_KEYS, ...suggestions.specKey]}
+                  suggestions={[...DEFAULT_SPEC_KEYS]}
                 />
                 <AutoSuggestInput
                   label="Giá trị"

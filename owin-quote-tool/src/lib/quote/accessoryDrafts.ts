@@ -109,7 +109,16 @@ export function parseFixedAccessoriesJson(
   };
 }
 
-export function serializeFixedAccessoriesJson(value: FixedAccessoryDraft): string | null {
+/**
+ * Serialize fixed package for storage/editor.
+ * - Empty package name is allowed while editing (does not collapse the editor).
+ * - Truly blank packages (no name, no items, zero price) return null on final clean.
+ * Pass `keepEmpty: true` from live editors so clearing the name never unmounts the UI.
+ */
+export function serializeFixedAccessoriesJson(
+  value: FixedAccessoryDraft,
+  options?: { keepEmpty?: boolean },
+): string | null {
   const cleanItems = value.items
     .map((item) => ({
       name: item.name.trim(),
@@ -119,9 +128,12 @@ export function serializeFixedAccessoriesJson(value: FixedAccessoryDraft): strin
   const unitPrice = numberOr(value.unitPrice, 0);
   const packageQuantity = Math.max(1, numberOr(value.packageQuantity, 1));
   const total = packageQuantity * unitPrice;
-  if (!value.name.trim() && cleanItems.length === 0 && unitPrice === 0) return null;
+  const name = value.name.trim();
+  const isBlank = !name && cleanItems.length === 0 && unitPrice === 0;
+  if (isBlank && !options?.keepEmpty) return null;
   return JSON.stringify({
-    name: value.name.trim() || DEFAULT_FIXED_ACCESSORY_NAME,
+    // Keep empty name as-is while editing; only default name on non-blank save without title.
+    name: name || (options?.keepEmpty ? '' : DEFAULT_FIXED_ACCESSORY_NAME),
     items: cleanItems,
     packageQuantity,
     unit: 'BO',
@@ -155,7 +167,8 @@ export function normalizeAccessoryDraft(
   sortOrder = 0,
 ): ExtraAccessoryDraft {
   const unit = normalizeUnit(input.unit || 'BO') as ProductUnit;
-  const quantity = Math.max(1, numberOr(input.quantity, 1));
+  // Blank/new accessory rows default to quantity 0 (not 1) so placeholders never become paid qty.
+  const quantity = Math.max(0, numberOr(input.quantity, 0));
   const weight = unit === 'BO' ? 0 : numberOr(input.weight, quantity);
   const unitPrice = numberOr(input.unitPrice, 0);
   const amount = calculateAccessoryDraftTotal({ unit, quantity, weight, unitPrice });
@@ -182,7 +195,8 @@ export function parseExtraAccessoriesJson(value: string | null | undefined): Ext
         id: String(row.id || ''),
         name: String(row.name || ''),
         unit: normalizeUnit(String(row.unit || 'BO')) as ProductUnit,
-        quantity: numberOr(row.quantity ?? row.quantityPerSet, 1),
+        // Missing quantity on named rows falls back to 0 (placeholders), not paid qty 1.
+        quantity: numberOr(row.quantity ?? row.quantityPerSet, 0),
         weight: numberOr(row.weight ?? row.kl, 0),
         unitPrice: numberOr(row.unitPrice ?? row.unitPriceVnd, 0),
         sortOrder: numberOr(row.sortOrder, index),
@@ -208,6 +222,7 @@ export function serializeExtraAccessoriesJson(value: ExtraAccessoryDraft[]): str
         sortOrder,
       };
     })
+    // Truly blank rows are ignored on save; partial drafts with a name are kept.
     .filter((item) => item.name);
   return clean.length > 0 ? JSON.stringify(clean) : null;
 }
@@ -226,5 +241,5 @@ export function updateAccessoryDraftAtIndex(
 }
 
 export function addEmptyAccessoryDraft(list: ExtraAccessoryDraft[]): ExtraAccessoryDraft[] {
-  return [...list, normalizeAccessoryDraft({ id: crypto.randomUUID(), unit: 'BO', quantity: 1 }, list.length)];
+  return [...list, normalizeAccessoryDraft({ id: crypto.randomUUID(), unit: 'BO', quantity: 0 }, list.length)];
 }
