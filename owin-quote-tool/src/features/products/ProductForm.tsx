@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import type {
   ProductAccessoryRecord,
@@ -21,7 +21,14 @@ import {
   serializeExtraAccessoriesJson,
   serializeFixedAccessoriesJson,
 } from '@/lib/quote/accessoryDrafts';
-import { DEFAULT_SPEC_KEYS } from '@/lib/suggestions';
+import { DEFAULT_SPEC_KEYS, suggestionTypesForSpecKey } from '@/lib/suggestions';
+
+type SpecDraft = ProductSpecRecord & { id: string };
+
+function newRowId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `spec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 type SaveProductInput = Parameters<typeof import('@/features/products/productStore').saveProduct>[0];
 
@@ -77,16 +84,19 @@ async function coverPathFromImageId(
   return existingPath || null;
 }
 
-function normalizeSpecs(editing: ProductRecord | null): ProductSpecRecord[] {
-  if (editing?.specs?.length) return editing.specs.map((spec) => ({ ...spec }));
-  return DEFAULT_SPEC_KEYS.map((key, sortOrder) => ({ key, value: '', sortOrder: sortOrder }));
-}
-
-function normalizeSpecKey(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+function normalizeSpecs(editing: ProductRecord | null): SpecDraft[] {
+  if (editing?.specs?.length) {
+    return editing.specs.map((spec, index) => ({
+      ...spec,
+      id: `spec-${index}-${spec.key || 'row'}`,
+    }));
+  }
+  return DEFAULT_SPEC_KEYS.map((key, sortOrder) => ({
+    id: `spec-default-${sortOrder}`,
+    key,
+    value: '',
+    sortOrder,
+  }));
 }
 
 function parseRawSizeText(value: string | null | undefined): { width: string; height: string } {
@@ -152,7 +162,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const [coverImageId, setCoverImageId] = useState<string | undefined>(() =>
     legacyImageId(editing?.coverImagePath ?? null),
   );
-  const [specs, setSpecs] = useState<ProductSpecRecord[]>(() => normalizeSpecs(editing));
+  const [specs, setSpecs] = useState<SpecDraft[]>(() => normalizeSpecs(editing));
   const [accessories] = useState<ProductAccessoryRecord[]>(() =>
     editing?.accessories?.map((item) => ({ ...item })) ?? [],
   );
@@ -171,6 +181,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const extraAccessoriesTotal = extraAccessories.reduce((sum, item) => sum + item.amount, 0);
   const estimatedTotal = sampleProductTotal + fixedPackageTotal + extraAccessoriesTotal;
   const sampleUnitLabel = unit === 'BO' ? 'bộ' : unit === 'METER' ? 'md' : 'm²';
+  const strictSpecKeys = useMemo(() => [...DEFAULT_SPEC_KEYS], []);
 
   const updateSpec = (index: number, patch: Partial<ProductSpecRecord>) =>
     setSpecs((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -178,20 +189,24 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
     setSpecs((rows) => moveRow(rows, index, direction));
 
   const specValueSuggestions = (key: string) => {
-    const normalized = normalizeSpecKey(key);
-    const specific = (() => {
-      if (normalized.includes('mau')) return suggestions.specValueColor ?? [];
-      if (normalized.includes('song') || normalized.includes('bao ve')) {
-        return suggestions.specValueProtectionBar ?? [];
-      }
-      if (normalized.includes('khung') || normalized.includes('khuon')) return suggestions.specValueFrame ?? [];
-      if (normalized.includes('canh')) return suggestions.specValueSash ?? [];
-      if (normalized.includes('day')) return suggestions.specValueThickness ?? [];
-      if (normalized.includes('kinh')) return suggestions.specValueGlass ?? [];
-      if (normalized.includes('phao')) return suggestions.specValueMolding ?? [];
-      return null;
-    })();
-    return specific ?? suggestions.specValue;
+    const types = suggestionTypesForSpecKey(key);
+    const primary = types[0];
+    if (primary === 'color' || primary === 'spec_value_color') return suggestions.specValueColor ?? [];
+    if (primary === 'protection_bar' || primary === 'spec_value_protection_bar') {
+      return suggestions.specValueProtectionBar ?? [];
+    }
+    if (primary === 'frame' || primary === 'spec_value_frame') return suggestions.specValueFrame ?? [];
+    if (primary === 'sash' || primary === 'spec_value_sash') return suggestions.specValueSash ?? [];
+    if (primary === 'thickness' || primary === 'spec_value_thickness') return suggestions.specValueThickness ?? [];
+    if (primary === 'glass' || primary === 'spec_value_glass') return suggestions.specValueGlass ?? [];
+    if (primary === 'molding' || primary === 'spec_value_molding') return suggestions.specValueMolding ?? [];
+    // Unknown keys: only generic spec_value — never mix categories/product names.
+    return suggestions.specValue ?? [];
+  };
+
+  const specValueFieldKey = (key: string) => {
+    const types = suggestionTypesForSpecKey(key);
+    return `spec-value:${types[0] || 'spec_value'}`;
   };
 
   const save = async () => {
@@ -262,6 +277,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
             imageId={coverImageId}
             imagePath={editing?.coverImagePath ?? null}
             onImageStored={setCoverImageId}
+            pasteScope="form"
           />
         </div>
 
@@ -269,6 +285,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
           <div className="product-basic-grid">
             <AutoSuggestInput
               label="Nhóm sản phẩm"
+              fieldKey="category"
               value={category}
               onChange={setCategory}
               suggestions={suggestions.category}
@@ -276,6 +293,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
             />
             <AutoSuggestInput
               label="Tên sản phẩm"
+              fieldKey="product_name"
               value={name}
               onChange={setName}
               suggestions={suggestions.productName}
@@ -315,7 +333,15 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
 
       <div className="product-editor-section-grid">
         <div className="editor-panel product-spec-panel">
-          <SectionHeader title="Thông số kỹ thuật" onAdd={() => setSpecs([...specs, { key: '', value: '', sortOrder: specs.length }])} />
+          <SectionHeader
+            title="Thông số kỹ thuật"
+            onAdd={() =>
+              setSpecs([
+                ...specs,
+                { id: newRowId(), key: '', value: '', sortOrder: specs.length },
+              ])
+            }
+          />
           <div className="spec-table-head">
             <span>Tên thông số</span>
             <span>Giá trị</span>
@@ -323,15 +349,17 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
           </div>
           <div className="spec-row-list">
             {specs.map((spec, index) => (
-              <div key={index} className="spec-editor-row">
+              <div key={spec.id} className="spec-editor-row" data-row-id={spec.id}>
                 <AutoSuggestInput
                   label="Tên"
+                  fieldKey="spec_key"
                   value={spec.key}
                   onChange={(value) => updateSpec(index, { key: value })}
-                  suggestions={[...DEFAULT_SPEC_KEYS]}
+                  suggestions={strictSpecKeys}
                 />
                 <AutoSuggestInput
                   label="Giá trị"
+                  fieldKey={specValueFieldKey(spec.key)}
                   value={spec.value}
                   onChange={(value) => updateSpec(index, { value })}
                   suggestions={specValueSuggestions(spec.key)}
@@ -343,7 +371,17 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                   <button className="icon-btn" type="button" disabled={index === specs.length - 1} onClick={() => moveSpec(index, 1)} aria-label="Đưa thông số xuống">
                     <ChevronDown size={15} />
                   </button>
-                  <button className="icon-btn danger" type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== index))} aria-label="Xóa thông số">
+                  <button
+                    className="icon-btn danger"
+                    type="button"
+                    data-action="remove-row"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setSpecs(specs.filter((_, i) => i !== index));
+                    }}
+                    aria-label="Xóa thông số"
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>

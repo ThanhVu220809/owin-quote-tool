@@ -12,20 +12,49 @@ interface Props {
   onImageStored: (id: string) => void;
   /** Optional class for layout variants. */
   className?: string;
+  /**
+   * pasteScope:
+   * - "dropzone": only when dropzone focused/hovered
+   * - "form": when parent product/quote form is open (clipboard image → cover)
+   */
+  pasteScope?: 'dropzone' | 'form';
 }
 
 function isImageFile(file: File | null | undefined): file is File {
   if (!file) return false;
   if (file.type.startsWith('image/')) return true;
-  // Some browsers omit type for clipboard PNG/JPG/WebP.
   return /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name || '');
 }
 
+function clipboardHasImage(event: ClipboardEvent): File | null {
+  const items = event.clipboardData?.items;
+  const files = event.clipboardData?.files;
+  if (items) {
+    for (const item of Array.from(items)) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) return file;
+      }
+    }
+  }
+  if (files) {
+    const found = Array.from(files).find(isImageFile);
+    if (found) return found;
+  }
+  return null;
+}
+
 /**
- * iOS Image Dropzone. Chọn/kéo-thả/Ctrl+V ảnh → nén → lưu IndexedDB → trả imageId.
- * Text paste in inputs is never intercepted; only clipboard image files.
+ * Image dropzone: click / drag-drop / Ctrl+V image → compress → IndexedDB → onImageStored.
+ * Text paste in inputs is never broken: we only intercept when clipboard contains image files.
  */
-export function ImageDropzone({ imageId, imagePath, onImageStored, className }: Props) {
+export function ImageDropzone({
+  imageId,
+  imagePath,
+  onImageStored,
+  className,
+  pasteScope = 'dropzone',
+}: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +63,6 @@ export function ImageDropzone({ imageId, imagePath, onImageStored, className }: 
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Nạp preview từ IndexedDB khi imageId đổi; revoke URL cũ khi unmount/đổi.
   useEffect(() => {
     let revoked: string | null = null;
     let active = true;
@@ -44,7 +72,9 @@ export function ImageDropzone({ imageId, imagePath, onImageStored, className }: 
         setUrl(null);
         return;
       }
-      const load = imageId ? getImageUrl(imageId).then((u) => ({ url: u, revoke: Boolean(u) })) : resolveImageUrl(imagePath);
+      const load = imageId
+        ? getImageUrl(imageId).then((u) => ({ url: u, revoke: Boolean(u) }))
+        : resolveImageUrl(imagePath);
       load.then((resolved) => {
         if (active && resolved.url) {
           if (resolved.revoke) revoked = resolved.url;
@@ -74,51 +104,35 @@ export function ImageDropzone({ imageId, imagePath, onImageStored, className }: 
     [onImageStored],
   );
 
-  // Ctrl+V image paste: only when dropzone (or product form) has focus context and clipboard has image files.
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      // Never intercept normal text paste inside inputs/textareas/contenteditable.
-      if (
-        target
-        && (target.tagName === 'INPUT'
-          || target.tagName === 'TEXTAREA'
-          || target.isContentEditable)
-      ) {
+      const imageFile = clipboardHasImage(event);
+      // No image file → never intercept (normal text paste works everywhere).
+      if (!imageFile) return;
+
+      const root = rootRef.current;
+      if (!root) return;
+
+      const formHost = root.closest('.product-editor-card, .quote-item-card');
+      const active = document.activeElement as HTMLElement | null;
+      const inDropzone = root.contains(active) || focused || root.matches(':hover');
+      const inForm = Boolean(formHost && (formHost.contains(active) || formHost.contains(root)));
+
+      if (pasteScope === 'form') {
+        if (!inForm && !inDropzone) return;
+      } else if (!inDropzone) {
         return;
       }
 
-      const items = event.clipboardData?.items;
-      const files = event.clipboardData?.files;
-      let imageFile: File | null = null;
-
-      if (items) {
-        for (const item of Array.from(items)) {
-          if (item.kind === 'file' && item.type.startsWith('image/')) {
-            imageFile = item.getAsFile();
-            if (imageFile) break;
-          }
-        }
-      }
-      if (!imageFile && files) {
-        imageFile = Array.from(files).find(isImageFile) || null;
-      }
-      if (!imageFile) return;
-
-      // Only handle when the dropzone is focused, hovered, or inside the product form card.
-      const root = rootRef.current;
-      const active = document.activeElement;
-      const inDropzone = root && (root.contains(active) || focused || root.matches(':hover'));
-      const inProductForm = root?.closest('.product-editor-card, .quote-item-card');
-      if (!inDropzone && !inProductForm) return;
-
+      // Clipboard has image → set cover. Do not treat as text paste.
       event.preventDefault();
+      event.stopPropagation();
       void handleFile(imageFile);
     };
 
-    document.addEventListener('paste', onPaste);
-    return () => document.removeEventListener('paste', onPaste);
-  }, [focused, handleFile]);
+    document.addEventListener('paste', onPaste, true);
+    return () => document.removeEventListener('paste', onPaste, true);
+  }, [focused, handleFile, pasteScope]);
 
   return (
     <div
@@ -160,7 +174,7 @@ export function ImageDropzone({ imageId, imagePath, onImageStored, className }: 
       ) : (
         <div className="hint">
           <ImagePlus size={26} />
-          <div>Chạm để chọn ảnh, kéo-thả, hoặc Ctrl+V</div>
+          <div>Chạm / kéo-thả / Ctrl+V ảnh</div>
         </div>
       )}
       {error && <div style={{ color: 'var(--ios-red)', fontSize: 13, marginTop: 8 }}>{error}</div>}

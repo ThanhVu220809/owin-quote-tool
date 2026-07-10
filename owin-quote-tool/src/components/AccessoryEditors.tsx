@@ -5,6 +5,7 @@ import { CurrencyInput } from './CurrencyInput';
 import { formatVND } from '@/utils/format';
 import {
   addEmptyAccessoryDraft,
+  addEmptyFixedAccessoryItem,
   calculateFixedAccessoryDraftTotal,
   type ExtraAccessoryDraft,
   type FixedAccessoryDraft,
@@ -44,14 +45,14 @@ export function FixedAccessoryPackageEditor({
   const patch = (next: Partial<FixedAccessoryDraft>) => onChange(updateFixedAccessoryDraft(value, next));
 
   return (
-    <div className="editor-panel">
+    <div className="editor-panel accessory-editor-panel">
       <div className="toolbar editor-toolbar">
         <div className="section-label">{title}</div>
         <div className="spacer" />
         <button
           className="btn-link"
           type="button"
-          onClick={() => patch({ items: [...value.items, { name: '', quantity: 0 }] })}
+          onClick={() => onChange(addEmptyFixedAccessoryItem(value))}
         >
           <Plus size={15} /> Thêm món
         </button>
@@ -59,10 +60,11 @@ export function FixedAccessoryPackageEditor({
 
       <AutoSuggestInput
         label="Tên bộ phụ kiện"
+        fieldKey="accessory_package_name"
         value={value.name}
         onChange={(name) => patch({ name })}
-        suggestions={suggestions.packageName ?? suggestions.accessoryName}
-        placeholder="Bộ phụ kiện cửa..."
+        suggestions={suggestions.packageName ?? []}
+        placeholder="Có thể để trống khi soạn…"
       />
 
       <div className="accessory-items">
@@ -70,18 +72,18 @@ export function FixedAccessoryPackageEditor({
           <div className="empty-line">Chưa có món phụ kiện nào trong bộ.</div>
         ) : (
           value.items.map((item, index) => (
-            <div key={`${item.name}-${index}`} className="accessory-item-line">
+            <div key={item.id} className="accessory-item-line" data-row-id={item.id}>
               <span className="line-index">{index + 1}</span>
               <AutoSuggestInput
                 label="Món"
+                fieldKey="accessory_name"
                 value={item.name}
                 onChange={(name) => {
-                  const items = [...value.items];
-                  items[index] = { ...items[index], name };
+                  const items = value.items.map((row, i) => (i === index ? { ...row, name } : row));
                   patch({ items });
                 }}
                 suggestions={suggestions.accessoryName}
-                placeholder="Tên phụ kiện..."
+                placeholder="Tên phụ kiện…"
               />
               <div className="field">
                 <label>SL</label>
@@ -91,8 +93,9 @@ export function FixedAccessoryPackageEditor({
                   min={0}
                   value={item.quantity}
                   onChange={(event) => {
-                    const items = [...value.items];
-                    items[index] = { ...items[index], quantity: Number(event.target.value) || 0 };
+                    const items = value.items.map((row, i) =>
+                      i === index ? { ...row, quantity: Number(event.target.value) || 0 } : row,
+                    );
                     patch({ items });
                   }}
                 />
@@ -119,7 +122,12 @@ export function FixedAccessoryPackageEditor({
                 <button
                   className="icon-btn danger"
                   type="button"
-                  onClick={() => patch({ items: value.items.filter((_, itemIndex) => itemIndex !== index) })}
+                  data-action="remove-row"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    patch({ items: value.items.filter((_, itemIndex) => itemIndex !== index) });
+                  }}
                   aria-label="Xóa món phụ kiện"
                 >
                   <Trash2 size={16} />
@@ -168,7 +176,7 @@ export function ExtraAccessoriesEditor({
   const total = value.reduce((sum, item) => sum + item.amount, 0);
 
   return (
-    <div className="editor-panel">
+    <div className="editor-panel accessory-editor-panel">
       <div className="toolbar editor-toolbar">
         <div>
           <div className="section-label">{title}</div>
@@ -181,7 +189,7 @@ export function ExtraAccessoriesEditor({
       </div>
 
       {value.length === 0 ? (
-        <div className="empty-line">Chưa có phụ kiện phát sinh.</div>
+        <div className="empty-line">Chưa có phụ kiện phát sinh. Bấm “Thêm phụ kiện” để thêm dòng trống (SL mặc định 0).</div>
       ) : (
         <div className="extra-accessory-table">
           <div className="extra-accessory-head">
@@ -194,13 +202,14 @@ export function ExtraAccessoriesEditor({
             <span />
           </div>
           {value.map((item, index) => (
-            <div key={item.id} className="extra-accessory-line">
+            <div key={item.id} className="extra-accessory-line" data-row-id={item.id}>
               <AutoSuggestInput
                 label="Tên"
+                fieldKey="accessory_name"
                 value={item.name}
                 onChange={(name) => onChange(updateAccessoryDraftAtIndex(value, index, { name }))}
                 suggestions={suggestions.accessoryName}
-                placeholder="Tên phụ kiện..."
+                placeholder="Tên phụ kiện…"
               />
               <div className="field">
                 <label>DV</label>
@@ -278,7 +287,12 @@ export function ExtraAccessoriesEditor({
                 <button
                   className="icon-btn danger"
                   type="button"
-                  onClick={() => onChange(reindexExtraAccessories(value.filter((_, itemIndex) => itemIndex !== index)))}
+                  data-action="remove-row"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onChange(reindexExtraAccessories(value.filter((_, itemIndex) => itemIndex !== index)));
+                  }}
                   aria-label="Xóa phụ kiện phát sinh"
                 >
                   <Trash2 size={16} />

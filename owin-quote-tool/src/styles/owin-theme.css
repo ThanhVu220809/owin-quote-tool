@@ -610,20 +610,24 @@
   position: absolute;
   right: 34px;
   border: none;
-  background: rgba(15, 42, 61, 0.05);
+  background: rgba(15, 42, 61, 0.06);
   color: var(--owin-ink-muted);
-  height: 24px;
-  width: 24px;
+  height: 22px;
+  width: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   cursor: pointer;
-  z-index: 1;
+  z-index: 2;
 }
 .autosuggest-clear:hover {
-  background: rgba(255, 59, 48, 0.12);
+  background: rgba(255, 59, 48, 0.14);
   color: var(--owin-danger);
+}
+.autosuggest-clear:focus-visible {
+  outline: 2px solid rgba(0, 102, 204, 0.45);
+  outline-offset: 1px;
 }
 .autosuggest-menu {
   position: fixed;
@@ -659,7 +663,7 @@
   font-size: 13px;
   cursor: pointer;
 }
-/* Hide-suggestion X: visually separate from clear-value and row trash. */
+/* Hide-suggestion (EyeOff): visually separate from clear-value X and row trash. */
 .autosuggest-hide,
 .autosuggest-remove {
   width: 26px;
@@ -674,14 +678,26 @@
   justify-content: center;
   cursor: pointer;
   flex: 0 0 auto;
-  opacity: 0.72;
+  opacity: 0.65;
 }
 .autosuggest-hide:hover,
 .autosuggest-remove:hover {
   background: rgba(15, 42, 61, 0.08);
-  border-color: rgba(15, 42, 61, 0.08);
-  color: var(--owin-danger);
+  border-color: rgba(15, 42, 61, 0.1);
+  color: var(--owin-ink);
   opacity: 1;
+}
+.accessory-editor-panel {
+  min-width: 0;
+}
+.accessory-item-line,
+.extra-accessory-line,
+.spec-editor-row {
+  position: relative;
+}
+.row-action-group .icon-btn.danger {
+  /* Trash is the only control that deletes a row. */
+  flex: 0 0 auto;
 }
 .editor-panel {
   border: 1px solid var(--owin-border);

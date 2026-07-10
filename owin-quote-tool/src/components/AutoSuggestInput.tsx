@@ -8,30 +8,35 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, EyeOff, X } from 'lucide-react';
 import { normalizeSuggestionText, rankSuggestionValues } from '@/lib/suggestionEngine';
 
 interface Props {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  /** Các giá trị đã nhập trước đó (rút từ catalog) để gợi ý. */
+  /** Field-specific suggestion pool only — never a global noisy bucket. */
   suggestions: string[];
   placeholder?: string;
   onSelect?: (value: string) => void;
   disabled?: boolean;
-  /** When true, only the fixed suggestion list is shown (no free-text learning noise). */
-  strictSuggestions?: boolean;
+  /**
+   * Unique field identity for hide-list storage (e.g. "spec-key", "spec-value-color").
+   * Prevents unrelated fields from sharing hide state via the same label.
+   */
+  fieldKey?: string;
+  /** When false, hide the in-field clear button (still never deletes rows). Default true. */
+  allowClear?: boolean;
 }
 
-function hiddenStorageKey(label: string): string {
-  return `owin-hidden-suggestions:${label}`;
+function hiddenStorageKey(fieldKey: string): string {
+  return `owin-hidden-suggestions:${fieldKey}`;
 }
 
-function readHiddenSuggestions(label: string): Set<string> {
+function readHiddenSuggestions(fieldKey: string): Set<string> {
   try {
     if (typeof window === 'undefined') return new Set();
-    const raw = window.localStorage.getItem(hiddenStorageKey(label));
+    const raw = window.localStorage.getItem(hiddenStorageKey(fieldKey));
     const values = raw ? JSON.parse(raw) : [];
     return new Set(Array.isArray(values) ? values.map(String) : []);
   } catch {
@@ -39,19 +44,20 @@ function readHiddenSuggestions(label: string): Set<string> {
   }
 }
 
-function writeHiddenSuggestions(label: string, values: Set<string>): void {
+function writeHiddenSuggestions(fieldKey: string, values: Set<string>): void {
   try {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(hiddenStorageKey(label), JSON.stringify(Array.from(values)));
+    window.localStorage.setItem(hiddenStorageKey(fieldKey), JSON.stringify(Array.from(values)));
   } catch {
     // LocalStorage can be unavailable in privacy modes; suggestions still work.
   }
 }
 
 /**
- * Field autocomplete with:
- * - clear-value (X inside input) — only clears current value, never deletes the parent row
- * - hide-suggestion (X on dropdown item) — hides a bad suggestion permanently, visually separate
+ * Field autocomplete with isolated actions:
+ * - clear-value (X inside input) → onChange('') ONLY — never deletes parent row
+ * - hide-suggestion (EyeOff in dropdown) → hide bad suggestion — never clears value or deletes row
+ * Row deletion is ONLY via parent trash button (onRemoveRow), never from this component.
  */
 export function AutoSuggestInput({
   label,
@@ -61,42 +67,44 @@ export function AutoSuggestInput({
   placeholder,
   onSelect,
   disabled,
+  fieldKey,
+  allowClear = true,
 }: Props) {
+  const storageKey = fieldKey || label;
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
-  const [hidden, setHidden] = useState<Set<string>>(() => readHiddenSuggestions(label));
+  const [hidden, setHidden] = useState<Set<string>>(() => readHiddenSuggestions(storageKey));
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-  const uniqueSuggestions = useMemo(
-    () => {
-      const byNormalized = new Map<string, string>();
-      suggestions
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .forEach((suggestion) => {
-          const key = normalizeSuggestionText(suggestion);
-          if (!byNormalized.has(key)) byNormalized.set(key, suggestion);
-        });
-      return Array.from(byNormalized.values());
-    },
-    [suggestions],
-  );
+
+  const uniqueSuggestions = useMemo(() => {
+    const byNormalized = new Map<string, string>();
+    suggestions
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((suggestion) => {
+        const key = normalizeSuggestionText(suggestion);
+        if (!byNormalized.has(key)) byNormalized.set(key, suggestion);
+      });
+    return Array.from(byNormalized.values());
+  }, [suggestions]);
+
   const filtered = useMemo(() => {
     const visible = uniqueSuggestions.filter((item) => !hidden.has(normalizeSuggestionText(item)));
-    return rankSuggestionValues(value, visible, 14);
+    return rankSuggestionValues(value, visible, 12);
   }, [hidden, uniqueSuggestions, value]);
 
   useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
+    const handlePointerDown = (event: PointerEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, []);
 
   useEffect(() => {
-    setHidden(readHiddenSuggestions(label));
-  }, [label]);
+    setHidden(readHiddenSuggestions(storageKey));
+  }, [storageKey]);
 
   const updateMenuPosition = useCallback(() => {
     if (!containerRef.current || typeof window === 'undefined') return;
@@ -114,7 +122,7 @@ export function AutoSuggestInput({
     setMenuStyle({
       left: rect.left,
       top,
-      width: rect.width,
+      width: Math.max(rect.width, 160),
       maxHeight: available,
     });
   }, [filtered.length]);
@@ -137,34 +145,45 @@ export function AutoSuggestInput({
     setHighlighted(-1);
   };
 
+  /** Clear current field value only — never calls any row-delete handler. */
   const clearValue = (event: ReactMouseEvent | ReactPointerEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    // Only clear the current field value — never delete the parent row/spec.
+    if ('nativeEvent' in event && typeof event.nativeEvent.stopImmediatePropagation === 'function') {
+      event.nativeEvent.stopImmediatePropagation();
+    }
     onChange('');
     setOpen(false);
     setHighlighted(-1);
   };
 
-  const hideSuggestion = (item: string) => {
+  /** Hide a bad suggestion from the list — does not clear value or remove rows. */
+  const hideSuggestion = (item: string, event: ReactMouseEvent | ReactPointerEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if ('nativeEvent' in event && typeof event.nativeEvent.stopImmediatePropagation === 'function') {
+      event.nativeEvent.stopImmediatePropagation();
+    }
     const next = new Set(hidden);
     next.add(normalizeSuggestionText(item));
     setHidden(next);
-    writeHiddenSuggestions(label, next);
+    writeHiddenSuggestions(storageKey, next);
     setHighlighted(-1);
   };
 
   const hasValue = Boolean(value.trim());
+  const showClear = allowClear && hasValue && !disabled;
 
   return (
-    <div className="field autosuggest" ref={containerRef}>
+    <div className="field autosuggest" ref={containerRef} data-autosuggest-field={storageKey}>
       <label>{label}</label>
-      <div className={`autosuggest-control${hasValue ? ' has-value' : ''}`}>
+      <div className={`autosuggest-control${showClear ? ' has-value' : ''}`}>
         <input
           className="input"
           value={value}
           placeholder={placeholder}
           disabled={disabled}
+          autoComplete="off"
           onFocus={() => !disabled && setOpen(true)}
           onChange={(event) => {
             onChange(event.target.value);
@@ -188,17 +207,19 @@ export function AutoSuggestInput({
             }
           }}
         />
-        {hasValue && !disabled && (
+        {showClear && (
           <button
             className="autosuggest-clear"
             type="button"
             tabIndex={-1}
             aria-label={`Xóa giá trị ${label}`}
-            title="Xóa giá trị"
+            title="Xóa giá trị (không xóa dòng)"
+            data-action="clear-value"
+            onPointerDown={clearValue}
             onMouseDown={clearValue}
             onClick={clearValue}
           >
-            <X size={14} />
+            <X size={13} strokeWidth={2.5} />
           </button>
         )}
         <button
@@ -206,22 +227,35 @@ export function AutoSuggestInput({
           type="button"
           tabIndex={-1}
           disabled={disabled}
-          onClick={() => setOpen((current) => !current)}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen((current) => !current);
+          }}
           aria-label={`Gợi ý ${label}`}
         >
           <ChevronDown size={16} />
         </button>
       </div>
       {open && filtered.length > 0 && !disabled && (
-        <div className="autosuggest-menu" style={menuStyle} role="listbox">
+        <div
+          className="autosuggest-menu"
+          style={menuStyle}
+          role="listbox"
+          onPointerDown={(event) => {
+            // Keep menu interactions from bubbling to row trash / document handlers.
+            event.stopPropagation();
+          }}
+        >
           {filtered.map((item, index) => (
-            <div key={item} className={`autosuggest-row ${index === highlighted ? 'active' : ''}`}>
+            <div key={`${storageKey}-${item}`} className={`autosuggest-row ${index === highlighted ? 'active' : ''}`}>
               <button
                 type="button"
                 className="autosuggest-option"
+                role="option"
+                aria-selected={index === highlighted}
                 onMouseEnter={() => setHighlighted(index)}
-                onMouseDown={(event) => {
-                  // preventDefault keeps focus; stopPropagation avoids parent row handlers
+                onPointerDown={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
                   selectSuggestion(item);
@@ -237,19 +271,16 @@ export function AutoSuggestInput({
                 type="button"
                 className="autosuggest-hide"
                 aria-label={`Ẩn gợi ý ${item}`}
-                title="Ẩn gợi ý này"
-                onMouseDown={(event) => {
-                  // Prevent click-through to trash/delete under the fixed menu after hide.
-                  event.preventDefault();
-                  event.stopPropagation();
-                  hideSuggestion(item);
-                }}
+                title="Ẩn gợi ý này (không xóa dòng)"
+                data-action="hide-suggestion"
+                onPointerDown={(event) => hideSuggestion(item, event)}
+                onMouseDown={(event) => hideSuggestion(item, event)}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
                 }}
               >
-                <X size={12} />
+                <EyeOff size={12} />
               </button>
             </div>
           ))}

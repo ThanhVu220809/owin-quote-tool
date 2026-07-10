@@ -19,11 +19,17 @@ import { calculateQuote } from '@/lib/quote/quoteCalculator';
 import { generateQuoteCode } from '@/lib/quote/quoteCode';
 import { generateSnapshot } from '@/lib/quote/quoteSnapshot';
 import { createCustomQuoteItem, createQuoteItemFromProduct } from '@/lib/quote/productToQuoteItem';
-import { DEFAULT_SPEC_KEYS, mergeSuggestionLists, rememberQuoteSuggestions } from '@/lib/suggestions';
+import {
+  DEFAULT_SPEC_KEYS,
+  mergeSuggestionLists,
+  rememberQuoteSuggestions,
+  suggestionTypesForSpecKey,
+} from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
 import { exportQuotePDF } from '@/features/export/pdfExport';
 import { ProductThumb } from '@/features/products/ProductThumb';
 import {
+  createEmptyFixedAccessoryDraft,
   parseExtraAccessoriesJson,
   parseFixedAccessoriesJson,
   serializeExtraAccessoriesJson,
@@ -194,7 +200,7 @@ export function QuoteView() {
       customerAddress,
       quoteDate,
       depositVnd,
-      items,
+      items: items.map(cleanItemAccessoriesForPersist),
     }),
     [customerAddress, customerEmail, customerName, customerPhone, depositVnd, items, quoteDate],
   );
@@ -972,16 +978,19 @@ function Field({
   value,
   onChange,
   suggestions = [],
+  fieldKey,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   suggestions?: string[];
+  fieldKey?: string;
 }) {
   if (suggestions.length > 0) {
     return (
       <AutoSuggestInput
         label={label}
+        fieldKey={fieldKey || label}
         value={value}
         onChange={onChange}
         suggestions={suggestions}
@@ -1031,36 +1040,49 @@ function moveRow<T>(rows: T[], index: number, direction: -1 | 1): T[] {
   return next;
 }
 
-function normalizeSpecKey(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+/** Clean blank accessory shells for calculate/save while editors keep them with keepEmpty. */
+function cleanItemAccessoriesForPersist(item: QuoteItemInput): QuoteItemInput {
+  const fixed = parseFixedAccessoriesJson(item.fixedAccessoryPackage, 1);
+  const extras = parseExtraAccessoriesJson(item.extraAccessories);
+  return {
+    ...item,
+    specs: (item.specs || [])
+      .map((spec, sortOrder) => ({
+        key: String(spec.key || '').trim(),
+        value: String(spec.value || '').trim(),
+        sortOrder,
+      }))
+      .filter((spec) => spec.key && spec.value),
+    fixedAccessoryPackage: serializeFixedAccessoriesJson(fixed),
+    extraAccessories: serializeExtraAccessoriesJson(extras),
+  };
 }
 
 function specValueSuggestionsForKey(key: string, suggestions: Record<string, string[]>): string[] {
-  const normalized = normalizeSpecKey(key);
-  if (normalized.includes('mau')) {
+  const types = suggestionTypesForSpecKey(key);
+  const primary = types[0];
+  if (primary === 'color' || primary === 'spec_value_color') {
     return mergeSuggestionLists(suggestions.color, suggestions.spec_value_color);
   }
-  if (normalized.includes('song') || normalized.includes('bao ve')) {
+  if (primary === 'protection_bar' || primary === 'spec_value_protection_bar') {
     return mergeSuggestionLists(suggestions.protection_bar, suggestions.spec_value_protection_bar);
   }
-  if (normalized.includes('khung') || normalized.includes('khuon')) {
+  if (primary === 'frame' || primary === 'spec_value_frame') {
     return mergeSuggestionLists(suggestions.frame, suggestions.spec_value_frame);
   }
-  if (normalized.includes('canh')) {
+  if (primary === 'sash' || primary === 'spec_value_sash') {
     return mergeSuggestionLists(suggestions.sash, suggestions.spec_value_sash);
   }
-  if (normalized.includes('day')) {
+  if (primary === 'thickness' || primary === 'spec_value_thickness') {
     return mergeSuggestionLists(suggestions.thickness, suggestions.spec_value_thickness);
   }
-  if (normalized.includes('kinh')) {
+  if (primary === 'glass' || primary === 'spec_value_glass') {
     return mergeSuggestionLists(suggestions.glass, suggestions.spec_value_glass);
   }
-  if (normalized.includes('phao')) {
+  if (primary === 'molding' || primary === 'spec_value_molding') {
     return mergeSuggestionLists(suggestions.molding, suggestions.spec_value_molding);
   }
+  // Unknown keys only: generic value pool — never mix category/product names.
   return suggestions.spec_value ?? [];
 }
 
@@ -1256,10 +1278,16 @@ function QuoteItemCard({
   onMoveDown: () => void;
   onDelete: () => void;
 }) {
-  const fixedDraft = parseFixedAccessoriesJson(item.fixedAccessoryPackage, 1);
+  // Always keep an editable fixed-package shell (empty name is allowed).
+  const fixedDraft =
+    item.fixedAccessoryPackage != null && item.fixedAccessoryPackage !== ''
+      ? parseFixedAccessoriesJson(item.fixedAccessoryPackage, 1)
+      : createEmptyFixedAccessoryDraft(1);
   const extraDraft = parseExtraAccessoriesJson(item.extraAccessories);
   const usesPackageAccessories = Boolean(item.fixedAccessoryPackage || extraDraft.length > 0);
   const specs = item.specs ?? [];
+  // Stable keys so clearing key/value never remounts the row (which felt like row delete).
+  const specRowIds = specs.map((spec, index) => `qi-${index}-${item.productCode}-${spec.sortOrder ?? index}`);
   const updateSpec = (specIndex: number, patch: { key?: string; value?: string }) => {
     onUpdate({
       specs: specs.map((spec, currentIndex) =>
@@ -1295,12 +1323,14 @@ function QuoteItemCard({
           <div className="quote-item-basic-grid quote-item-basic-grid-compact">
             <Field
               label="Tên hạng mục"
+              fieldKey="item_name"
               value={item.itemName}
               onChange={(value) => onUpdate({ itemName: value })}
               suggestions={mergeSuggestionLists(suggestions.item_name, suggestions.product_name)}
             />
             <Field
               label="Nhóm"
+              fieldKey="category"
               value={item.category || ''}
               onChange={(value) => onUpdate({ category: value, groupName: value })}
               suggestions={suggestions.category}
@@ -1416,15 +1446,17 @@ function QuoteItemCard({
               <div className="empty-line">Chưa có thông số kỹ thuật.</div>
             ) : (
               specs.map((spec, specIndex) => (
-                <div key={`${spec.key}-${specIndex}`} className="spec-editor-row">
+                <div key={specRowIds[specIndex]} className="spec-editor-row" data-row-id={specRowIds[specIndex]}>
                   <AutoSuggestInput
                     label="Tên"
+                    fieldKey="spec_key"
                     value={spec.key}
                     onChange={(key) => updateSpec(specIndex, { key })}
                     suggestions={[...DEFAULT_SPEC_KEYS]}
                   />
                   <AutoSuggestInput
                     label="Giá trị"
+                    fieldKey={`spec-value:${suggestionTypesForSpecKey(spec.key)[0] || 'spec_value'}`}
                     value={spec.value}
                     onChange={(value) => updateSpec(specIndex, { value })}
                     suggestions={specValueSuggestionsForKey(spec.key, suggestions)}
@@ -1451,13 +1483,16 @@ function QuoteItemCard({
                     <button
                       className="icon-btn danger"
                       type="button"
-                      onClick={() =>
+                      data-action="remove-row"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
                         onUpdate({
                           specs: specs
                             .filter((_, currentIndex) => currentIndex !== specIndex)
-                            .map((spec, sortOrder) => ({ ...spec, sortOrder })),
-                        })
-                      }
+                            .map((row, sortOrder) => ({ ...row, sortOrder })),
+                        });
+                      }}
                       aria-label="Xóa thông số"
                     >
                       <Trash2 size={16} />
@@ -1469,37 +1504,19 @@ function QuoteItemCard({
           </div>
         </div>
 
-        {item.fixedAccessoryPackage != null && item.fixedAccessoryPackage !== '' ? (
-          <FixedAccessoryPackageEditor
-            value={fixedDraft}
-            onChange={(draft) =>
-              onUpdate({
-                // keepEmpty so clearing package name never collapses the editor mid-edit.
-                fixedAccessoryPackage: serializeFixedAccessoriesJson(draft, { keepEmpty: true }),
-              })
-            }
-            suggestions={{
-              accessoryName: suggestions.accessory_name ?? [],
-              packageName: suggestions.accessory_package_name ?? [],
-            }}
-          />
-        ) : (
-          <div className="editor-panel">
-            <div className="section-label">Bộ phụ kiện cố định</div>
-            <div className="empty-line">Thêm bộ phụ kiện cố định (tên có thể để trống khi soạn).</div>
-            <button
-              className="btn-link"
-              type="button"
-              onClick={() =>
-                onUpdate({
-                  fixedAccessoryPackage: serializeFixedAccessoriesJson(fixedDraft, { keepEmpty: true }) || '{"name":"","items":[],"packageQuantity":1,"unit":"BO","unitPrice":0,"total":0}',
-                })
-              }
-            >
-              <Plus size={15} /> Thêm bộ phụ kiện
-            </button>
-          </div>
-        )}
+        <FixedAccessoryPackageEditor
+          value={fixedDraft}
+          onChange={(draft) =>
+            onUpdate({
+              // keepEmpty: empty package name never disables the accessory editor.
+              fixedAccessoryPackage: serializeFixedAccessoriesJson(draft, { keepEmpty: true }),
+            })
+          }
+          suggestions={{
+            accessoryName: suggestions.accessory_name ?? [],
+            packageName: suggestions.accessory_package_name ?? [],
+          }}
+        />
       </div>
 
       <div className="quote-item-extra">
@@ -1507,8 +1524,8 @@ function QuoteItemCard({
           value={extraDraft}
           onChange={(drafts) =>
             onUpdate({
-              // Keep empty array while editing so blank rows stay available.
-              extraAccessories: serializeExtraAccessoriesJson(drafts) ?? (drafts.length ? JSON.stringify(drafts) : '[]'),
+              // keepEmpty: blank extra rows stay while editing; cleaned only on quote save.
+              extraAccessories: serializeExtraAccessoriesJson(drafts, { keepEmpty: true }) ?? '[]',
             })
           }
           suggestions={{ accessoryName: suggestions.accessory_name ?? [] }}
