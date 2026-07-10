@@ -1751,6 +1751,22 @@
   background: #fff;
   color: #0e2f44;
 }
+.bang-gia-table .logo-cell {
+  height: 72px;
+  padding: 4px;
+}
+.bang-gia-table .logo-cell img {
+  display: block;
+  height: 95%;
+  margin: 0 auto;
+  max-height: 64px;
+  max-width: 95%;
+  object-fit: contain;
+  width: 95%;
+}
+.bang-gia-table .company-cell {
+  font-size: 20px;
+}
 .bang-gia-table .title-cell {
   background: #4b6078;
   color: #fff;

@@ -110,8 +110,10 @@ export function BangGiaView() {
           </colgroup>
           <thead>
             <tr>
-              <th colSpan={2} className="logo-cell">HOÀNG ANH OWIN</th>
-              <th colSpan={8} className="company-cell">Tiên Điền - Nghi Xuân - Hà Tĩnh · 0799040616</th>
+              <th colSpan={2} className="logo-cell">
+                <img src={`${import.meta.env.BASE_URL}owin-user-assets/logo/logo.webp`} alt="OWIN" />
+              </th>
+              <th colSpan={8} className="company-cell">HOÀNG ANH OWIN</th>
             </tr>
             <tr>
               <th colSpan={10} className="title-cell">BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN</th>

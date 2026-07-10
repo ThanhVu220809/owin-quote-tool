@@ -112,7 +112,8 @@ describe('reference Word catalogue template renderer', () => {
       rawPriceText: null,
       specs: [
         { key: 'Loại Kính', value: 'Kính cường lực 8mm', sortOrder: 0 },
-        { key: 'Song Nhôm Bảo Vệ', value: '', sortOrder: 1 },
+        { key: 'Độ Dày', value: '2 mm', sortOrder: 1 },
+        { key: 'Song Nhôm Bảo Vệ', value: '', sortOrder: 2 },
       ],
       accessories: [],
       fixedAccessoryPackage: fixedPackage(),
@@ -129,6 +130,8 @@ describe('reference Word catalogue template renderer', () => {
     expect(xml).toContain('I. CỬA SỔ');
     expect(xml).toContain('Cửa Sổ Mở Quay 1 Cánh');
     expect(xml).toContain('Kính Cường Lực 8mm');
+    expect(xml).toContain('Độ Dày: 2 mm');
+    expect(xml).not.toContain('Độ Dày: 2 Mm');
     // Empty-value specs keep the key only (no trailing colon).
     expect(xml).toContain('Song Nhôm Bảo Vệ');
     expect(xml).not.toMatch(/Song Nhôm Bảo Vệ:\s*</);
@@ -151,5 +154,23 @@ describe('reference Word catalogue template renderer', () => {
       expect(e.cx).toBeLessThanOrEqual(1_512_000);
       expect(e.cy).toBeLessThanOrEqual(1_368_000);
     }
+
+    // Real Web exporter geometry: one header table plus one detail table,
+    // both using the same full-width fixed 10-column grid.
+    const tables = [...xml.matchAll(/<w:tbl\b[\s\S]*?<\/w:tbl>/g)].map((match) => match[0]);
+    expect(tables).toHaveLength(2);
+    tables.forEach((table) => {
+      expect(table).toContain('<w:tblW w:w="14515" w:type="dxa"/>');
+      expect(table).toContain('<w:tblLayout w:type="fixed"/>');
+      const grid = [...table.matchAll(/<w:gridCol\b[^>]*w:w="(\d+)"[^>]*\/>/g)].map((match) => Number(match[1]));
+      expect(grid).toHaveLength(10);
+      expect(grid.reduce((sum, width) => sum + width, 0)).toBe(14515);
+    });
+
+    // Merged continuation cells need explicit borders, otherwise Word shows
+    // broken STT/image/total outlines below the product row.
+    const continuationCells = [...tables[1].matchAll(/<w:tc\b(?:(?!<\/w:tc>)[\s\S])*?<w:vMerge\s*\/>[\s\S]*?<\/w:tc>/g)];
+    expect(continuationCells.length).toBeGreaterThan(0);
+    continuationCells.forEach((match) => expect(match[0]).toContain('<w:tcBorders>'));
   });
 });

@@ -44,6 +44,10 @@ const QUOTE_IMG_PAGE_SAFE_MAX_CY = Math.round(170 * MM_TO_EMU);
 const IMG_CORNER_ADJ = 8000;
 const CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS = 1530; // measured in REF export
 const CATALOGUE_EXTRA_ROW_HEIGHT_TWIPS = 340;
+const CATALOGUE_TEMPLATE_TABLE_WIDTH = 14515;
+const CATALOGUE_HEADER_TABLE_WIDTH = CATALOGUE_TEMPLATE_TABLE_WIDTH;
+const CATALOGUE_TABLE_WIDTHS = [0.9, 5.1, 7.2, 0.9, 1.15, 1.0, 1.1, 2.75, 2.75, 2.75];
+const CATALOGUE_TITLE = 'BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN';
 
 type XmlRowMatch = { row: string; index: number; end: number };
 type ImageEmbedOptions = {
@@ -308,7 +312,7 @@ function fillImageToken(rowXml: string, token: string, drawingXml: string | null
 
 function upsertCellProperty(cellXml: string, propertyXml: string, propertyName: string): string {
   const propertyPattern = new RegExp(`<w:${propertyName}\\b[^>]*\\/>`, 'g');
-  let next = cellXml.replace(propertyPattern, '');
+  const next = cellXml.replace(propertyPattern, '');
   if (/<w:tcPr\b[^>]*>/.test(next)) {
     return next.replace(/<\/w:tcPr>/, `${propertyXml}</w:tcPr>`);
   }
@@ -609,10 +613,227 @@ function ensureBoldFontRuns(rowXml: string): string {
       next = /<w:sz\b[^>]*\/>/.test(next)
         ? next.replace(/<w:sz\b[^>]*\/>/g, '<w:sz w:val="20"/>')
         : next.replace('</w:rPr>', '<w:sz w:val="20"/></w:rPr>');
+      next = /<w:szCs\b[^>]*\/>/.test(next)
+        ? next.replace(/<w:szCs\b[^>]*\/>/g, '<w:szCs w:val="20"/>')
+        : next.replace('</w:rPr>', '<w:szCs w:val="20"/></w:rPr>');
       return next;
     }
-    return runXml.replace(/<w:r\b([^>]*)>/, '<w:r$1><w:rPr><w:b/><w:sz w:val="20"/></w:rPr>');
+    return runXml.replace(/<w:r\b([^>]*)>/, '<w:r$1><w:rPr><w:b/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>');
   });
+}
+
+function ensureAllTablesBold(documentXml: string): string {
+  return documentXml.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/g, (tableXml) => ensureBoldFontRuns(tableXml));
+}
+
+function setTableWidth(tableXml: string, width: number): string {
+  const widthXml = `<w:tblW w:w="${width}" w:type="dxa"/>`;
+  if (/<w:tblW\b[^>]*\/>/.test(tableXml)) return tableXml.replace(/<w:tblW\b[^>]*\/>/, widthXml);
+  if (/<w:tblPr\b[^>]*>/.test(tableXml)) {
+    return tableXml.replace(/<w:tblPr\b[^>]*>/, (match) => `${match}${widthXml}`);
+  }
+  return tableXml.replace(/<w:tbl\b([^>]*)>/, `<w:tbl$1><w:tblPr>${widthXml}</w:tblPr>`);
+}
+
+function removeTableIndent(tableXml: string): string {
+  return tableXml.replace(/<w:tblInd\b[^>]*\/>/g, '');
+}
+
+function setTableJustification(tableXml: string, value: 'left' | 'center'): string {
+  const jcXml = `<w:jc w:val="${value}"/>`;
+  if (/<w:jc\b[^>]*\/>/.test(tableXml)) return tableXml.replace(/<w:jc\b[^>]*\/>/g, jcXml);
+  if (/<w:tblPr\b[^>]*>/.test(tableXml)) {
+    return tableXml.replace(/<w:tblPr\b[^>]*>/, (match) => `${match}${jcXml}`);
+  }
+  return tableXml.replace(/<w:tbl\b([^>]*)>/, `<w:tbl$1><w:tblPr>${jcXml}</w:tblPr>`);
+}
+
+function ensureFixedTableLayout(tableXml: string): string {
+  const layoutXml = '<w:tblLayout w:type="fixed"/>';
+  if (/<w:tblLayout\b[^>]*\/>/.test(tableXml)) return tableXml.replace(/<w:tblLayout\b[^>]*\/>/g, layoutXml);
+  if (/<w:tblPr\b[^>]*>/.test(tableXml)) {
+    return tableXml.replace(/<w:tblPr\b[^>]*>/, (match) => `${match}${layoutXml}`);
+  }
+  return tableXml.replace(/<w:tbl\b([^>]*)>/, `<w:tbl$1><w:tblPr>${layoutXml}</w:tblPr>`);
+}
+
+function setTableGridToWidths(tableXml: string, widths: number[]): string {
+  const gridXml = `<w:tblGrid>${widths.map((width) => `<w:gridCol w:w="${width}"/>`).join('')}</w:tblGrid>`;
+  if (/<w:tblGrid\b[\s\S]*?<\/w:tblGrid>/.test(tableXml)) {
+    return tableXml.replace(/<w:tblGrid\b[\s\S]*?<\/w:tblGrid>/, gridXml);
+  }
+  return tableXml.replace(/<\/w:tblPr>/, `</w:tblPr>${gridXml}`);
+}
+
+function scaleWidthsToTarget(widths: number[], targetWidth: number): number[] {
+  const sum = widths.reduce((total, width) => total + width, 0);
+  if (sum <= 0) return widths;
+  const scaled = widths.map((width) => Math.max(1, Math.round((width * targetWidth) / sum)));
+  const diff = targetWidth - scaled.reduce((total, width) => total + width, 0);
+  if (scaled.length > 0) scaled[scaled.length - 1] += diff;
+  return scaled;
+}
+
+function setTableColumnWidths(tableXml: string, widths: number[]): string {
+  let next = setTableGridToWidths(tableXml, widths);
+  next = next.replace(/<w:tr\b[\s\S]*?<\/w:tr>/g, (rowXml) => {
+    let columnIndex = 0;
+    return rowXml.replace(/<w:tc\b[\s\S]*?<\/w:tc>/g, (cellXml) => {
+      const span = Number(cellXml.match(/<w:gridSpan\b[^>]*w:val="(\d+)"/)?.[1] || '1');
+      const width = widths.slice(columnIndex, columnIndex + span).reduce((total, value) => total + value, 0)
+        || widths[columnIndex % widths.length];
+      columnIndex += span;
+      if (/<w:tcW\b[^>]*\/>/.test(cellXml)) {
+        return cellXml.replace(/<w:tcW\b[^>]*\/>/, (match) => match
+          .replace(/w:w="\d+"/, `w:w="${width}"`)
+          .replace(/w:type="[^"]+"/, 'w:type="dxa"'));
+      }
+      if (/<w:tcPr\b[^>]*>/.test(cellXml)) {
+        return cellXml.replace(/<w:tcPr\b[^>]*>/, (match) => `${match}<w:tcW w:w="${width}" w:type="dxa"/>`);
+      }
+      return cellXml.replace(/<w:tc\b([^>]*)>/, `<w:tc$1><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>`);
+    });
+  });
+  return next;
+}
+
+function cellBordersXml(): string {
+  return '<w:tcBorders><w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="8" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="8" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="8" w:space="0" w:color="000000"/></w:tcBorders>';
+}
+
+function ensureCellBorders(tableXml: string): string {
+  const borderXml = cellBordersXml();
+  return tableXml.replace(/<w:tc\b[\s\S]*?<\/w:tc>/g, (cellXml) => {
+    if (/<w:tcBorders\b[\s\S]*?<\/w:tcBorders>/.test(cellXml)) {
+      return cellXml.replace(/<w:tcBorders\b[\s\S]*?<\/w:tcBorders>/, borderXml);
+    }
+    if (/<w:tcPr\b[^>]*>/.test(cellXml)) return cellXml.replace(/<\/w:tcPr>/, `${borderXml}</w:tcPr>`);
+    return cellXml.replace(/<w:tc\b([^>]*)>/, `<w:tc$1><w:tcPr>${borderXml}</w:tcPr>`);
+  });
+}
+
+function paragraphXml(
+  value: string,
+  options: { align?: 'left' | 'center' | 'right'; color?: string; size?: number } = {},
+): string {
+  const align = options.align ?? 'center';
+  const color = options.color ? `<w:color w:val="${options.color}"/>` : '';
+  const size = options.size ?? 20;
+  return `<w:p><w:pPr><w:jc w:val="${align}"/><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/>${color}</w:rPr><w:t>${xmlEscape(value)}</w:t></w:r></w:p>`;
+}
+
+function cellXml(options: {
+  width: number;
+  gridSpan?: number;
+  fill?: string;
+  bodyXml: string;
+  verticalAlign?: 'center' | 'top' | 'bottom';
+}): string {
+  const spanXml = options.gridSpan && options.gridSpan > 1 ? `<w:gridSpan w:val="${options.gridSpan}"/>` : '';
+  const fillXml = options.fill ? `<w:shd w:fill="${options.fill}" w:val="clear"/>` : '';
+  const vAlign = options.verticalAlign ?? 'center';
+  return `<w:tc><w:tcPr><w:tcW w:w="${options.width}" w:type="dxa"/>${spanXml}${fillXml}<w:vAlign w:val="${vAlign}"/>${cellBordersXml()}</w:tcPr>${options.bodyXml}</w:tc>`;
+}
+
+function setParagraphJustification(xml: string, value: 'left' | 'center' | 'right'): string {
+  return xml.replace(/<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g, (paragraph) => {
+    if (/<w:pPr\b[^>]*>/.test(paragraph)) {
+      if (/<w:jc\b[^>]*\/>/.test(paragraph)) return paragraph.replace(/<w:jc\b[^>]*\/>/g, `<w:jc w:val="${value}"/>`);
+      return paragraph.replace(/<w:pPr\b([^>]*)>/, `<w:pPr$1><w:jc w:val="${value}"/>`);
+    }
+    return paragraph.replace(/<w:p\b([^>]*)>/, `<w:p$1><w:pPr><w:jc w:val="${value}"/></w:pPr>`);
+  });
+}
+
+function catalogueRowXml(cellsXml: string, height?: number): string {
+  const heightXml = height ? `<w:trPr><w:trHeight w:val="${height}" w:hRule="exact"/></w:trPr>` : '';
+  return `<w:tr>${heightXml}${cellsXml}</w:tr>`;
+}
+
+function applyCatalogueDetailAlignment(tableXml: string): string {
+  return tableXml.replace(/<w:tr\b[\s\S]*?<\/w:tr>/g, (rowXml) => {
+    const rowText = [...rowXml.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g)].map((match) => match[1]).join(' ');
+    const isHeaderRow = rowText.includes('STT') && rowText.includes('Hình ảnh') && rowText.includes('Mô tả chi tiết');
+    let columnIndex = 0;
+    return rowXml.replace(/<w:tc\b[\s\S]*?<\/w:tc>/g, (cell) => {
+      const span = Number(cell.match(/<w:gridSpan\b[^>]*w:val="(\d+)"/)?.[1] || '1');
+      const startColumn = columnIndex;
+      columnIndex += span;
+      if (isHeaderRow) return setParagraphJustification(cell, 'center');
+      if (span >= 10) return setParagraphJustification(cell, 'left');
+      if (startColumn === 2) return setParagraphJustification(cell, 'left');
+      if (startColumn >= 7) return setParagraphJustification(cell, 'right');
+      return setParagraphJustification(cell, 'center');
+    });
+  });
+}
+
+function extractFirstCellBody(tableXml: string): string | null {
+  const firstCell = tableXml.match(/<w:tc\b[\s\S]*?<\/w:tc>/)?.[0];
+  if (!firstCell) return null;
+  const body = firstCell
+    .replace(/^<w:tc\b[^>]*>/, '')
+    .replace(/<\/w:tc>$/, '')
+    .replace(/<w:tcPr\b[\s\S]*?<\/w:tcPr>/, '');
+  return body.trim() || null;
+}
+
+function buildCatalogueHeaderTable(logoBodyXml: string | null): string {
+  const widths = scaleWidthsToTarget(CATALOGUE_TABLE_WIDTHS, CATALOGUE_TEMPLATE_TABLE_WIDTH);
+  const logoWidth = widths.slice(0, 2).reduce((total, width) => total + width, 0);
+  const companyWidth = widths.slice(2).reduce((total, width) => total + width, 0);
+  const logoBody = logoBodyXml ?? paragraphXml('OWIN');
+  const gridXml = widths.map((width) => `<w:gridCol w:w="${width}"/>`).join('');
+  return [
+    `<w:tbl><w:tblPr><w:tblW w:w="${CATALOGUE_TEMPLATE_TABLE_WIDTH}" w:type="dxa"/><w:jc w:val="left"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${gridXml}</w:tblGrid>`,
+    catalogueRowXml(
+      cellXml({ width: logoWidth, gridSpan: 2, bodyXml: logoBody })
+        + cellXml({ width: companyWidth, gridSpan: 8, bodyXml: paragraphXml('HOÀNG ANH OWIN') }),
+      1320,
+    ),
+    catalogueRowXml(
+      cellXml({ width: CATALOGUE_TEMPLATE_TABLE_WIDTH, gridSpan: 10, fill: '4B6078', bodyXml: paragraphXml(CATALOGUE_TITLE, { color: 'FFFFFF' }) }),
+      560,
+    ),
+    '</w:tbl>',
+  ].join('');
+}
+
+function replaceCatalogueHeaderTables(documentXml: string): string {
+  const tables = [...documentXml.matchAll(/<w:tbl\b[\s\S]*?<\/w:tbl>/g)];
+  if (tables.length < 2) return documentXml;
+  const firstTable = tables[0][0];
+  const secondTable = tables[1][0];
+  if (!firstTable.includes('HOÀNG ANH OWIN') || !secondTable.includes('BẢNG GIÁ')) return documentXml;
+  const replacement = buildCatalogueHeaderTable(extractFirstCellBody(firstTable));
+  const start = tables[0].index ?? 0;
+  const end = (tables[1].index ?? start) + secondTable.length;
+  return documentXml.slice(0, start) + replacement + documentXml.slice(end);
+}
+
+function removeEmptyParagraphsBetweenTables(documentXml: string): string {
+  return documentXml.replace(
+    /<\/w:tbl>((?:<w:p\b[\s\S]*?<\/w:p>)+)(?=<w:tbl\b)/g,
+    (match, paragraphs: string) => /<w:t\b[^>]*>[\s\S]*?\S[\s\S]*?<\/w:t>/.test(paragraphs) ? match : '</w:tbl>',
+  );
+}
+
+function normalizeCatalogueLayout(documentXml: string): string {
+  let tableIndex = 0;
+  let next = documentXml.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/g, (tableXml) => {
+    const targetWidth = tableIndex === 0 ? CATALOGUE_HEADER_TABLE_WIDTH : CATALOGUE_TEMPLATE_TABLE_WIDTH;
+    const fixedWidths = scaleWidthsToTarget(CATALOGUE_TABLE_WIDTHS, CATALOGUE_TEMPLATE_TABLE_WIDTH);
+    tableIndex += 1;
+    let normalized = removeTableIndent(tableXml);
+    normalized = setTableJustification(normalized, 'center');
+    normalized = setTableColumnWidths(normalized, fixedWidths);
+    normalized = setTableWidth(normalized, targetWidth);
+    normalized = ensureFixedTableLayout(normalized);
+    if (tableIndex > 1) normalized = applyCatalogueDetailAlignment(normalized);
+    return ensureCellBorders(normalized);
+  });
+  next = removeEmptyParagraphsBetweenTables(next);
+  return next;
 }
 
 export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote): Promise<string> {
@@ -811,7 +1032,10 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
   );
 
   documentXml = documentXml.slice(0, blockStart) + renderedRows.join('') + documentXml.slice(blockEnd);
-  return removeLeftoverTokens(documentXml);
+  documentXml = ensureAllTablesBold(removeLeftoverTokens(documentXml));
+  documentXml = replaceCatalogueHeaderTables(documentXml);
+  documentXml = normalizeCatalogueLayout(documentXml);
+  return ensureBoldFontRuns(documentXml);
 }
 
 export async function buildBangGiaWordData(products: ProductRecord[]) {

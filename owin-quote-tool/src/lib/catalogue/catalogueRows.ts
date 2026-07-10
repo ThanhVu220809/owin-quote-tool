@@ -30,6 +30,7 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 const SPEC_ORDER = [
   { label: 'Màu', keys: ['mau', 'màu'] },
   { label: 'Khung Bao', keys: ['khung bao'] },
+  { label: 'Khuôn Bao', keys: ['khuon bao', 'khuôn bao'] },
   { label: 'Bản Cánh', keys: ['ban canh', 'bản cánh', 'canh', 'cánh'] },
   { label: 'Độ Dày', keys: ['do day', 'độ dày'] },
   { label: 'Loại Kính', keys: ['loai kinh', 'loại kính', 'kinh', 'kính'] },
@@ -38,12 +39,38 @@ const SPEC_ORDER = [
   { label: 'Ghi Chú', keys: ['ghi chu', 'ghi chú', 'note'] },
 ] as const;
 
+const CANONICAL_TITLE_TOKENS = new Map<string, string>([
+  ['owin', 'OWIN'],
+  ['koln', 'KOLN'],
+  ['pvc', 'PVC'],
+  ['cnc', 'CNC'],
+  ['kinlong', 'Kinlong'],
+  ['m2', 'm²'],
+  ['m²', 'm²'],
+  ['md', 'md'],
+  ['mm', 'mm'],
+]);
+
+function formatTitleToken(token: string): string {
+  if (!token) return token;
+  const leading = token.match(/^[^\p{L}\p{N}]+/u)?.[0] ?? '';
+  const trailing = token.match(/[^\p{L}\p{N}]+$/u)?.[0] ?? '';
+  const core = token.slice(leading.length, token.length - trailing.length);
+  if (!core) return token;
+  const lower = core.toLocaleLowerCase('vi-VN');
+  const canonical = CANONICAL_TITLE_TOKENS.get(lower);
+  if (canonical) return `${leading}${canonical}${trailing}`;
+  if (/^x\d+$/i.test(core) || /^\d+(?:[.,]\d+)?(?:mm|cm|m|md|m2|m²)$/i.test(core)) {
+    return `${leading}${lower.replace(/m2$/i, 'm²')}${trailing}`;
+  }
+  if (/^\d+(?:[.,]\d+)?$/.test(core)) return token;
+  return `${leading}${core.charAt(0).toLocaleUpperCase('vi-VN')}${core.slice(1).toLocaleLowerCase('vi-VN')}${trailing}`;
+}
+
 function titleCase(value: string): string {
-  return value
-    .toLowerCase()
-    .split(/\s+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+  const clean = String(value || '').trim().replace(/\s+/g, ' ');
+  if (!clean || /@/.test(clean) || /^[a-z]+:\/\//i.test(clean) || /[\\/]/.test(clean)) return clean;
+  return clean.split(' ').map(formatTitleToken).join(' ');
 }
 
 function normalizeText(value: string): string {
