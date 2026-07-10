@@ -46,6 +46,7 @@ interface Suggestions {
   specValueProtectionBar?: string[];
   accessoryName: string[];
   accessoryPackageName?: string[];
+  extraAccessoryName?: string[];
 }
 
 interface Props {
@@ -213,13 +214,14 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
     if (!canSave) return;
     setSaving(true);
     try {
+      // Keep keys even when value is empty (e.g. Song Nhôm Bảo Vệ with no value).
       const cleanSpecs = specs
         .map((spec, sortOrder) => ({
           key: spec.key.trim(),
           value: spec.value.trim(),
           sortOrder,
         }))
-        .filter((spec) => spec.key && spec.value);
+        .filter((spec) => spec.key);
       const cleanAccessories = accessories
         .map((item, sortOrder) => ({
           name: item.name.trim(),
@@ -404,7 +406,9 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
         <ExtraAccessoriesEditor
           value={extraAccessories}
           onChange={setExtraAccessories}
-          suggestions={{ accessoryName: suggestions.accessoryName }}
+          suggestions={{
+            accessoryName: suggestions.extraAccessoryName ?? [],
+          }}
           title="Phụ kiện phát sinh thêm"
         />
       </div>

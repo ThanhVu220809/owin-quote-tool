@@ -8,6 +8,10 @@ import { normalizeSuggestionText, rankSuggestionCandidates } from './suggestionE
 export const SUGGESTION_TYPES = [
   'accessory_name',
   'accessory_package_name',
+  /** Fixed package item names (Khóa, Bản lề…) — not mixed with extras. */
+  'fixed_accessory_item',
+  /** Extra/phụ kiện phát sinh names (Phào, Nẹp…) — not mixed with fixed package. */
+  'extra_accessory_name',
   'category',
   'color',
   'customer_address',
@@ -55,8 +59,12 @@ export const SUGGESTION_TYPE_ALIASES: Record<string, string[]> = {
   spec_value_molding: ['spec_value_molding', 'molding'],
   protection_bar: ['protection_bar', 'spec_value_protection_bar'],
   spec_value_protection_bar: ['spec_value_protection_bar', 'protection_bar'],
-  accessory_name: ['accessory_name'],
+  // Fixed package items: may include legacy accessory_name seeds, never extras.
+  accessory_name: ['accessory_name', 'fixed_accessory_item'],
+  fixed_accessory_item: ['fixed_accessory_item', 'accessory_name'],
   accessory_package_name: ['accessory_package_name'],
+  // Extra accessories: isolated bucket only.
+  extra_accessory_name: ['extra_accessory_name'],
   customer_name: ['customer_name'],
   customer_address: ['customer_address'],
   // Spec keys stay strict presets in UI — do not alias to noisy learned labels.
@@ -88,7 +96,7 @@ const suggestionStore = localforage.createInstance({
 });
 
 const SEED_KEY = '__seeded__';
-const REFERENCE_SEED_KEY = '__reference_suggestions_seed_v4__';
+const REFERENCE_SEED_KEY = '__reference_suggestions_seed_v5__';
 const seedModules = import.meta.glob('../data/suggestions/*.json', {
   eager: true,
   import: 'default',
@@ -141,6 +149,8 @@ function collectProductLikeSuggestionEntries(source: Record<string, unknown>): A
   const accessories = Array.isArray(source.accessories) ? source.accessories : [];
   accessories.forEach((entry) => {
     const accessory = entry as Record<string, unknown>;
+    // Legacy product.accessories are fixed-package style, not extras.
+    entries.push(['fixed_accessory_item', accessory.name || accessory.ten]);
     entries.push(['accessory_name', accessory.name || accessory.ten]);
   });
 
@@ -324,7 +334,10 @@ function collectAccessorySuggestionEntries(
         items?: Array<{ name?: unknown }>;
       };
       entries.push(['accessory_package_name', fixed.name]);
-      fixed.items?.forEach((item) => entries.push(['accessory_name', item.name]));
+      fixed.items?.forEach((item) => {
+        entries.push(['fixed_accessory_item', item.name]);
+        entries.push(['accessory_name', item.name]);
+      });
     } catch {
       // Malformed JSON should not block suggestion learning.
     }
@@ -333,7 +346,8 @@ function collectAccessorySuggestionEntries(
     try {
       const extras = JSON.parse(extraAccessories) as Array<{ name?: unknown }>;
       if (Array.isArray(extras)) {
-        extras.forEach((item) => entries.push(['accessory_name', item.name]));
+        // Extras only learn into extra_accessory_name — never pollute fixed package.
+        extras.forEach((item) => entries.push(['extra_accessory_name', item.name]));
       }
     } catch {
       // Malformed JSON should not block suggestion learning.
@@ -352,7 +366,10 @@ export async function rememberProductSuggestions(product: ProductRecord): Promis
   product.specs.forEach((spec) => {
     suggestionTypesForSpecKey(spec.key).forEach((type) => entries.push([type, spec.value]));
   });
-  product.accessories.forEach((accessory) => entries.push(['accessory_name', accessory.name]));
+  product.accessories.forEach((accessory) => {
+    entries.push(['fixed_accessory_item', accessory.name]);
+    entries.push(['accessory_name', accessory.name]);
+  });
   entries.push(...collectAccessorySuggestionEntries(product.fixedAccessoryPackage, product.extraAccessories));
   await rememberSuggestions(entries);
 }
@@ -369,9 +386,15 @@ export async function rememberQuoteSuggestions(quote: QuoteInput): Promise<void>
     entries.push(['category', item.category || item.groupName]);
     entries.push(['unit', item.unit]);
     item.dimensions.forEach((dimension) => entries.push(['unit', dimension.unit || item.unit]));
-    item.accessories.forEach((accessory) => entries.push(['accessory_name', accessory.name]));
+    item.accessories.forEach((accessory) => {
+      entries.push(['fixed_accessory_item', accessory.name]);
+      entries.push(['accessory_name', accessory.name]);
+    });
     item.specs?.forEach((spec) => {
-      suggestionTypesForSpecKey(spec.key).forEach((type) => entries.push([type, spec.value]));
+      // Learn values when present; keys themselves stay strict presets in UI.
+      if (String(spec.value || '').trim()) {
+        suggestionTypesForSpecKey(spec.key).forEach((type) => entries.push([type, spec.value]));
+      }
     });
     entries.push(...collectAccessorySuggestionEntries(item.fixedAccessoryPackage, item.extraAccessories));
   });

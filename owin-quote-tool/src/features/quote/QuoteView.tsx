@@ -59,6 +59,8 @@ const QUOTE_SUGGESTION_TYPES = [
   'spec_value_sash',
   'spec_value_thickness',
   'accessory_name',
+  'fixed_accessory_item',
+  'extra_accessory_name',
   'accessory_package_name',
 ] as const;
 
@@ -1046,13 +1048,14 @@ function cleanItemAccessoriesForPersist(item: QuoteItemInput): QuoteItemInput {
   const extras = parseExtraAccessoriesJson(item.extraAccessories);
   return {
     ...item,
+    // Keep spec keys even when value is empty.
     specs: (item.specs || [])
       .map((spec, sortOrder) => ({
         key: String(spec.key || '').trim(),
         value: String(spec.value || '').trim(),
         sortOrder,
       }))
-      .filter((spec) => spec.key && spec.value),
+      .filter((spec) => spec.key),
     fixedAccessoryPackage: serializeFixedAccessoriesJson(fixed),
     extraAccessories: serializeExtraAccessoriesJson(extras),
   };
@@ -1207,7 +1210,16 @@ function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote
                   )}
                   {lineIndex === 0 && (
                     <td rowSpan={Math.max(1, item.dimensions.length)} className="description-cell">
-                      {[item.itemName, ...(item.specs || []).map((spec) => `- ${spec.key}: ${spec.value}`)]
+                      {[
+                        item.itemName,
+                        ...(item.specs || [])
+                          .filter((spec) => String(spec.key || '').trim())
+                          .map((spec) => {
+                            const key = String(spec.key).trim();
+                            const value = String(spec.value || '').trim();
+                            return value ? `- ${key}: ${value}` : `- ${key}`;
+                          }),
+                      ]
                         .filter(Boolean)
                         .map((lineText, i) => <div key={i}>{lineText}</div>)}
                     </td>
@@ -1513,7 +1525,10 @@ function QuoteItemCard({
             })
           }
           suggestions={{
-            accessoryName: suggestions.accessory_name ?? [],
+            accessoryName: mergeSuggestionLists(
+              suggestions.fixed_accessory_item,
+              suggestions.accessory_name,
+            ),
             packageName: suggestions.accessory_package_name ?? [],
           }}
         />
@@ -1528,7 +1543,7 @@ function QuoteItemCard({
               extraAccessories: serializeExtraAccessoriesJson(drafts, { keepEmpty: true }) ?? '[]',
             })
           }
-          suggestions={{ accessoryName: suggestions.accessory_name ?? [] }}
+          suggestions={{ accessoryName: suggestions.extra_accessory_name ?? [] }}
           title="Phụ kiện phát sinh riêng"
         />
       </div>

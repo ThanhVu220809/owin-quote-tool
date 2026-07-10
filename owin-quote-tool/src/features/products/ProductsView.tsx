@@ -13,6 +13,8 @@ import { sortCategoryNames } from '@/config/categoryOrder';
 
 const PRODUCT_SUGGESTION_TYPES = [
   'accessory_package_name',
+  'fixed_accessory_item',
+  'extra_accessory_name',
   'category',
   'product_name',
   'item_name',
@@ -80,12 +82,17 @@ function fixedAccessoryItemNames(product: ProductRecord): string[] {
   }
 }
 
-function accessoryNames(products: ProductRecord[]): string[] {
+function fixedAccessoryNames(products: ProductRecord[]): string[] {
   return products.flatMap((product) => [
     ...product.accessories.map((accessory) => accessory.name),
     ...fixedAccessoryItemNames(product),
-    ...parseJsonArray(product.extraAccessories).map((item) => String(item.name || '')),
   ]).filter(Boolean);
+}
+
+function extraAccessoryNames(products: ProductRecord[]): string[] {
+  return products
+    .flatMap((product) => parseJsonArray(product.extraAccessories).map((item) => String(item.name || '')))
+    .filter(Boolean);
 }
 
 /** Màn quản lý sản phẩm gốc (catalog). */
@@ -152,13 +159,20 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         ...(seededSuggestions.spec_value_protection_bar ?? []),
         ...specValuesByKey(productRecords, (key) => key.includes('song') || key.includes('bao ve')),
       ],
+      // Fixed package item names only (not extras).
       accessoryName: [
+        ...(seededSuggestions.fixed_accessory_item ?? []),
         ...(seededSuggestions.accessory_name ?? []),
-        ...accessoryNames(productRecords),
+        ...fixedAccessoryNames(productRecords),
       ],
       accessoryPackageName: [
         ...(seededSuggestions.accessory_package_name ?? []),
         ...fixedPackageNames(productRecords),
+      ],
+      // Extra accessories only — separate from fixed package.
+      extraAccessoryName: [
+        ...(seededSuggestions.extra_accessory_name ?? []),
+        ...extraAccessoryNames(productRecords),
       ],
     }),
     [productRecords, seededSuggestions],

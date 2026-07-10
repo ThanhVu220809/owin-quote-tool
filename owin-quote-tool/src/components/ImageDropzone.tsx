@@ -3,6 +3,8 @@ import { ImagePlus, LoaderCircle } from 'lucide-react';
 import { compressAndStore, getImageUrl, ImageError } from '@/utils/imageStorage';
 import { resolveImageUrl } from '@/utils/imagePaths';
 
+const OWIN_LOGO = `${import.meta.env.BASE_URL}owin-user-assets/logo/logo.webp`;
+
 interface Props {
   /** id ảnh hiện tại (đã lưu IndexedDB). */
   imageId?: string;
@@ -172,9 +174,12 @@ export function ImageDropzone({
       ) : url ? (
         <img className="image-fit-contain" src={url} alt="Ảnh sản phẩm" />
       ) : (
-        <div className="hint">
-          <ImagePlus size={26} />
-          <div>Chạm / kéo-thả / Ctrl+V ảnh</div>
+        <div className="dropzone-empty">
+          <img className="image-fit-contain dropzone-logo-fallback" src={OWIN_LOGO} alt="OWIN" />
+          <div className="hint">
+            <ImagePlus size={20} />
+            <div>Chạm / kéo-thả / Ctrl+V ảnh</div>
+          </div>
         </div>
       )}
       {error && <div style={{ color: 'var(--ios-red)', fontSize: 13, marginTop: 8 }}>{error}</div>}
