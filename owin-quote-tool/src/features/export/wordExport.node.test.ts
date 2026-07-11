@@ -95,6 +95,45 @@ describe('reference Word quote template renderer', () => {
     // Identity merge present for multi-row item blocks.
     expect(xml).toContain('w:vMerge');
   });
+
+  it('vMerges the description column across an item with multiple size lines', async () => {
+    const quote = calculateQuote({
+      customerName: 'Chị Oanh',
+      customerPhone: '0900000000',
+      customerAddress: 'Hà Tĩnh',
+      depositVnd: 0,
+      items: [
+        {
+          productCode: 'S3',
+          quoteItemCode: 'S3',
+          itemName: 'Cửa sổ lùa VIP',
+          category: 'Cửa Sổ',
+          groupName: 'Cửa Sổ',
+          unit: 'M2',
+          unitPriceVnd: 2500000,
+          coverImagePath: null,
+          specs: [{ key: 'Loại Kính', value: 'Kính dán an toàn 6.38mm' }],
+          dimensions: [
+            { widthM: 1.25, heightM: 1.25, quantity: 1 },
+            { widthM: 1.25, heightM: 1.26, quantity: 1 },
+            { widthM: 1.25, heightM: 1.3, quantity: 2 },
+          ],
+          accessories: [],
+          fixedAccessoryPackage: fixedPackage(),
+          extraAccessories: null,
+        },
+      ],
+    });
+
+    const zip = new PizZip(readFileSync(resolve(DIR, 'Template_Bao_Gia.docx')));
+    const xml = await renderQuoteDocumentXml(zip, quote);
+
+    // First data row restarts 4 vMerge columns: STT, Mã SP, Ảnh, and now Mô tả.
+    const restarts = xml.match(/w:vMerge w:val="restart"/g) ?? [];
+    expect(restarts.length).toBe(4);
+    // The product description appears once (merged), not repeated per size line.
+    expect(xml.match(/Cửa sổ lùa VIP/g)?.length).toBe(1);
+  });
 });
 
 describe('reference Word catalogue template renderer', () => {

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Check, Copy, Eye, FileDown, Package, Pencil, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Copy, Eye, FileDown, ImagePlus, LoaderCircle, Package, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -31,6 +31,7 @@ import { exportQuotePDF } from '@/features/export/pdfExport';
 import { ProductThumb, OWIN_LOGO } from '@/features/products/ProductThumb';
 import { ImageLightbox } from '@/components/ImageLightbox';
 import { resolveImageUrl } from '@/utils/imagePaths';
+import { compressAndStore } from '@/utils/imageStorage';
 import {
   createEmptyFixedAccessoryDraft,
   parseExtraAccessoriesJson,
@@ -1550,6 +1551,19 @@ function QuoteItemCard({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const imagePath = item.coverImagePath || item.image || null;
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageBusy, setImageBusy] = useState(false);
+
+  /** Expanded card: pick an image file from disk → compress → attach to this item. */
+  const chooseImageFromFile = async (file: File) => {
+    setImageBusy(true);
+    try {
+      const { id } = await compressAndStore(file);
+      onUpdate({ coverImagePath: `legacy-images/${id}`, image: `legacy-images/${id}` });
+    } finally {
+      setImageBusy(false);
+    }
+  };
 
   useEffect(() => {
     let revoked: string | null = null;
@@ -1598,9 +1612,6 @@ function QuoteItemCard({
             </div>
           </button>
           <div className="quote-item-actions quote-item-locked-actions">
-            <button className="btn btn-primary btn-sm" type="button" onClick={onExpand}>
-              <Pencil size={15} /> Sửa
-            </button>
             <button className="icon-btn" type="button" onClick={onDuplicate} aria-label="Nhân bản hạng mục">
               <Copy size={16} />
             </button>
@@ -1621,17 +1632,41 @@ function QuoteItemCard({
   }
 
   return (
-    <div className="card quote-item-card quote-item-card-editing">
+    <div
+      className="card quote-item-card quote-item-card-editing"
+      title="Nháy đúp vùng trống để thu gọn hạng mục"
+      onDoubleClick={(event) => {
+        const target = event.target as Element;
+        const interactive = target.closest(
+          'input, textarea, select, button, a, label, [contenteditable="true"], [role="combobox"], .autosuggest-menu',
+        );
+        if (!interactive) onCollapse();
+      }}
+    >
       <div className="quote-item-card-header">
         <button
           type="button"
-          className="quote-item-thumb quote-item-thumb-btn"
-          onClick={() => setLightboxOpen(true)}
-          aria-label="Xem ảnh lớn"
-          title="Bấm để xem ảnh lớn"
+          className="quote-item-thumb quote-item-thumb-btn quote-item-thumb-edit"
+          onClick={() => imageInputRef.current?.click()}
+          aria-label="Chọn ảnh từ máy"
+          title="Bấm để chọn ảnh từ máy"
         >
           <ProductThumb imagePath={imagePath} fill />
+          <span className="quote-item-thumb-overlay">
+            {imageBusy ? <LoaderCircle size={16} className="spin" /> : <ImagePlus size={16} />}
+          </span>
         </button>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/*"
+          style={{ display: 'none' }}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void chooseImageFromFile(file);
+            event.target.value = '';
+          }}
+        />
         <div className="quote-item-card-main">
           <div className="quote-item-titleline">
             <div>
@@ -1657,12 +1692,6 @@ function QuoteItemCard({
           </div>
         </div>
       </div>
-      <ImageLightbox
-        open={lightboxOpen}
-        src={lightboxUrl}
-        alt={item.itemName || 'Ảnh hạng mục'}
-        onClose={() => setLightboxOpen(false)}
-      />
 
       <div className="quote-card-section">
         <div className="toolbar" style={{ margin: '0 0 8px' }}>
@@ -1847,14 +1876,6 @@ function QuoteItemCard({
         <QuoteSummaryMetric label="Tiền phụ kiện" value={formatVND(calculated?.accessorySubtotalVnd ?? 0)} />
         <QuoteSummaryMetric label="Tổng hạng mục" value={formatVND(calculated?.itemTotalVnd ?? 0)} strong />
       </div>
-
-      <button
-        type="button"
-        className="btn btn-primary quote-item-collapse-btn"
-        onClick={onCollapse}
-      >
-        <Check size={18} /> Xong — thu gọn hạng mục
-      </button>
     </div>
   );
 }

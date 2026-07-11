@@ -229,9 +229,10 @@ async function seedImportedQuotesIfNeeded(): Promise<void> {
   const existingIds = new Set<string>();
   await quoteStore.iterate<QuoteInput | boolean, void>((value, key) => {
     if (key === REFERENCE_QUOTE_SEED_FLAG || !value || typeof value === 'boolean') return;
-    const record = normalizeQuoteRecord(value);
-    existingIds.add(record.id);
-    existingCodes.add(record.code);
+    // Chỉ cần id/code để biết quote nào đã tồn tại — KHÔNG normalize (parse snapshot)
+    // ở vòng này, tránh parse lại TOÀN BỘ snapshot mỗi lần getAllQuotes (nguồn lag).
+    if (value.id) existingIds.add(String(value.id));
+    if (value.code) existingCodes.add(String(value.code));
   });
 
   for (const input of importedQuotes as QuoteInput[]) {

@@ -255,6 +255,25 @@
   border-color: rgba(0, 102, 204, 0.4);
   box-shadow: 0 8px 20px rgba(15, 42, 61, 0.1);
 }
+/* Thẻ đang sửa: bấm ảnh để chọn file (không phải zoom) → con trỏ pointer + badge. */
+.quote-item-thumb-edit {
+  cursor: pointer;
+  position: relative;
+}
+.quote-item-thumb-overlay {
+  align-items: center;
+  background: rgba(15, 42, 61, 0.72);
+  border-radius: 8px;
+  bottom: 5px;
+  color: #fff;
+  display: inline-flex;
+  height: 26px;
+  justify-content: center;
+  pointer-events: none;
+  position: absolute;
+  right: 5px;
+  width: 26px;
+}
 .quote-item-basic-grid-simple {
   display: grid !important;
   grid-template-columns: minmax(0, 1.6fr) minmax(120px, 0.55fr) !important;
@@ -966,8 +985,8 @@
   align-items: end;
   display: grid;
   gap: 8px;
-  /* [tay kéo] [Tên ngắn] [Giá trị rộng] [xóa] — kéo thả để đổi thứ tự, bỏ nút lên/xuống. */
-  grid-template-columns: 30px minmax(104px, 0.5fr) minmax(210px, 1.7fr) 40px;
+  /* [tay kéo] [Tên đủ rộng] [Giá trị] [xóa] — kéo thả để đổi thứ tự, bỏ nút lên/xuống. */
+  grid-template-columns: 30px minmax(132px, 0.85fr) minmax(180px, 1.45fr) 40px;
 }
 .spec-table-head {
   color: var(--owin-ink-muted);
@@ -1524,7 +1543,63 @@
 .quote-item-card-editing {
   border-color: rgba(10, 132, 255, 0.28);
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.06);
+  gap: 10px;
+  padding: 12px;
 }
+.quote-item-card-editing .quote-item-card-header {
+  gap: 10px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  padding-bottom: 10px;
+}
+.quote-item-card-editing .quote-item-card-main { gap: 7px; }
+.quote-item-card-editing .quote-item-basic-grid,
+.quote-item-card-editing .quote-item-meta-grid { gap: 7px; }
+.quote-item-card-editing .quote-card-section { padding: 9px; }
+.quote-item-card-editing .editor-panel {
+  border-radius: 12px;
+  padding: 9px 10px;
+}
+.quote-item-card-editing .editor-toolbar { margin-bottom: 5px; }
+.quote-item-card-editing .btn-link { padding: 3px 2px; }
+.quote-item-card-editing .spec-table-head { padding-bottom: 2px; }
+.quote-item-card-editing .spec-row-list,
+.quote-item-card-editing .accessory-items { gap: 4px; }
+.quote-item-card-editing .spec-editor-row {
+  border-radius: 9px;
+  gap: 5px;
+  padding: 5px;
+}
+/* Tên thông số rộng hơn (min 128px) để tên dài như "Độ dày" không bị cắt. */
+.quote-item-card-editing .spec-table-head,
+.quote-item-card-editing .spec-editor-row {
+  grid-template-columns: 30px minmax(128px, 1fr) minmax(150px, 1.25fr) 40px;
+}
+.quote-item-card-editing .input,
+.quote-item-card-editing .readonly-money {
+  font-size: 13px;
+  min-height: 34px;
+  padding: 6px 9px;
+}
+.quote-item-card-editing .accessory-item-line {
+  gap: 4px;
+  grid-template-columns: 24px 24px minmax(0, 1fr) 72px 34px;
+}
+.quote-item-card-editing .line-index {
+  height: 22px;
+  width: 22px;
+}
+.quote-item-card-editing .row-action-group .icon-btn,
+.quote-item-card-editing .drag-handle {
+  height: 28px;
+  min-height: 28px;
+  width: 28px;
+}
+.quote-item-card-editing .fixed-package-grid { gap: 7px; }
+.quote-item-card-editing .quote-item-config-grid { gap: 8px; }
+.quote-item-card-editing .quote-item-summary-strip { border-radius: 11px; }
+.quote-item-card-editing .summary-metric { padding: 9px 12px; }
+.quote-item-card-editing .summary-metric strong { font-size: 14px; }
+.quote-item-card-editing .summary-metric-strong strong { font-size: 16px; }
 .quote-item-locked-row {
   align-items: center;
   display: grid;
@@ -1608,8 +1683,8 @@
   width: 100%;
   justify-content: center;
   gap: 8px;
-  min-height: 50px;
-  font-size: 16px;
+  min-height: 40px;
+  font-size: 14px;
   font-weight: 750;
   border-top: 1px solid var(--owin-border);
 }
@@ -1706,12 +1781,12 @@
   gap: 12px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
-/* Thông số kỹ thuật + bộ phụ kiện xếp dọc, mỗi khối rộng hết hàng để dễ đọc/nhập. */
+/* Thông số kỹ thuật | bộ phụ kiện xếp 2 cột giống form tạo sản phẩm cho gọn. */
 .quote-item-config-grid {
   align-items: start;
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.95fr);
 }
 .quote-item-extra {
   min-width: 0;

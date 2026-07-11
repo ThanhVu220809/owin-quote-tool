@@ -3,7 +3,7 @@ import { Cloud, CloudOff, Download, RefreshCw, Upload } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { LOCAL_DATA_CHANGED_EVENT } from '@/lib/dataChangeEvents';
 import { isConfigured, connectGoogle, ensureToken, requestOneTimeGoogleToken } from './googleAuth';
-import { syncNow, type SyncStatus } from './syncEngine';
+import { syncNow, forcePushToDrive, type SyncStatus } from './syncEngine';
 import { resolveConflict, type Conflict } from './merge';
 import {
   beginPullFromOtherAccount,
@@ -30,10 +30,11 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
   const autoSyncPendingRef = useRef(false);
   const autoSyncPendingImagesRef = useRef(false);
   const autoSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoImageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const forcePushInFlightRef = useRef(false);
   const runOwnerSyncRef = useRef<(automatic: boolean, includeImages?: boolean) => Promise<void>>(
     () => Promise.resolve(),
   );
+  const runForcePushRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   const clearConflict = () => {
     setConflicts(null);
@@ -140,6 +141,28 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
 
   runOwnerSyncRef.current = runOwnerSync;
 
+  /**
+   * Auto-backup "im N giây → ghi đè": đẩy toàn bộ local lên Drive, không merge, không hỏi.
+   * Bỏ qua nếu đang có sync/merge chạy hoặc đang có dialog xung đột chờ người chọn.
+   */
+  async function runForcePush() {
+    if (forcePushInFlightRef.current || syncInFlightRef.current) return;
+    if ((conflicts?.length ?? 0) > 0) return;
+    forcePushInFlightRef.current = true;
+    setBusy(true);
+    setMsg('Đang tự sao lưu (ghi đè) lên Drive...');
+    try {
+      applyStatus(await forcePushToDrive({ includeImages: true }), true, true);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Lỗi sao lưu Drive');
+    } finally {
+      forcePushInFlightRef.current = false;
+      setBusy(false);
+    }
+  }
+
+  runForcePushRef.current = runForcePush;
+
   const handleSync = () => {
     void runOwnerSync(false, true);
   };
@@ -152,8 +175,8 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
       .then(() => {
         if (!active) return;
         setConnected(true);
-        setMsg('Đã kết nối Google • Tự động lưu Drive');
-        void runOwnerSyncRef.current(true, false);
+        // KHÔNG tự merge lúc mở app (tránh bung xung đột). Chỉ auto-backup ghi đè khi rảnh.
+        setMsg('Đã kết nối Google • Tự sao lưu Drive sau 30s rảnh');
       })
       .catch((error) => {
         if (!active) return;
@@ -170,47 +193,30 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     };
   }, [configured]);
 
+  // Auto-backup: sau 30 GIÂY không còn thay đổi (đứng im) → ghi đè toàn bộ kho lên Drive.
   useEffect(() => {
-    if (!configured || !connected || (conflicts?.length ?? 0) > 0) return undefined;
+    if (!configured || !connected) return undefined;
+    const IDLE_MS = 30_000;
 
-    const scheduleAutoSync = () => {
-      if (syncInFlightRef.current) {
-        autoSyncPendingRef.current = true;
-        autoSyncPendingImagesRef.current = true;
-        return;
-      }
+    const scheduleIdlePush = () => {
       if (autoSyncTimerRef.current) clearTimeout(autoSyncTimerRef.current);
       autoSyncTimerRef.current = setTimeout(() => {
         autoSyncTimerRef.current = null;
-        void runOwnerSyncRef.current(true, false);
-      }, 2500);
-      if (autoImageTimerRef.current) clearTimeout(autoImageTimerRef.current);
-      autoImageTimerRef.current = setTimeout(() => {
-        autoImageTimerRef.current = null;
-        void runOwnerSyncRef.current(true, true);
-      }, 12000);
-    };
-    const syncWhenVisible = () => {
-      if (document.visibilityState === 'visible') scheduleAutoSync();
+        void runForcePushRef.current();
+      }, IDLE_MS);
     };
 
-    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, scheduleAutoSync);
-    window.addEventListener('online', scheduleAutoSync);
-    document.addEventListener('visibilitychange', syncWhenVisible);
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, scheduleIdlePush);
+    window.addEventListener('online', scheduleIdlePush);
     return () => {
-      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, scheduleAutoSync);
-      window.removeEventListener('online', scheduleAutoSync);
-      document.removeEventListener('visibilitychange', syncWhenVisible);
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, scheduleIdlePush);
+      window.removeEventListener('online', scheduleIdlePush);
       if (autoSyncTimerRef.current) {
         clearTimeout(autoSyncTimerRef.current);
         autoSyncTimerRef.current = null;
       }
-      if (autoImageTimerRef.current) {
-        clearTimeout(autoImageTimerRef.current);
-        autoImageTimerRef.current = null;
-      }
     };
-  }, [configured, connected, conflicts?.length]);
+  }, [configured, connected]);
 
   const handleTransfer = async (mode: TransferMode) => {
     setBusy(true);

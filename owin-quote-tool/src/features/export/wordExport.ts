@@ -356,6 +356,22 @@ function applyQuoteIdentityMerge(rowXml: string, mode: 'restart' | 'continue'): 
   });
 }
 
+/**
+ * vMerge cột MÔ TẢ (index 3) gộp chung qua các dòng kích thước (dòng tính) của 1 sản phẩm,
+ * để phần mô tả là 1 ô cao thay vì 1 dòng có chữ + các dòng trống bên dưới.
+ * Chỉ áp cho các dòng 'product'; dòng phụ kiện giữ mô tả riêng nên vùng gộp tự dừng.
+ */
+function applyQuoteDescriptionMerge(rowXml: string, mode: 'restart' | 'continue'): string {
+  let cellIndex = 0;
+  return rowXml.replace(/<w:tc\b[\s\S]*?<\/w:tc>/g, (cellXml) => {
+    const currentIndex = cellIndex;
+    cellIndex += 1;
+    if (currentIndex !== 3) return cellXml;
+    const merged = upsertCellProperty(cellXml, `<w:vMerge w:val="${mode}"/>`, 'vMerge');
+    return mode === 'continue' ? clearCellBody(merged) : merged;
+  });
+}
+
 function addVerticalMergeToCell(cellXml: string, mode: 'restart' | 'continue'): string {
   const mergeXml = mode === 'restart' ? '<w:vMerge w:val="restart"/>' : '<w:vMerge/>';
   return upsertCellProperty(cellXml, mergeXml, 'vMerge');
@@ -914,12 +930,17 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
       fallbackLogo: true,
     });
 
+    const productRowCount = dataRows.filter((row) => row.kind === 'product').length;
     const itemXmlRows = dataRows.map((row, rowIndex) => {
       const drawing = row.showImage ? imageXml : null;
       let xml = renderQuoteUnifiedProductRow(templates.product.row, row, drawing);
       xml = ensureBoldFontRuns(xml);
       if (dataRows.length > 1) {
         xml = applyQuoteIdentityMerge(xml, rowIndex === 0 ? 'restart' : 'continue');
+      }
+      // Gộp cột mô tả qua các dòng kích thước (dòng tính) của cùng 1 sản phẩm.
+      if (productRowCount > 1 && row.kind === 'product') {
+        xml = applyQuoteDescriptionMerge(xml, rowIndex === 0 ? 'restart' : 'continue');
       }
       xml = ensureCantSplit(xml);
       if (rowIndex < dataRows.length - 1) xml = addKeepNextToAllParagraphsInRow(xml);

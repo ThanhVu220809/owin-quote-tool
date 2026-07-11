@@ -168,6 +168,57 @@ export async function syncNow(
   }
 }
 
+/**
+ * FORCE PUSH (ghi đè) — đẩy TOÀN BỘ kho local lên Drive, KHÔNG merge, KHÔNG hỏi xung đột.
+ * Dùng cho auto-backup "im N giây → sao lưu": local luôn là bản đúng, Drive bị ghi đè.
+ * Cập nhật luôn base = local để lần merge thủ công sau đó không thấy khác biệt (hết xung đột ảo).
+ */
+export async function forcePushToDrive(options: SyncOptions = {}): Promise<SyncStatus> {
+  if (!isConfigured()) return { state: 'skipped', reason: 'not-configured' };
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { state: 'skipped', reason: 'offline' };
+  }
+
+  try {
+    const products = await getAllProductsRaw();
+    const quotes = await getAllQuotesRaw();
+    const suggestions = await getAllSuggestionRecords();
+    const aluminum = await getAllAluminumCalculationsRaw();
+
+    const imageResult =
+      options.includeImages === false ? { count: 0, errors: 0 } : await syncReferencedImages(products, quotes);
+
+    const db: OwinDB = {
+      schemaVersion: SCHEMA_VERSION,
+      systems: [],
+      products,
+      quotes,
+      suggestions,
+      aluminumCalculations: aluminum,
+    };
+    await uploadDB(db);
+
+    // Base = local ⇒ Drive/local/base trùng nhau ⇒ merge thủ công sau này không sinh xung đột ảo.
+    await saveBaseProducts(products);
+    await saveBaseQuotes(quotes);
+    await saveBaseSuggestions(suggestions);
+    await saveBaseAluminumCalculations(aluminum);
+    await clearQueue();
+
+    return {
+      state: 'done',
+      pushed: products.length + quotes.length + suggestions.length + aluminum.length,
+      images: imageResult.count,
+      imageErrors: imageResult.errors,
+    };
+  } catch (e) {
+    if (e instanceof Error && e.message === 'NEED_RELOGIN') {
+      return { state: 'need-relogin' };
+    }
+    throw e;
+  }
+}
+
 export {
   loadBaseProducts,
   saveBaseProducts,
