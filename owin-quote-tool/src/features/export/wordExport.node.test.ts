@@ -4,7 +4,11 @@ import { resolve } from 'node:path';
 import PizZip from 'pizzip';
 import type { ProductRecord } from '@/types/models';
 import { calculateQuote } from '@/lib/quote/quoteCalculator';
-import { renderBangGiaDocumentXml, renderQuoteDocumentXml } from '@/features/export/wordExport';
+import {
+  fitImageDimensionsToEmuBox,
+  renderBangGiaDocumentXml,
+  renderQuoteDocumentXml,
+} from '@/features/export/wordExport';
 
 const DIR = resolve(__dirname, '../../assets/templates');
 
@@ -94,6 +98,11 @@ describe('reference Word quote template renderer', () => {
 });
 
 describe('reference Word catalogue template renderer', () => {
+  it('contain-fits at 95% until either width or height reaches the cell limit', () => {
+    expect(fitImageDimensionsToEmuBox(1600, 900, 1000, 1000)).toEqual({ cx: 1000, cy: 563 });
+    expect(fitImageDimensionsToEmuBox(800, 1600, 1000, 1000)).toEqual({ cx: 500, cy: 1000 });
+  });
+
   it('clones category/product/accessory rows from catalogue template', async () => {
     const product: ProductRecord = {
       id: 'P1',
@@ -106,7 +115,7 @@ describe('reference Word catalogue template renderer', () => {
       unit: 'M2',
       unitPriceVnd: 2000000,
       shortDesc: null,
-      coverImagePath: null,
+      coverImagePath: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
       gallery: [],
       rawSizeText: '1.196 x 1.796',
       rawPriceText: null,
@@ -143,17 +152,23 @@ describe('reference Word catalogue template renderer', () => {
     // Category + product + accessory block keep-together markers.
     expect(xml).toContain('w:cantSplit');
     expect(xml).toContain('w:keepNext');
-    // Catalogue product images use rect geometry, fill ~95% of the column width (cx ≤ REF cap),
-    // and grow in height with the item's content up to a page-safe cap.
+    // Catalogue product images use rect geometry and are sized only after all content rows.
+    // The test item is 1530 + 1530 + 451 twips; after the merged-cell margins the test
+    // image fills the exact 95% width/height box used by the renderer.
     expect(xml).toContain('prst="rect"');
     const extents = [...xml.matchAll(/<wp:extent\s+cx="(\d+)"\s+cy="(\d+)"/g)].map((m) => ({
       cx: Number(m[1]),
       cy: Number(m[2]),
     }));
     for (const e of extents) {
-      expect(e.cx).toBeLessThanOrEqual(1_512_000);
+      expect(e.cx).toBeLessThanOrEqual(1_678_242);
       expect(e.cy).toBeLessThanOrEqual(150 * 36_000); // page-safe height cap
     }
+    expect(extents).toContainEqual({ cx: 1_678_242, cy: 2_063_718 });
+    expect(xml).toContain('<w:trHeight w:val="1530" w:hRule="atLeast"/>');
+    expect(xml).toContain('<w:trHeight w:val="340" w:hRule="atLeast"/>');
+    // Logo/title/column template must appear once only; no Word repeat-header marker remains.
+    expect(xml).not.toContain('<w:tblHeader');
 
     // Real Web exporter geometry: one header table plus one detail table,
     // both using the same full-width fixed 10-column grid.

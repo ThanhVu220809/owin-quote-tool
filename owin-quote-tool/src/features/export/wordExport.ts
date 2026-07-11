@@ -23,19 +23,30 @@ import tplBangGiaUrl from '@/assets/templates/Template_Bang_Gia.docx?url';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 /**
- * Image size caps measured from real REFERENCE exports
- * (review-screenshots/docx-qa/reference-real-output/REAL_DOCX_STRUCTURE.json):
- * - catalogue product images: max cx=1512000 (42mm), cy=1368000 (38mm)
- * - quote product images: max cx≈1438148 (column 2600dxa * 0.95 contain)
- * Source: Web catalogue-export-docx IMG_MAX_CX/CY = 4.2*360000 / 3.8*360000
- *         Web quote-export-docx IMAGE_COLUMN_DXA=2600, FILL=0.95, DXA_TO_EMU=635
+ * Image sizing follows the rendered cell, not a fixed photo box:
+ * - catalogue: finish the product + accessory row layout first, then contain-fit into
+ *   95% of the merged image cell on both axes;
+ * - quote: contain-fit into 95% of its image column.
  */
 const MM_TO_EMU = 36000;
-const CATALOGUE_IMG_MAX_CX = Math.round(4.2 * 360000); // 1_512_000 — matches REF export
-const CATALOGUE_IMG_MAX_CY = Math.round(3.8 * 360000); // 1_368_000
+const DXA_TO_EMU = 635;
+const CATALOGUE_TEMPLATE_TABLE_WIDTH = 14515;
+const CATALOGUE_HEADER_TABLE_WIDTH = CATALOGUE_TEMPLATE_TABLE_WIDTH;
+const CATALOGUE_TABLE_WIDTHS = [0.9, 5.1, 7.2, 0.9, 1.15, 1.0, 1.1, 2.75, 2.75, 2.75];
+const CATALOGUE_COLUMN_WIDTHS_DXA = scaleWidthsToTarget(
+  CATALOGUE_TABLE_WIDTHS,
+  CATALOGUE_TEMPLATE_TABLE_WIDTH,
+);
+const CATALOGUE_IMAGE_CELL_MARGIN_DXA = 55;
+const CATALOGUE_IMAGE_CELL_VERTICAL_MARGIN_DXA = 45;
+const CATALOGUE_DESCRIPTION_CELL_MARGIN_DXA = 55;
+const CATALOGUE_IMG_FILL = 0.95;
+const CATALOGUE_IMG_MAX_CX = Math.round(
+  (CATALOGUE_COLUMN_WIDTHS_DXA[1] - 2 * CATALOGUE_IMAGE_CELL_MARGIN_DXA) * DXA_TO_EMU * CATALOGUE_IMG_FILL,
+);
+const CATALOGUE_IMG_DEFAULT_MAX_CY = Math.round(3.8 * 360000);
 const QUOTE_IMAGE_COLUMN_DXA = 2600;
 const QUOTE_IMAGE_CELL_MARGIN_DXA = 108;
-const DXA_TO_EMU = 635;
 const QUOTE_IMG_FILL = 0.95;
 const QUOTE_IMG_MAX_CX = Math.round(
   (QUOTE_IMAGE_COLUMN_DXA - 2 * QUOTE_IMAGE_CELL_MARGIN_DXA) * DXA_TO_EMU * QUOTE_IMG_FILL,
@@ -44,9 +55,6 @@ const QUOTE_IMG_PAGE_SAFE_MAX_CY = Math.round(170 * MM_TO_EMU);
 const IMG_CORNER_ADJ = 8000;
 const CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS = 1530; // measured in REF export
 const CATALOGUE_EXTRA_ROW_HEIGHT_TWIPS = 340;
-const CATALOGUE_TEMPLATE_TABLE_WIDTH = 14515;
-const CATALOGUE_HEADER_TABLE_WIDTH = CATALOGUE_TEMPLATE_TABLE_WIDTH;
-const CATALOGUE_TABLE_WIDTHS = [0.9, 5.1, 7.2, 0.9, 1.15, 1.0, 1.1, 2.75, 2.75, 2.75];
 const CATALOGUE_TITLE = 'BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN';
 
 type XmlRowMatch = { row: string; index: number; end: number };
@@ -208,6 +216,27 @@ function imageInfoFromDataUrl(dataUrl: string): { ext: string; contentType: stri
  * start at full max width, shrink if height exceeds max height.
  * Returns EMU extents (not px) for Word drawing XML.
  */
+export function fitImageDimensionsToEmuBox(
+  sourceWidth: number,
+  sourceHeight: number,
+  maxCx: number,
+  maxCy: number,
+): { cx: number; cy: number } {
+  const safeMaxCx = Math.max(1, Math.round(maxCx));
+  const safeMaxCy = Math.max(1, Math.round(maxCy));
+  const ratio = sourceWidth / sourceHeight;
+  if (!Number.isFinite(ratio) || ratio <= 0) return { cx: safeMaxCx, cy: safeMaxCy };
+
+  // Fill width first, then constrain height. Exactly one axis reaches its 95% limit.
+  let cx = safeMaxCx;
+  let cy = Math.round(cx / ratio);
+  if (cy > safeMaxCy) {
+    cy = safeMaxCy;
+    cx = Math.round(cy * ratio);
+  }
+  return { cx: Math.max(1, cx), cy: Math.max(1, cy) };
+}
+
 async function fitImageDataUrlToEmuBox(
   dataUrl: string,
   maxCx: number,
@@ -223,16 +252,7 @@ async function fitImageDataUrlToEmuBox(
     image.onerror = () => resolve({ w: 1, h: 1 });
     image.src = dataUrl;
   });
-  const ratio = natural.w / natural.h;
-  if (!Number.isFinite(ratio) || ratio <= 0) return { cx: maxCx, cy: maxCy };
-  // REFERENCE: fill width first, then constrain height.
-  let cx = maxCx;
-  let cy = Math.round(cx / ratio);
-  if (cy > maxCy) {
-    cy = maxCy;
-    cx = Math.round(cy * ratio);
-  }
-  return { cx: Math.max(1, cx), cy: Math.max(1, cy) };
+  return fitImageDimensionsToEmuBox(natural.w, natural.h, maxCx, maxCy);
 }
 
 function ensureContentType(zip: PizZip, ext: string, contentType: string): void {
@@ -265,7 +285,7 @@ function createImageEmbedder(zip: PizZip): ImageEmbedder {
     const relId = `rId${nextRelId++}`;
     const docPrId = nextDocPrId++;
     const maxCx = options.maxCx ?? CATALOGUE_IMG_MAX_CX;
-    const maxCy = options.maxCy ?? CATALOGUE_IMG_MAX_CY;
+    const maxCy = options.maxCy ?? CATALOGUE_IMG_DEFAULT_MAX_CY;
     const { cx, cy } = await fitImageDataUrlToEmuBox(dataUrl, maxCx, maxCy);
     const geometry = options.geometry ?? 'rect';
     const geomXml =
@@ -990,26 +1010,111 @@ function renderCatalogueAccessoryRow(template: string, row: CatalogueBlockRow): 
   return ensureBoldFontRuns(applyCatalogueVerticalMerges(removeLeftoverTokens(xml), 'continue'));
 }
 
-/**
- * Height (twips) of the image cell for the product at `productIndex` = the product row plus
- * its accessory rows. Row height = max(min row height, description lines × line height), so
- * items with more specs/accessories get a taller cell → a bigger image. Lets the image fill
- * ~95% of the *content* height instead of a fixed cap.
- */
-const CATALOGUE_LINE_TWIPS = 260;
+const CATALOGUE_FONT_SIZE_PT = 10;
+const CATALOGUE_LINE_TWIPS = 264; // Word renders the bold 10pt rows at ~13.2pt line pitch
+const CATALOGUE_CONTENT_VERTICAL_PADDING_TWIPS = 113;
+const CATALOGUE_ESTIMATED_EXTRA_ROW_HEIGHT_TWIPS = 451;
+const CATALOGUE_DESCRIPTION_WIDTH_DXA = Math.max(
+  1,
+  CATALOGUE_COLUMN_WIDTHS_DXA[2] - 2 * CATALOGUE_DESCRIPTION_CELL_MARGIN_DXA,
+);
 const CATALOGUE_IMG_PAGE_SAFE_CY = Math.round(150 * MM_TO_EMU);
-function catalogueBlockHeightTwips(rows: CatalogueBlockRow[], productIndex: number): number {
-  const rowHeight = (row: CatalogueBlockRow): number => {
-    const lines = Math.max(1, row.descriptionLines?.length ?? 1);
-    const min = row.rowType === 'extraAccessory' ? CATALOGUE_EXTRA_ROW_HEIGHT_TWIPS : CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS;
-    return Math.max(min, lines * CATALOGUE_LINE_TWIPS);
-  };
-  let total = rowHeight(rows[productIndex]);
-  for (let j = productIndex + 1; j < rows.length; j += 1) {
-    if (rows[j].rowType === 'product' || rows[j].rowType === 'category') break;
-    total += rowHeight(rows[j]);
+
+function catalogueCharacterWidthEm(character: string): number {
+  if (/\s/u.test(character)) return 0.27;
+  if ("ilIjtfr1.,:;|'!()[]".includes(character)) return 0.3;
+  if (/[mwMW@%&]/u.test(character)) return 0.88;
+  if (/\p{Lu}/u.test(character)) return 0.66;
+  if (/\d/u.test(character)) return 0.53;
+  return 0.51;
+}
+
+function catalogueTextWidthEm(text: string): number {
+  return [...text].reduce((width, character) => width + catalogueCharacterWidthEm(character), 0);
+}
+
+function catalogueWrappedLineCount(text: string): number {
+  const words = String(text || '').trim().split(/\s+/u).filter(Boolean);
+  if (words.length === 0) return 1;
+
+  const maxWidthEm = CATALOGUE_DESCRIPTION_WIDTH_DXA / (CATALOGUE_FONT_SIZE_PT * 20);
+  const spaceWidthEm = catalogueCharacterWidthEm(' ');
+  let lineCount = 1;
+  let currentWidthEm = 0;
+
+  for (const word of words) {
+    let wordWidthEm = catalogueTextWidthEm(word);
+    if (currentWidthEm > 0 && currentWidthEm + spaceWidthEm + wordWidthEm <= maxWidthEm) {
+      currentWidthEm += spaceWidthEm + wordWidthEm;
+      continue;
+    }
+    if (currentWidthEm > 0) {
+      lineCount += 1;
+      currentWidthEm = 0;
+    }
+    while (wordWidthEm > maxWidthEm) {
+      lineCount += 1;
+      wordWidthEm -= maxWidthEm;
+    }
+    currentWidthEm = wordWidthEm;
   }
-  return total;
+  return lineCount;
+}
+
+function catalogueRowHeightTwips(row: CatalogueBlockRow): number {
+  const descriptionLines = row.descriptionLines?.length > 0
+    ? row.descriptionLines
+    : String(row.description || '').split(/\r?\n/u);
+  const wrappedLineCount = descriptionLines.reduce(
+    (total, line) => total + catalogueWrappedLineCount(line),
+    0,
+  );
+  const contentHeight = Math.max(1, wrappedLineCount) * CATALOGUE_LINE_TWIPS
+    + CATALOGUE_CONTENT_VERTICAL_PADDING_TWIPS;
+  const minHeight = row.rowType === 'extraAccessory'
+    ? CATALOGUE_ESTIMATED_EXTRA_ROW_HEIGHT_TWIPS
+    : CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS;
+  return Math.max(minHeight, contentHeight);
+}
+
+type CatalogueContentLayout = {
+  rowHeightsTwips: number[];
+  productBlockHeightsTwips: Map<number, number>;
+};
+
+/**
+ * Resolve every content row before sizing any image. These are the natural rendered heights
+ * (including Word line pitch/cell spacing), while the rows themselves retain the template's
+ * lower atLeast constraints so Word does not add that spacing twice.
+ */
+function buildCatalogueContentLayout(rows: CatalogueBlockRow[]): CatalogueContentLayout {
+  const rowHeightsTwips = rows.map((row) => row.rowType === 'category' ? 0 : catalogueRowHeightTwips(row));
+  const productBlockHeightsTwips = new Map<number, number>();
+
+  for (let productIndex = 0; productIndex < rows.length; productIndex += 1) {
+    if (rows[productIndex].rowType !== 'product') continue;
+    let blockHeightTwips = 0;
+    for (let rowIndex = productIndex; rowIndex < rows.length; rowIndex += 1) {
+      if (rowIndex > productIndex && (rows[rowIndex].rowType === 'product' || rows[rowIndex].rowType === 'category')) {
+        break;
+      }
+      blockHeightTwips += rowHeightsTwips[rowIndex];
+    }
+    productBlockHeightsTwips.set(productIndex, blockHeightTwips);
+  }
+
+  return { rowHeightsTwips, productBlockHeightsTwips };
+}
+
+function catalogueImageMaxCy(blockHeightTwips: number): number {
+  const contentHeightTwips = Math.max(
+    1,
+    blockHeightTwips - 2 * CATALOGUE_IMAGE_CELL_VERTICAL_MARGIN_DXA,
+  );
+  return Math.min(
+    CATALOGUE_IMG_PAGE_SAFE_CY,
+    Math.max(1, Math.round(contentHeightTwips * DXA_TO_EMU * CATALOGUE_IMG_FILL)),
+  );
 }
 
 export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRecord[]): Promise<string> {
@@ -1021,6 +1126,7 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
   const blockStart = Math.min(templates.category.index, templates.product.index, templates.accessory.index);
   const blockEnd = Math.max(templates.category.end, templates.product.end, templates.accessory.end);
   const rows = buildCatalogueBlockRows(products);
+  const contentLayout = buildCatalogueContentLayout(rows);
   const embedImage = createImageEmbedder(zip);
   const imageCache = new Map<string, string | null>();
   // Block model matched to REAL REF export (exportCatalogueV8ToDocx):
@@ -1039,13 +1145,9 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
       blocks.push([ensureCantSplit(renderCatalogueCategoryRow(templates.category.row, row))]);
     } else if (row.rowType === 'product') {
       if (currentBlock) blocks.push(currentBlock);
-      // Image fills 95% of the column width and up to ~95% of the content cell height
-      // (product + accessory rows), so it grows with the block instead of leaving a gap.
-      const blockEmu = catalogueBlockHeightTwips(rows, i) * DXA_TO_EMU;
-      const imageMaxCy = Math.min(
-        CATALOGUE_IMG_PAGE_SAFE_CY,
-        Math.max(CATALOGUE_IMG_MAX_CY, Math.round(blockEmu * 0.95)),
-      );
+      // Content pass is complete at this point. Fit the photo into 95% of the final merged
+      // image cell; contain-fit stops as soon as either the horizontal or vertical axis hits.
+      const imageMaxCy = catalogueImageMaxCy(contentLayout.productBlockHeightsTwips.get(i) || 1);
       // Cache per image + height bucket so the same photo isn't re-embedded needlessly.
       const imageKey = `${row.imagePath || `__logo__${row.productCode}`}::${imageMaxCy}`;
       let imageXml = imageCache.get(imageKey);
@@ -1061,18 +1163,19 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
       let productRow = ensureCantSplit(
         ensureBoldFontRuns(renderCatalogueProductRow(templates.product.row, row, imageXml || null)),
       );
-      // REF export product rows ~1530 twips.
       productRow = setMinRowHeight(productRow, CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS);
       currentBlock = [productRow];
     } else {
       if (!currentBlock) currentBlock = [];
       const accessoryRow = renderCatalogueAccessoryRow(templates.accessory.row, row);
-      // REF: accessory rows keep product height; extraAccessory min 340 twips.
       currentBlock.push(
         ensureCantSplit(
-          row.rowType === 'extraAccessory'
-            ? setMinRowHeight(accessoryRow, CATALOGUE_EXTRA_ROW_HEIGHT_TWIPS)
-            : setMinRowHeight(accessoryRow, CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS),
+          setMinRowHeight(
+            accessoryRow,
+            row.rowType === 'extraAccessory'
+              ? CATALOGUE_EXTRA_ROW_HEIGHT_TWIPS
+              : CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS,
+          ),
         ),
       );
     }
