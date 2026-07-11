@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Package } from 'lucide-react';
 import { resolveImageUrl } from '@/utils/imagePaths';
 
+const OWIN_LOGO = `${import.meta.env.BASE_URL}owin-user-assets/logo/logo.webp`;
+
 /**
- * Thumbnail sản phẩm — đọc ảnh từ IndexedDB theo imageId.
- * `fill` = lấp đầy khung cha (dùng cho card grid); ngược lại dùng kích thước `size` cố định.
+ * Product image thumbnail with OWIN logo fallback when missing.
+ * fill = fill parent frame with 95% contain semantics (CSS class).
  */
 export function ProductThumb({
   imageId,
@@ -18,10 +19,12 @@ export function ProductThumb({
   fill?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let revoked: string | null = null;
     let active = true;
+    setFailed(false);
     void Promise.resolve().then(() => {
       if (!active) return;
       const path = imagePath || (imageId ? `legacy-images/${imageId}` : null);
@@ -33,6 +36,8 @@ export function ProductThumb({
         if (active && resolved.url) {
           if (resolved.revoke) revoked = resolved.url;
           setUrl(resolved.url);
+        } else if (active) {
+          setUrl(null);
         }
       });
     });
@@ -42,16 +47,21 @@ export function ProductThumb({
     };
   }, [imageId, imagePath]);
 
-  const sizeStyle = fill ? { width: '100%', height: '100%' } : { width: size, height: size };
-  if (url) {
-    return <img className={fill ? 'ph' : 'product-thumb'} src={url} alt="" style={sizeStyle} />;
-  }
+  const displayUrl = !failed && url ? url : OWIN_LOGO;
+  const sizeStyle = fill ? { width: '95%', height: '95%' } : { width: size, height: size };
+  const className = fill ? 'ph image-fit-contain' : 'product-thumb image-fit-contain';
+
   return (
-    <div
-      className={fill ? 'ph' : 'product-thumb'}
-      style={{ ...sizeStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-    >
-      <Package size={22} color="var(--ios-gray1)" />
-    </div>
+    <img
+      className={className}
+      src={displayUrl}
+      alt=""
+      style={sizeStyle}
+      onError={() => {
+        if (!failed) setFailed(true);
+      }}
+    />
   );
 }
+
+export { OWIN_LOGO };

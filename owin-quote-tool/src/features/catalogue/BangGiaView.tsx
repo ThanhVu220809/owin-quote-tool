@@ -1,7 +1,8 @@
-import { FileDown, Printer } from 'lucide-react';
+import { BookOpen, FileDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useProducts } from '@/features/products/useProducts';
 import { ProductThumb } from '@/features/products/ProductThumb';
+import { printPreviewDocument } from '@/features/export/pdfExport';
 import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue/catalogueRows';
 import { formatVND } from '@/utils/format';
 
@@ -23,25 +24,45 @@ function Money({ value }: { value: number | null }) {
 export function BangGiaView() {
   const { productRecords, loading } = useProducts();
   const [exporting, setExporting] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const rows = useMemo(() => buildCatalogueBlockRows(productRecords), [productRecords]);
+  // Group so category stays with first product and accessories stay with product for print keep-together.
   const blocks = useMemo(() => {
     const out: CatalogueBlockRow[][] = [];
+    let current: CatalogueBlockRow[] | null = null;
+    let hasProduct = false;
     rows.forEach((row) => {
-      if (row.rowType === 'category' || row.rowType === 'product' || out.length === 0) {
-        out.push([row]);
-      } else {
-        out[out.length - 1].push(row);
+      if (row.rowType === 'category') {
+        if (current) out.push(current);
+        current = [row];
+        hasProduct = false;
+        return;
       }
+      if (row.rowType === 'product') {
+        if (current && hasProduct) {
+          out.push(current);
+          current = [row];
+        } else if (current) {
+          current.push(row);
+        } else {
+          current = [row];
+        }
+        hasProduct = true;
+        return;
+      }
+      if (!current) current = [];
+      current.push(row);
     });
+    if (current) out.push(current);
     return out;
   }, [rows]);
 
   return (
-    <div>
-      <div className="toolbar no-print">
+    <section className="admin-page catalogue-page">
+      <div className="toolbar catalogue-toolbar no-print">
         <div>
           <h1 className="app-title">Bảng giá</h1>
-          <p className="app-subtitle">{loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
+          <p className="app-subtitle">BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN · {loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
         </div>
         <div className="spacer" />
         <button
@@ -54,10 +75,22 @@ export function BangGiaView() {
               .finally(() => setExporting(false));
           }}
         >
-          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Word'}
+          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Tải Word (.docx)'}
         </button>
-        <button className="btn btn-primary" onClick={() => window.print()}>
-          <Printer size={17} style={{ verticalAlign: '-3px' }} /> In bảng giá
+        <button
+          className="btn btn-ghost"
+          disabled={productRecords.length === 0 || exportingExcel}
+          onClick={() => {
+            setExportingExcel(true);
+            import('@/features/export/catalogueExcelExport')
+              .then(({ exportBangGiaExcel }) => exportBangGiaExcel(productRecords))
+              .finally(() => setExportingExcel(false));
+          }}
+        >
+          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? 'Đang xuất…' : 'Tải Excel (.xlsx)'}
+        </button>
+        <button className="btn btn-primary" onClick={printPreviewDocument}>
+          <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> In / PDF
         </button>
       </div>
 
@@ -77,8 +110,10 @@ export function BangGiaView() {
           </colgroup>
           <thead>
             <tr>
-              <th colSpan={2} className="logo-cell">HOÀNG ANH OWIN</th>
-              <th colSpan={8} className="company-cell">Tiên Điền - Nghi Xuân - Hà Tĩnh · 0799040616</th>
+              <th colSpan={2} className="logo-cell">
+                <img src={`${import.meta.env.BASE_URL}owin-user-assets/logo/logo.webp`} alt="OWIN" />
+              </th>
+              <th colSpan={8} className="company-cell">HOÀNG ANH OWIN</th>
             </tr>
             <tr>
               <th colSpan={10} className="title-cell">BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN</th>
@@ -107,22 +142,11 @@ export function BangGiaView() {
           )}
         </table>
       </div>
-    </div>
+    </section>
   );
 }
 
 function CatalogueBlock({ block }: { block: CatalogueBlockRow[] }) {
-  const first = block[0];
-  if (first.rowType === 'category') {
-    return (
-      <tbody className="catalogue-item-block">
-        <tr className="category-row">
-          <td colSpan={10}>{first.categoryName}</td>
-        </tr>
-      </tbody>
-    );
-  }
-
   return (
     <tbody className="catalogue-item-block">
       {block.map((row, index) => (
@@ -134,7 +158,11 @@ function CatalogueBlock({ block }: { block: CatalogueBlockRow[] }) {
 
 function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
   if (row.rowType === 'category') {
-    return null;
+    return (
+      <tr className="category-row">
+        <td colSpan={10}>{row.categoryName}</td>
+      </tr>
+    );
   }
 
   const isProduct = row.rowType === 'product';
@@ -143,7 +171,9 @@ function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
       {isProduct && <td rowSpan={row.sttRowSpan}>{row.stt}</td>}
         {isProduct && (
           <td rowSpan={row.imageRowSpan} className="image-cell">
-            <ProductThumb imagePath={row.imagePath} fill />
+            <div className="bang-gia-image-frame">
+              <ProductThumb imagePath={row.imagePath} fill />
+            </div>
           </td>
         )}
       <td className="description-cell"><Lines text={row.description} /></td>

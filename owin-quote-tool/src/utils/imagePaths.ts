@@ -73,27 +73,51 @@ export async function resolveImageUrl(path: string | null | undefined): Promise<
     : { url: withBasePath(DEFAULT_LOGO_PATH), revoke: false };
 }
 
-export async function getImageDataUrlByPath(path: string | null | undefined): Promise<string | null> {
-  const normalized = normalizeImagePath(path);
-  if (!normalized) {
+async function fetchPublicDataUrl(publicPath: string): Promise<string | null> {
+  try {
+    const response = await fetch(withBasePath(publicPath.replace(/^\/+/, '')));
+    if (!response.ok) return null;
+    return blobToDataUrl(await response.blob());
+  } catch {
     return null;
   }
-  if (normalized.startsWith('data:')) return normalized;
-  if (/^(https?:|blob:)/i.test(normalized)) return null;
-  if (normalized.startsWith(appBase())) {
-    try {
-      const response = await fetch(normalized);
-      if (!response.ok) return null;
-      return blobToDataUrl(await response.blob());
-    } catch {
-      return null;
+}
+
+/**
+ * Load image as data URL for DOCX embedding.
+ * Falls back to OWIN logo when path is missing or unreadable.
+ */
+export async function getImageDataUrlByPath(
+  path: string | null | undefined,
+  options?: { fallbackLogo?: boolean },
+): Promise<string | null> {
+  const useFallback = options?.fallbackLogo !== false;
+  const normalized = normalizeImagePath(path);
+
+  const load = async (): Promise<string | null> => {
+    if (!normalized) return null;
+    if (normalized.startsWith('data:')) return normalized;
+    if (/^(https?:|blob:)/i.test(normalized)) return null;
+    if (normalized.startsWith(appBase())) {
+      try {
+        const response = await fetch(normalized);
+        if (!response.ok) return null;
+        return blobToDataUrl(await response.blob());
+      } catch {
+        return null;
+      }
     }
-  }
-  const key = imageStoreKeyFromPath(normalized);
-  if (!key) return null;
-  const blob = normalized.startsWith('quotes/') ? await getQuoteImage(key) : await getImage(key);
-  if (!blob) return null;
-  return blobToDataUrl(blob);
+    const key = imageStoreKeyFromPath(normalized);
+    if (!key) return null;
+    const blob = normalized.startsWith('quotes/') ? await getQuoteImage(key) : await getImage(key);
+    if (!blob) return null;
+    return blobToDataUrl(blob);
+  };
+
+  const dataUrl = await load();
+  if (dataUrl) return dataUrl;
+  if (!useFallback) return null;
+  return fetchPublicDataUrl(DEFAULT_LOGO_PATH);
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {

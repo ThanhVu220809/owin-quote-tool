@@ -4,7 +4,11 @@ import { resolve } from 'node:path';
 import PizZip from 'pizzip';
 import type { ProductRecord } from '@/types/models';
 import { calculateQuote } from '@/lib/quote/quoteCalculator';
-import { renderBangGiaDocumentXml, renderQuoteDocumentXml } from '@/features/export/wordExport';
+import {
+  fitImageDimensionsToEmuBox,
+  renderBangGiaDocumentXml,
+  renderQuoteDocumentXml,
+} from '@/features/export/wordExport';
 
 const DIR = resolve(__dirname, '../../assets/templates');
 
@@ -14,6 +18,7 @@ function fixedPackage() {
     items: [
       { name: 'Tay nắm', quantity: 2 },
       { name: 'Bản lề', quantity: 4 },
+      { name: 'Keo silicone', quantity: 0 },
     ],
     packageQuantity: 2,
     unit: 'BO',
@@ -74,15 +79,30 @@ describe('reference Word quote template renderer', () => {
     expect(xml).toContain('4.296.000');
     expect(xml).toContain('Bộ phụ kiện Kinlong');
     expect(xml).toContain('Tay nắm');
+    expect(xml).toContain('Keo silicone');
+    expect(xml).not.toContain('Keo silicone x');
     expect(xml).toContain('Nẹp phát sinh');
     expect(xml).toContain('5.496.000');
     expect(xml).toContain('5.400.000');
     expect(xml).toContain('4.400.000');
+    // Unified product-row pipeline: no leftover marker shells / orphan x.
     expect(xml).not.toMatch(/\{(?:stt|ma_sp|anh_sp|mo_ta|bo_pk_ten|pk_ten|ps_ten|tong_tien)\}/);
+    expect(xml).not.toMatch(/>\s*x\s*</);
+    expect(xml).not.toContain('{pk_sl_item}');
+    // Product block rows should prefer staying together across page breaks.
+    expect(xml).toContain('w:cantSplit');
+    expect(xml).toContain('w:keepNext');
+    // Identity merge present for multi-row item blocks.
+    expect(xml).toContain('w:vMerge');
   });
 });
 
 describe('reference Word catalogue template renderer', () => {
+  it('contain-fits at 95% until either width or height reaches the cell limit', () => {
+    expect(fitImageDimensionsToEmuBox(1600, 900, 1000, 1000)).toEqual({ cx: 1000, cy: 563 });
+    expect(fitImageDimensionsToEmuBox(800, 1600, 1000, 1000)).toEqual({ cx: 500, cy: 1000 });
+  });
+
   it('clones category/product/accessory rows from catalogue template', async () => {
     const product: ProductRecord = {
       id: 'P1',
@@ -95,11 +115,15 @@ describe('reference Word catalogue template renderer', () => {
       unit: 'M2',
       unitPriceVnd: 2000000,
       shortDesc: null,
-      coverImagePath: null,
+      coverImagePath: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
       gallery: [],
       rawSizeText: '1.196 x 1.796',
       rawPriceText: null,
-      specs: [{ key: 'Loại Kính', value: 'Kính cường lực 8mm', sortOrder: 0 }],
+      specs: [
+        { key: 'Loại Kính', value: 'Kính cường lực 8mm', sortOrder: 0 },
+        { key: 'Độ Dày', value: '2 mm', sortOrder: 1 },
+        { key: 'Song Nhôm Bảo Vệ', value: '', sortOrder: 2 },
+      ],
       accessories: [],
       fixedAccessoryPackage: fixedPackage(),
       extraAccessories: extraAccessories(),
@@ -115,10 +139,53 @@ describe('reference Word catalogue template renderer', () => {
     expect(xml).toContain('I. CỬA SỔ');
     expect(xml).toContain('Cửa Sổ Mở Quay 1 Cánh');
     expect(xml).toContain('Kính Cường Lực 8mm');
+    expect(xml).toContain('Độ Dày: 2 mm');
+    expect(xml).not.toContain('Độ Dày: 2 Mm');
+    // Empty-value specs keep the key only (no trailing colon).
+    expect(xml).toContain('Song Nhôm Bảo Vệ');
+    expect(xml).not.toMatch(/Song Nhôm Bảo Vệ:\s*</);
     expect(xml).toContain('Bộ phụ kiện Kinlong');
     expect(xml).toContain('Nẹp Phát Sinh');
     expect(xml).toContain('4.200.000');
     expect(xml).toContain('5.400.000');
     expect(xml).not.toMatch(/\{(?:category|product_info_block|accessory_block|tong_tien)\}/);
+    // Category + product + accessory block keep-together markers.
+    expect(xml).toContain('w:cantSplit');
+    expect(xml).toContain('w:keepNext');
+    // Catalogue product images use rect geometry and are sized only after all content rows.
+    // The test item is 1530 + 1530 + 451 twips; after the merged-cell margins the test
+    // image fills the exact 95% width/height box used by the renderer.
+    expect(xml).toContain('prst="rect"');
+    const extents = [...xml.matchAll(/<wp:extent\s+cx="(\d+)"\s+cy="(\d+)"/g)].map((m) => ({
+      cx: Number(m[1]),
+      cy: Number(m[2]),
+    }));
+    for (const e of extents) {
+      expect(e.cx).toBeLessThanOrEqual(1_678_242);
+      expect(e.cy).toBeLessThanOrEqual(150 * 36_000); // page-safe height cap
+    }
+    expect(extents).toContainEqual({ cx: 1_678_242, cy: 2_063_718 });
+    expect(xml).toContain('<w:trHeight w:val="1530" w:hRule="atLeast"/>');
+    expect(xml).toContain('<w:trHeight w:val="340" w:hRule="atLeast"/>');
+    // Logo/title/column template must appear once only; no Word repeat-header marker remains.
+    expect(xml).not.toContain('<w:tblHeader');
+
+    // Real Web exporter geometry: one header table plus one detail table,
+    // both using the same full-width fixed 10-column grid.
+    const tables = [...xml.matchAll(/<w:tbl\b[\s\S]*?<\/w:tbl>/g)].map((match) => match[0]);
+    expect(tables).toHaveLength(2);
+    tables.forEach((table) => {
+      expect(table).toContain('<w:tblW w:w="14515" w:type="dxa"/>');
+      expect(table).toContain('<w:tblLayout w:type="fixed"/>');
+      const grid = [...table.matchAll(/<w:gridCol\b[^>]*w:w="(\d+)"[^>]*\/>/g)].map((match) => Number(match[1]));
+      expect(grid).toHaveLength(10);
+      expect(grid.reduce((sum, width) => sum + width, 0)).toBe(14515);
+    });
+
+    // Merged continuation cells need explicit borders, otherwise Word shows
+    // broken STT/image/total outlines below the product row.
+    const continuationCells = [...tables[1].matchAll(/<w:tc\b(?:(?!<\/w:tc>)[\s\S])*?<w:vMerge\s*\/>[\s\S]*?<\/w:tc>/g)];
+    expect(continuationCells.length).toBeGreaterThan(0);
+    continuationCells.forEach((match) => expect(match[0]).toContain('<w:tcBorders>'));
   });
 });

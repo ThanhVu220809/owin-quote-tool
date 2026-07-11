@@ -1,0 +1,32 @@
+# Diff Notes
+
+## Initial Visual Pass
+
+- Screenshots saved under `review-screenshots/reference` and `review-screenshots/target`.
+- REFERENCE has the full admin frame: left sidebar, top header, active state, wide grey content canvas.
+- TARGET still uses compact top tabs and lacks dashboard/customers/list-vs-create separation.
+- Product and quote data are present in TARGET, but workflows are visually compressed compared with REFERENCE.
+- Bảng giá table is much closer than other pages, but it still lacks the reference admin page shell.
+- Aluminum estimator is the largest gap: TARGET is only a placeholder, while REFERENCE has full systems/tabs/actions/table/summary.
+
+## Screenshot Notes
+
+- Full-page capture on the target SPA can stitch repeated content because heavy panels stay mounted. Viewport screenshots are the reliable comparison set.
+- Reference dashboard currently shows skeleton cards only in the running dev server; product/quote/catalogue/aluminum pages are usable for visual comparison.
+
+## Export Pass
+
+- Quote Word and Bảng giá Word use bundled browser-safe reference templates.
+- Quote Excel now follows the reference 11-column quote table, totals, and signature block without server filesystem image embedding.
+- Catalogue Excel remains browser-safe and uses the shared catalogue row builder.
+
+## Suggestions Pass
+
+- Autosuggest ranking now matches the reference scoring style: exact, prefix, token-prefix, contains, acronym, then usage order.
+- Fields can hide weak suggestions locally, and saved products/quotes now learn spec labels, units, product/item names, categories, customers, and accessories.
+
+## Aluminum Pass
+
+- TARGET now has the full reference aluminum estimator workflow: system tabs, entered-row badges, current/all totals, profile table, copy, CSV, Word, and browser print.
+- Aluminum data and 111 profile images were copied into TARGET public assets; image paths resolve through the Vite base path for GitHub Pages.
+- Screenshots saved: `target/aluminum-after-phase8.png` and `target/aluminum-table-after-phase8.png`.

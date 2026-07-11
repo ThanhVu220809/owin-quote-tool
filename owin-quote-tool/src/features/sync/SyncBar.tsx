@@ -17,7 +17,7 @@ type ConflictFlow =
   | { kind: 'owner-sync' }
   | { kind: 'transfer'; context: TransferConflictContext };
 
-export function SyncBar() {
+export function SyncBar({ compact = false }: { compact?: boolean }) {
   const configured = isConfigured();
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -152,8 +152,8 @@ export function SyncBar() {
 
   if (!configured) {
     return (
-      <div className="sync-bar muted">
-        <CloudOff size={16} /> Đồng bộ Google chưa cấu hình (điền <code>.env</code> - xem <code>.env.example</code>).
+      <div className={`sync-bar muted${compact ? ' sync-bar-compact' : ''}`}>
+        <CloudOff size={16} /> {compact ? 'Chưa cấu hình Google' : 'Đồng bộ Google chưa cấu hình'}
       </div>
     );
   }
@@ -162,26 +162,40 @@ export function SyncBar() {
   const remoteButton = conflictFlow?.kind === 'transfer' ? 'Lấy bản tài khoản khác' : 'Lấy bản trên Drive';
 
   return (
-    <div className="sync-bar">
+    <div className={`sync-bar${compact ? ' sync-bar-compact' : ''}`}>
       {connected ? <Cloud size={16} color="var(--ios-green)" /> : <CloudOff size={16} color="var(--ios-gray1)" />}
       {!connected ? (
         <button className="btn btn-ghost" disabled={busy} onClick={handleConnect}>
-          Kết nối Google
+          {compact ? 'Google' : 'Kết nối Google'}
         </button>
       ) : (
-        <button className="btn btn-ghost" disabled={busy} onClick={handleSync}>
-          <RefreshCw size={15} className={busy ? 'spin' : ''} style={{ verticalAlign: '-3px' }} /> Đồng bộ
+        <button className="btn btn-ghost" disabled={busy} onClick={handleSync} title="Đồng bộ">
+          <RefreshCw size={15} className={busy ? 'spin' : ''} style={{ verticalAlign: '-3px' }} />
+          {compact ? '' : ' Đồng bộ'}
         </button>
       )}
 
-      <button className="btn btn-ghost" disabled={busy} onClick={() => void handleTransfer('push-other')}>
-        <Upload size={15} style={{ verticalAlign: '-3px' }} /> Đẩy kho sang tài khoản khác
+      <button
+        className="btn btn-ghost"
+        disabled={busy}
+        onClick={() => void handleTransfer('push-other')}
+        title="Đẩy kho sang tài khoản khác"
+      >
+        <Upload size={15} style={{ verticalAlign: '-3px' }} />
+        {compact ? '' : ' Đẩy kho'}
       </button>
-      <button className="btn btn-ghost" disabled={busy} onClick={() => void handleTransfer('pull-other')}>
-        <Download size={15} style={{ verticalAlign: '-3px' }} /> Lấy kho từ tài khoản khác
+      <button
+        className="btn btn-ghost"
+        disabled={busy}
+        onClick={() => void handleTransfer('pull-other')}
+        title="Lấy kho từ tài khoản khác"
+      >
+        <Download size={15} style={{ verticalAlign: '-3px' }} />
+        {compact ? '' : ' Lấy kho'}
       </button>
 
-      {msg && <span className="muted" style={{ fontSize: 13 }}>{msg}</span>}
+      {msg && !compact && <span className="muted" style={{ fontSize: 13 }}>{msg}</span>}
+      {msg && compact && <span className="muted sync-bar-msg" title={msg}>{msg}</span>}
 
       {conflicts && conflicts.length > 0 && (
         <div className="conflict-dialog card">

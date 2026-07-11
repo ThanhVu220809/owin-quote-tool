@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => ({
   // Dev luôn '/'.
   base: mode === 'production' ? (process.env.BASE_PATH ?? '/owin-quote-tool/') : '/',
   plugins: [react()],
+  // Honor a PORT env when provided (preview tooling) — normal `npm run dev` still defaults to 5173.
+  server: process.env.PORT ? { port: Number(process.env.PORT) } : undefined,
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

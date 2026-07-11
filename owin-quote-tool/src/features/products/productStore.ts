@@ -18,6 +18,8 @@ import type {
 } from '@/types/models';
 import initialData from '@/data/initialData.json';
 import importedProducts from '@/data/imported/products.json';
+import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
+import { notifyProductsChanged } from './productEvents';
 
 const productStore = localforage.createInstance({
   name: 'owin-quote-tool',
@@ -50,6 +52,7 @@ type ProductInput = {
   extraAccessories?: string | null;
   isFeatured?: boolean;
   isPublic?: boolean;
+  sortOrder?: number;
   folderPath?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -124,6 +127,12 @@ function normalizeJsonString(value: unknown, fallback: string): string {
   }
 }
 
+function normalizeFixedAccessoryPackage(value: unknown): string | null {
+  const text = normalizeNullableString(value);
+  if (!text) return null;
+  return serializeFixedAccessoriesJson(parseFixedAccessoriesJson(text, 1));
+}
+
 function rawSizeFromLegacy(input: ProductInput): string | null {
   if (hasText(input.rawSizeText)) return input.rawSizeText.trim();
   const width = normalizeNumber(input.rongMacDinh, 0);
@@ -157,7 +166,9 @@ function specsFromLegacy(input: ProductInput): ProductSpecRecord[] {
         value: normalizeString((item as ProductSpecRecord).value),
         sortOrder: normalizeNumber((item as ProductSpecRecord).sortOrder, index),
       }))
-      .filter((item) => item.key && item.value);
+      // Keep an explicitly named spec even when its value is empty. Exporters
+      // render this as the key alone (for example, "Song Nhôm Bảo Vệ").
+      .filter((item) => item.key);
   }
 
   return [
@@ -178,7 +189,7 @@ function normalizeAccessories(input: ProductInput): ProductAccessoryRecord[] {
       if (!name) return null;
       return {
         name,
-        quantityPerSet: normalizeNumber(raw.quantityPerSet ?? raw.sl, 1) || 1,
+        quantityPerSet: normalizeNumber(raw.quantityPerSet ?? raw.sl, 0),
         unitPriceVnd: normalizeNumber(raw.unitPriceVnd ?? raw.donGia, 0),
         note: normalizeNullableString(raw.note),
         sortOrder: normalizeNumber(raw.sortOrder, index),
@@ -233,10 +244,11 @@ export function normalizeProductRecord(input: ProductInput, numericIdFallback = 
     rawPriceText: normalizeNullableString(input.rawPriceText),
     specs: specsFromLegacy(input),
     accessories: normalizeAccessories(input),
-    fixedAccessoryPackage: normalizeNullableString(input.fixedAccessoryPackage),
+    fixedAccessoryPackage: normalizeFixedAccessoryPackage(input.fixedAccessoryPackage),
     extraAccessories: normalizeJsonString(input.extraAccessories, '[]'),
     isFeatured: Boolean(input.isFeatured),
     isPublic: input.isPublic !== false,
+    sortOrder: Number.isFinite(Number(input.sortOrder)) ? Number(input.sortOrder) : undefined,
     folderPath: normalizeNullableString(input.folderPath),
     createdAt,
     updatedAt,
@@ -298,8 +310,6 @@ export async function seedIfEmpty(): Promise<void> {
 
 async function importReferenceProductsIfNeeded(): Promise<void> {
   if ((importedProducts as ProductInput[]).length === 0) return;
-  const imported = await productStore.getItem<boolean>(REFERENCE_SEED_FLAG);
-  if (imported) return;
 
   const existing = await getAllProductsRaw();
   const existingIds = new Set(existing.map((product) => product.id));
@@ -323,6 +333,14 @@ export async function getAllProducts(): Promise<Product[]> {
     .sort((a, b) => a.ma.localeCompare(b.ma));
 }
 
+/** Sort by manual drag order first (sortOrder), then code for any not yet ordered. */
+function byManualOrder(a: ProductRecord, b: ProductRecord): number {
+  const ao = Number.isFinite(a.sortOrder as number) ? (a.sortOrder as number) : Number.POSITIVE_INFINITY;
+  const bo = Number.isFinite(b.sortOrder as number) ? (b.sortOrder as number) : Number.POSITIVE_INFINITY;
+  if (ao !== bo) return ao - bo;
+  return a.code.localeCompare(b.code);
+}
+
 /** Tất cả ProductRecord kể cả tombstone — dùng cho sync/migration/test. */
 export async function getAllProductsRaw(): Promise<ProductRecord[]> {
   const out: ProductRecord[] = [];
@@ -330,7 +348,24 @@ export async function getAllProductsRaw(): Promise<ProductRecord[]> {
     if (key === SEED_FLAG || key === REFERENCE_SEED_FLAG || !value || typeof value === 'boolean') return;
     out.push(normalizeProductRecord(value as ProductInput, out.length + 1));
   });
-  return out.sort((a, b) => a.code.localeCompare(b.code));
+  return out.sort(byManualOrder);
+}
+
+/**
+ * Persist a manual catalogue order. `orderedIds` is the full alive-product list in the
+ * desired order; each gets sortOrder = its index (and a fresh updatedAt so the order syncs).
+ */
+export async function reorderProducts(orderedIds: string[]): Promise<void> {
+  const stamp = nowIso();
+  await Promise.all(
+    orderedIds.map(async (id, index) => {
+      const value = await productStore.getItem<ProductRecord | ProductInput | boolean>(id);
+      if (!value || typeof value === 'boolean') return;
+      const record = normalizeProductRecord(value as ProductInput);
+      await productStore.setItem(id, { ...record, sortOrder: index, updatedAt: stamp });
+    }),
+  );
+  notifyProductsChanged();
 }
 
 export async function getProductRecord(id: string): Promise<ProductRecord | null> {
@@ -376,6 +411,25 @@ export async function deleteProduct(id: string): Promise<void> {
     deletedAt: existing.deletedAt ?? nowIso(),
     updatedAt: nowIso(),
   } satisfies ProductRecord);
+}
+
+/**
+ * Adjust active product prices in one atomic-looking store pass.
+ * Tombstones are deliberately skipped so deleted products are never revived
+ * or mutated by a catalogue-wide price operation.
+ */
+export async function bulkAdjustProductPrices(percent: number): Promise<ProductRecord[]> {
+  if (!Number.isFinite(percent)) throw new Error('Phần trăm điều chỉnh không hợp lệ.');
+  const all = await getAllProductsRaw();
+  const active = all.filter((product) => !product.deleted && !product.deletedAt);
+  const updated = active.map((product) => ({
+    ...product,
+    unitPriceVnd: Math.max(0, Math.round(product.unitPriceVnd * (1 + percent / 100))),
+    updatedAt: nowIso(),
+  }));
+  for (const product of updated) await productStore.setItem(product.id, product);
+  notifyProductsChanged();
+  return updated;
 }
 
 /** Ghi hàng loạt ProductRecord sau merge sync. */

@@ -2,9 +2,11 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { ProductUnit } from '@/types/models';
 import { AutoSuggestInput } from './AutoSuggestInput';
 import { CurrencyInput } from './CurrencyInput';
+import { DragHandle, reorderList, useDragReorder } from './DragReorder';
 import { formatVND } from '@/utils/format';
 import {
   addEmptyAccessoryDraft,
+  addEmptyFixedAccessoryItem,
   calculateFixedAccessoryDraftTotal,
   type ExtraAccessoryDraft,
   type FixedAccessoryDraft,
@@ -15,6 +17,10 @@ import {
 interface AccessoryEditorSuggestions {
   accessoryName: string[];
   packageName?: string[];
+}
+
+function reindexExtraAccessories(rows: ExtraAccessoryDraft[]): ExtraAccessoryDraft[] {
+  return rows.map((item, sortOrder) => ({ ...item, sortOrder }));
 }
 
 export function FixedAccessoryPackageEditor({
@@ -30,16 +36,19 @@ export function FixedAccessoryPackageEditor({
 }) {
   const total = calculateFixedAccessoryDraftTotal(value);
   const patch = (next: Partial<FixedAccessoryDraft>) => onChange(updateFixedAccessoryDraft(value, next));
+  const { handleProps, rowProps } = useDragReorder((from, to) =>
+    patch({ items: reorderList(value.items, from, to) }),
+  );
 
   return (
-    <div className="editor-panel">
+    <div className="editor-panel accessory-editor-panel">
       <div className="toolbar editor-toolbar">
         <div className="section-label">{title}</div>
         <div className="spacer" />
         <button
           className="btn-link"
           type="button"
-          onClick={() => patch({ items: [...value.items, { name: '', quantity: 0 }] })}
+          onClick={() => onChange(addEmptyFixedAccessoryItem(value))}
         >
           <Plus size={15} /> Thêm món
         </button>
@@ -47,10 +56,11 @@ export function FixedAccessoryPackageEditor({
 
       <AutoSuggestInput
         label="Tên bộ phụ kiện"
+        fieldKey="accessory_package_name"
         value={value.name}
         onChange={(name) => patch({ name })}
-        suggestions={suggestions.packageName ?? suggestions.accessoryName}
-        placeholder="Bộ phụ kiện cửa..."
+        suggestions={suggestions.packageName ?? []}
+        placeholder="Gợi ý tên bộ (không lẫn món phụ kiện)…"
       />
 
       <div className="accessory-items">
@@ -58,18 +68,19 @@ export function FixedAccessoryPackageEditor({
           <div className="empty-line">Chưa có món phụ kiện nào trong bộ.</div>
         ) : (
           value.items.map((item, index) => (
-            <div key={`${item.name}-${index}`} className="accessory-item-line">
+            <div key={item.id} className="accessory-item-line" data-row-id={item.id} {...rowProps(index)}>
+              <DragHandle {...handleProps(index)} label="Kéo để đổi thứ tự món" />
               <span className="line-index">{index + 1}</span>
               <AutoSuggestInput
-                label="Món"
+                label="Tên món trong bộ"
+                fieldKey="fixed_accessory_item"
                 value={item.name}
                 onChange={(name) => {
-                  const items = [...value.items];
-                  items[index] = { ...items[index], name };
+                  const items = value.items.map((row, i) => (i === index ? { ...row, name } : row));
                   patch({ items });
                 }}
                 suggestions={suggestions.accessoryName}
-                placeholder="Tên phụ kiện..."
+                placeholder="Khóa, Bản lề, Tay nắm…"
               />
               <div className="field">
                 <label>SL</label>
@@ -79,20 +90,28 @@ export function FixedAccessoryPackageEditor({
                   min={0}
                   value={item.quantity}
                   onChange={(event) => {
-                    const items = [...value.items];
-                    items[index] = { ...items[index], quantity: Number(event.target.value) || 0 };
+                    const items = value.items.map((row, i) =>
+                      i === index ? { ...row, quantity: Number(event.target.value) || 0 } : row,
+                    );
                     patch({ items });
                   }}
                 />
               </div>
-              <button
-                className="icon-btn danger"
-                type="button"
-                onClick={() => patch({ items: value.items.filter((_, itemIndex) => itemIndex !== index) })}
-                aria-label="Xóa món phụ kiện"
-              >
-                <Trash2 size={16} />
-              </button>
+              <div className="row-action-group">
+                <button
+                  className="icon-btn danger"
+                  type="button"
+                  data-action="remove-row"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    patch({ items: value.items.filter((_, itemIndex) => itemIndex !== index) });
+                  }}
+                  aria-label="Xóa món phụ kiện"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))
         )}
@@ -134,9 +153,12 @@ export function ExtraAccessoriesEditor({
   title?: string;
 }) {
   const total = value.reduce((sum, item) => sum + item.amount, 0);
+  const { handleProps, rowProps } = useDragReorder((from, to) =>
+    onChange(reindexExtraAccessories(reorderList(value, from, to))),
+  );
 
   return (
-    <div className="editor-panel">
+    <div className="editor-panel accessory-editor-panel">
       <div className="toolbar editor-toolbar">
         <div>
           <div className="section-label">{title}</div>
@@ -149,10 +171,11 @@ export function ExtraAccessoriesEditor({
       </div>
 
       {value.length === 0 ? (
-        <div className="empty-line">Chưa có phụ kiện phát sinh.</div>
+        <div className="empty-line">Chưa có phụ kiện phát sinh. Bấm “Thêm phụ kiện” để thêm dòng trống (SL mặc định 0).</div>
       ) : (
         <div className="extra-accessory-table">
           <div className="extra-accessory-head">
+            <span />
             <span>Tên phụ kiện</span>
             <span>DV</span>
             <span>SL</span>
@@ -162,13 +185,15 @@ export function ExtraAccessoriesEditor({
             <span />
           </div>
           {value.map((item, index) => (
-            <div key={item.id} className="extra-accessory-line">
+            <div key={item.id} className="extra-accessory-line" data-row-id={item.id} {...rowProps(index)}>
+              <DragHandle {...handleProps(index)} label="Kéo để đổi thứ tự phụ kiện" />
               <AutoSuggestInput
-                label="Tên"
+                label="Tên phụ kiện phát sinh"
+                fieldKey="extra_accessory_name"
                 value={item.name}
                 onChange={(name) => onChange(updateAccessoryDraftAtIndex(value, index, { name }))}
                 suggestions={suggestions.accessoryName}
-                placeholder="Tên phụ kiện..."
+                placeholder="Phào, Nẹp, Ray…"
               />
               <div className="field">
                 <label>DV</label>
@@ -189,10 +214,10 @@ export function ExtraAccessoriesEditor({
                 <input
                   className="input"
                   type="number"
-                  min={1}
+                  min={0}
                   value={item.quantity}
                   onChange={(event) =>
-                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity: Number(event.target.value) || 1 }))
+                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity: Number(event.target.value) || 0 }))
                   }
                 />
               </div>
@@ -224,14 +249,21 @@ export function ExtraAccessoriesEditor({
                 <label>Thành tiền</label>
                 <div className="readonly-money">{formatVND(item.amount)}</div>
               </div>
-              <button
-                className="icon-btn danger"
-                type="button"
-                onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
-                aria-label="Xóa phụ kiện phát sinh"
-              >
-                <Trash2 size={16} />
-              </button>
+              <div className="row-action-group">
+                <button
+                  className="icon-btn danger"
+                  type="button"
+                  data-action="remove-row"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onChange(reindexExtraAccessories(value.filter((_, itemIndex) => itemIndex !== index)));
+                  }}
+                  aria-label="Xóa phụ kiện phát sinh"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

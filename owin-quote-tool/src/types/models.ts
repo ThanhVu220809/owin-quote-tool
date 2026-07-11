@@ -58,6 +58,8 @@ export interface ProductRecord extends SyncEntity {
   extraAccessories: string;
   isFeatured: boolean;
   isPublic: boolean;
+  /** Manual display order in the catalogue (drag-to-reorder). Undefined → sorted by code. */
+  sortOrder?: number;
   folderPath?: string | null;
   createdAt: string;
 }
@@ -356,6 +358,20 @@ export interface SuggestionRecord extends SyncEntity {
   createdAt: string;
 }
 
+export interface AluminumEstimatorInputState {
+  quantity: string;
+  unitPrice: string;
+  note: string;
+}
+
+export type AluminumEstimatorRowsBySystem = Record<string, Record<string, AluminumEstimatorInputState>>;
+
+export interface AluminumCalculationRecord extends SyncEntity {
+  selectedSystemId: string;
+  inputRows: AluminumEstimatorRowsBySystem;
+  createdAt: string;
+}
+
 /** Toàn bộ DB local/sync metadata; bytes ảnh luôn nằm ở store/file riêng. */
 export interface OwinDB {
   schemaVersion: number;
@@ -363,4 +379,5 @@ export interface OwinDB {
   products: ProductRecord[];
   quotes?: QuoteRecord[];
   suggestions?: SuggestionRecord[];
+  aluminumCalculations?: AluminumCalculationRecord[];
 }

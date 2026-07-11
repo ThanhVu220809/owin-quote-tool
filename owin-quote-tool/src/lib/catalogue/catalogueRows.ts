@@ -1,5 +1,6 @@
 import type { ProductRecord } from '@/types/models';
 import { categoryOrderIndex, normalizeCategoryName, sortCategoryNames } from '@/config/categoryOrder';
+import { productColorRank } from '@/lib/products/productSort';
 import { buildCatalogueMoneyBlocks, formatCatalogueDecimal } from './catalogueMoney';
 
 export type CatalogueBlockRowType = 'category' | 'product' | 'accessory' | 'extraAccessory';
@@ -30,6 +31,7 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 const SPEC_ORDER = [
   { label: 'Màu', keys: ['mau', 'màu'] },
   { label: 'Khung Bao', keys: ['khung bao'] },
+  { label: 'Khuôn Bao', keys: ['khuon bao', 'khuôn bao'] },
   { label: 'Bản Cánh', keys: ['ban canh', 'bản cánh', 'canh', 'cánh'] },
   { label: 'Độ Dày', keys: ['do day', 'độ dày'] },
   { label: 'Loại Kính', keys: ['loai kinh', 'loại kính', 'kinh', 'kính'] },
@@ -38,12 +40,38 @@ const SPEC_ORDER = [
   { label: 'Ghi Chú', keys: ['ghi chu', 'ghi chú', 'note'] },
 ] as const;
 
+const CANONICAL_TITLE_TOKENS = new Map<string, string>([
+  ['owin', 'OWIN'],
+  ['koln', 'KOLN'],
+  ['pvc', 'PVC'],
+  ['cnc', 'CNC'],
+  ['kinlong', 'Kinlong'],
+  ['m2', 'm²'],
+  ['m²', 'm²'],
+  ['md', 'md'],
+  ['mm', 'mm'],
+]);
+
+function formatTitleToken(token: string): string {
+  if (!token) return token;
+  const leading = token.match(/^[^\p{L}\p{N}]+/u)?.[0] ?? '';
+  const trailing = token.match(/[^\p{L}\p{N}]+$/u)?.[0] ?? '';
+  const core = token.slice(leading.length, token.length - trailing.length);
+  if (!core) return token;
+  const lower = core.toLocaleLowerCase('vi-VN');
+  const canonical = CANONICAL_TITLE_TOKENS.get(lower);
+  if (canonical) return `${leading}${canonical}${trailing}`;
+  if (/^x\d+$/i.test(core) || /^\d+(?:[.,]\d+)?(?:mm|cm|m|md|m2|m²)$/i.test(core)) {
+    return `${leading}${lower.replace(/m2$/i, 'm²')}${trailing}`;
+  }
+  if (/^\d+(?:[.,]\d+)?$/.test(core)) return token;
+  return `${leading}${core.charAt(0).toLocaleUpperCase('vi-VN')}${core.slice(1).toLocaleLowerCase('vi-VN')}${trailing}`;
+}
+
 function titleCase(value: string): string {
-  return value
-    .toLowerCase()
-    .split(/\s+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+  const clean = String(value || '').trim().replace(/\s+/g, ' ');
+  if (!clean || /@/.test(clean) || /^[a-z]+:\/\//i.test(clean) || /[\\/]/.test(clean)) return clean;
+  return clean.split(' ').map(formatTitleToken).join(' ');
 }
 
 function normalizeText(value: string): string {
@@ -65,22 +93,30 @@ function unitLabel(unit: string): string {
   return 'm²';
 }
 
+function formatSpecLine(label: string, value: string): string {
+  const key = titleCase(label.trim());
+  const text = value.trim();
+  // Empty value: keep the key only (no ugly trailing colon).
+  return text ? `- ${key}: ${titleCase(text)}` : `- ${key}`;
+}
+
 function productDescription(product: ProductRecord): string[] {
+  // Keep rows that have a key even when value is empty (e.g. "Song Nhôm Bảo Vệ").
   const specs = product.specs
     .map((spec, originalIndex) => ({ ...spec, originalIndex }))
-    .filter((spec) => spec.key.trim() && spec.value.trim());
+    .filter((spec) => spec.key.trim());
   const used = new Set<number>();
   const lines = [titleCase(product.name)];
 
   SPEC_ORDER.forEach((rule) => {
     const match = specs.find((spec) => !used.has(spec.originalIndex) && specMatches(spec.key, rule.keys));
     if (!match) return;
-    lines.push(`- ${rule.label}: ${titleCase(match.value)}`);
+    lines.push(formatSpecLine(rule.label, match.value));
     used.add(match.originalIndex);
   });
 
   specs.forEach((spec) => {
-    if (!used.has(spec.originalIndex)) lines.push(`- ${titleCase(spec.key)}: ${titleCase(spec.value)}`);
+    if (!used.has(spec.originalIndex)) lines.push(formatSpecLine(spec.key, spec.value));
   });
 
   if (product.shortDesc?.trim()) lines.push(`- Ghi Chú: ${titleCase(product.shortDesc)}`);
@@ -126,6 +162,9 @@ export function buildCatalogueBlockRows(products: ProductRecord[]): CatalogueBlo
   const sortedProducts = [...products].sort((a, b) => {
     const categorySort = categoryOrderIndex(a.category) - categoryOrderIndex(b.category);
     if (categorySort !== 0) return categorySort;
+    // Trong mỗi nhóm: xếp theo màu (Trắc → Lim → Ghi → Xanh…) như danh sách sản phẩm.
+    const colorSort = productColorRank(a) - productColorRank(b);
+    if (colorSort !== 0) return colorSort;
     if ((a.numericId || 0) !== (b.numericId || 0)) return (a.numericId || 0) - (b.numericId || 0);
     return a.name.localeCompare(b.name, 'vi');
   });

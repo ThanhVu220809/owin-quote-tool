@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-07-10T15:30:12.960Z",
+  "bangGia": {
+    "path": "bang-gia-current.docx",
+    "hasCategory": true,
+    "hasEmptySpecKey": true,
+    "leftoverTokens": [],
+    "tableCount": 2
+  },
+  "baoGia": {
+    "path": "bao-gia-current.docx",
+    "hasCustomer": true,
+    "noBlankEmailToken": true,
+    "leftoverTokens": [],
+    "orphanX": false
+  }
+}
