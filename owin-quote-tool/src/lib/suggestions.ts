@@ -1,4 +1,5 @@
 import localforage from 'localforage';
+import { notifyLocalDataChanged } from './dataChangeEvents';
 import type { ProductRecord, QuoteInput, SuggestionRecord } from '@/types/models';
 import importedProducts from '@/data/imported/products.json';
 import importedQuotes from '@/data/imported/quotes.json';
@@ -320,6 +321,7 @@ export async function rememberSuggestion(type: SuggestionType, value: unknown): 
     createdAt: existing?.createdAt || timestamp,
     updatedAt: timestamp,
   });
+  notifyLocalDataChanged();
 }
 
 export async function rememberSuggestions(entries: Array<[SuggestionType, unknown]>): Promise<void> {

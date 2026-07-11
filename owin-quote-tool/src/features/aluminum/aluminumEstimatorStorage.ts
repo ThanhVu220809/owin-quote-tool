@@ -1,4 +1,5 @@
 import localforage from 'localforage';
+import { notifyLocalDataChanged } from '@/lib/dataChangeEvents';
 import { ALUMINUM_SYSTEMS } from '@/lib/aluminum-estimator/aluminum-systems';
 import { parseEstimatorNumber } from '@/lib/aluminum-estimator/aluminum-estimator';
 import type {
@@ -170,6 +171,7 @@ export async function saveAluminumEstimatorStorage(state: AluminumEstimatorPageS
     deletedAt: null,
   };
   await aluminumEstimatorStore.setItem(ALUMINUM_ESTIMATOR_STORAGE_KEY, record);
+  notifyLocalDataChanged();
 }
 
 export async function clearAluminumEstimatorStorage(): Promise<void> {
@@ -186,6 +188,7 @@ export async function clearAluminumEstimatorStorage(): Promise<void> {
     deleted: true,
     deletedAt: updatedAt,
   } satisfies AluminumCalculationRecord);
+  notifyLocalDataChanged();
 }
 
 export async function getAllAluminumCalculationsRaw(): Promise<AluminumCalculationRecord[]> {

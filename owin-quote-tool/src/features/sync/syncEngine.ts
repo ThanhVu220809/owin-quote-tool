@@ -80,11 +80,19 @@ export type SyncStatus =
   | { state: 'conflict'; conflicts: Conflict<ProductRecord>[]; merged: ProductRecord[] }
   | { state: 'done'; pushed: number; images?: number; imageErrors?: number };
 
+export interface SyncOptions {
+  /** Auto-save metadata có thể hoãn ảnh sang nhịp idle dài hơn để không làm chậm UI. */
+  includeImages?: boolean;
+}
+
 /**
  * Chạy 1 vòng đồng bộ. KHÔNG tự giải quyết conflict — trả về để UI hỏi người.
  * @param resolvedMerged nếu UI đã giải quyết conflict xong, truyền mảng đã chốt để đẩy thẳng.
  */
-export async function syncNow(resolvedMerged?: ProductRecord[]): Promise<SyncStatus> {
+export async function syncNow(
+  resolvedMerged?: ProductRecord[],
+  options: SyncOptions = {},
+): Promise<SyncStatus> {
   if (!isConfigured()) return { state: 'skipped', reason: 'not-configured' };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { state: 'skipped', reason: 'offline' };
@@ -129,7 +137,9 @@ export async function syncNow(resolvedMerged?: ProductRecord[]): Promise<SyncSta
     await bulkPutSuggestions(finalSuggestions);
     await bulkPutAluminumCalculations(finalAluminum);
     notifyProductsChanged();
-    const imageResult = await syncReferencedImages(finalProducts, finalQuotes);
+    const imageResult = options.includeImages === false
+      ? { count: 0, errors: 0 }
+      : await syncReferencedImages(finalProducts, finalQuotes);
     const db: OwinDB = {
       schemaVersion: SCHEMA_VERSION,
       systems: [],

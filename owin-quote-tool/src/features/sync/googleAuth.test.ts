@@ -7,6 +7,7 @@ interface TokenClientConfig {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.resetModules();
   Reflect.deleteProperty(globalThis, 'window');
@@ -56,5 +57,22 @@ describe('requestOneTimeGoogleToken', () => {
     await expect(auth.requestOneTimeGoogleToken()).rejects.toThrow(
       'Không mở được cửa sổ Google. Hãy cho phép popup rồi thử lại.',
     );
+  });
+});
+
+describe('ensureToken', () => {
+  it('tự lấy access token mới từ backend và dùng lại trong RAM, không mở popup', async () => {
+    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'test-client-id');
+    vi.stubEnv('VITE_BACKEND_URL', 'https://backend.example.test');
+    vi.stubEnv('VITE_SHARED_SECRET', 'test-secret');
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ access_token: 'restored-token', expires_in: 3600 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const auth = await import('./googleAuth');
+
+    await expect(auth.ensureToken()).resolves.toBe('restored-token');
+    await expect(auth.ensureToken()).resolves.toBe('restored-token');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

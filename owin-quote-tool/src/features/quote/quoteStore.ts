@@ -7,6 +7,7 @@ import type {
 } from '@/types/models';
 import importedQuotes from '@/data/imported/quotes.json';
 import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
+import { notifyLocalDataChanged } from '@/lib/dataChangeEvents';
 
 const quoteStore = localforage.createInstance({
   name: 'owin-quote-tool',
@@ -264,6 +265,7 @@ export async function saveQuoteRecord(input: QuoteInput): Promise<QuoteRecord> {
     updatedAt,
   });
   await quoteStore.setItem(record.id, record);
+  notifyLocalDataChanged();
   return record;
 }
 
@@ -276,6 +278,7 @@ export async function deleteQuote(id: string): Promise<void> {
     deleted: true,
     updatedAt: nowIso(),
   } satisfies QuoteRecord);
+  notifyLocalDataChanged();
 }
 
 export async function bulkPutQuotes(quotes: QuoteRecord[]): Promise<void> {

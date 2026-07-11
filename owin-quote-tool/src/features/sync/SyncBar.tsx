@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Cloud, CloudOff, Download, RefreshCw, Upload } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
-import { isConfigured, connectGoogle, requestOneTimeGoogleToken } from './googleAuth';
+import { LOCAL_DATA_CHANGED_EVENT } from '@/lib/dataChangeEvents';
+import { isConfigured, connectGoogle, ensureToken, requestOneTimeGoogleToken } from './googleAuth';
 import { syncNow, type SyncStatus } from './syncEngine';
 import { resolveConflict, type Conflict } from './merge';
 import {
@@ -25,6 +26,14 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
   const [conflicts, setConflicts] = useState<Conflict<ProductRecord>[] | null>(null);
   const [conflictFlow, setConflictFlow] = useState<ConflictFlow | null>(null);
   const [working, setWorking] = useState<ProductRecord[]>([]);
+  const syncInFlightRef = useRef(false);
+  const autoSyncPendingRef = useRef(false);
+  const autoSyncPendingImagesRef = useRef(false);
+  const autoSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoImageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runOwnerSyncRef = useRef<(automatic: boolean, includeImages?: boolean) => Promise<void>>(
+    () => Promise.resolve(),
+  );
 
   const clearConflict = () => {
     setConflicts(null);
@@ -39,7 +48,8 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     try {
       await connectGoogle();
       setConnected(true);
-      setMsg('Đã kết nối Google.');
+      setMsg('Đã kết nối Google. Đang đồng bộ lần đầu...');
+      await runOwnerSync(true, true);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Lỗi kết nối');
     } finally {
@@ -47,7 +57,7 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     }
   };
 
-  const applyStatus = (s: SyncStatus) => {
+  const applyStatus = (s: SyncStatus, automatic = false, includedImages = true) => {
     if (s.state === 'skipped') {
       clearConflict();
       setMsg(s.reason === 'offline' ? 'Đang offline - thay đổi đã xếp hàng.' : 'Chưa cấu hình Google.');
@@ -62,7 +72,12 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
       setMsg(`${s.conflicts.length} xung đột - hãy chọn bản giữ lại.`);
     } else {
       clearConflict();
-      setMsg(`Đồng bộ xong (${s.pushed} mục).`);
+      const action = automatic
+        ? includedImages
+          ? 'Đã tự sao lưu cả dữ liệu và ảnh'
+          : 'Đã tự lưu dữ liệu lên Drive'
+        : 'Đồng bộ xong';
+      setMsg(`${action} (${s.pushed} mục).`);
     }
   };
 
@@ -95,18 +110,107 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     setMsg(`${action} (${s.products} mục).${imageSummary}`);
   };
 
-  const handleSync = async () => {
+  async function runOwnerSync(automatic: boolean, includeImages = true) {
+    if (syncInFlightRef.current) {
+      if (automatic) {
+        autoSyncPendingRef.current = true;
+        autoSyncPendingImagesRef.current ||= includeImages;
+      }
+      return;
+    }
+    syncInFlightRef.current = true;
     setBusy(true);
-    setMsg('');
+    setMsg(automatic ? 'Đang tự động lưu lên Drive...' : 'Đang đồng bộ...');
     clearConflict();
     try {
-      applyStatus(await syncNow());
+      applyStatus(await syncNow(undefined, { includeImages }), automatic, includeImages);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Lỗi đồng bộ');
     } finally {
+      syncInFlightRef.current = false;
       setBusy(false);
+      if (autoSyncPendingRef.current) {
+        const pendingImages = autoSyncPendingImagesRef.current;
+        autoSyncPendingRef.current = false;
+        autoSyncPendingImagesRef.current = false;
+        setTimeout(() => void runOwnerSyncRef.current(true, pendingImages), 0);
+      }
     }
+  }
+
+  runOwnerSyncRef.current = runOwnerSync;
+
+  const handleSync = () => {
+    void runOwnerSync(false, true);
   };
+
+  useEffect(() => {
+    if (!configured) return undefined;
+    let active = true;
+
+    void ensureToken()
+      .then(() => {
+        if (!active) return;
+        setConnected(true);
+        setMsg('Đã kết nối Google • Tự động lưu Drive');
+        void runOwnerSyncRef.current(true, false);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setConnected(false);
+        setMsg(
+          error instanceof Error && error.message !== 'NEED_RELOGIN'
+            ? error.message
+            : 'Bấm Google để kết nối lần đầu.',
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [configured]);
+
+  useEffect(() => {
+    if (!configured || !connected || (conflicts?.length ?? 0) > 0) return undefined;
+
+    const scheduleAutoSync = () => {
+      if (syncInFlightRef.current) {
+        autoSyncPendingRef.current = true;
+        autoSyncPendingImagesRef.current = true;
+        return;
+      }
+      if (autoSyncTimerRef.current) clearTimeout(autoSyncTimerRef.current);
+      autoSyncTimerRef.current = setTimeout(() => {
+        autoSyncTimerRef.current = null;
+        void runOwnerSyncRef.current(true, false);
+      }, 2500);
+      if (autoImageTimerRef.current) clearTimeout(autoImageTimerRef.current);
+      autoImageTimerRef.current = setTimeout(() => {
+        autoImageTimerRef.current = null;
+        void runOwnerSyncRef.current(true, true);
+      }, 12000);
+    };
+    const syncWhenVisible = () => {
+      if (document.visibilityState === 'visible') scheduleAutoSync();
+    };
+
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, scheduleAutoSync);
+    window.addEventListener('online', scheduleAutoSync);
+    document.addEventListener('visibilitychange', syncWhenVisible);
+    return () => {
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, scheduleAutoSync);
+      window.removeEventListener('online', scheduleAutoSync);
+      document.removeEventListener('visibilitychange', syncWhenVisible);
+      if (autoSyncTimerRef.current) {
+        clearTimeout(autoSyncTimerRef.current);
+        autoSyncTimerRef.current = null;
+      }
+      if (autoImageTimerRef.current) {
+        clearTimeout(autoImageTimerRef.current);
+        autoImageTimerRef.current = null;
+      }
+    };
+  }, [configured, connected, conflicts?.length]);
 
   const handleTransfer = async (mode: TransferMode) => {
     setBusy(true);

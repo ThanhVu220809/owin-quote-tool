@@ -20,6 +20,7 @@ import initialData from '@/data/initialData.json';
 import importedProducts from '@/data/imported/products.json';
 import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
 import { notifyProductsChanged } from './productEvents';
+import { notifyLocalDataChanged } from '@/lib/dataChangeEvents';
 
 const productStore = localforage.createInstance({
   name: 'owin-quote-tool',
@@ -366,6 +367,7 @@ export async function reorderProducts(orderedIds: string[]): Promise<void> {
     }),
   );
   notifyProductsChanged();
+  notifyLocalDataChanged();
 }
 
 export async function getProductRecord(id: string): Promise<ProductRecord | null> {
@@ -398,6 +400,8 @@ export async function saveProduct(
     numericId,
   );
   await productStore.setItem(id, saved);
+  notifyProductsChanged();
+  notifyLocalDataChanged();
   return toLegacyProduct(saved);
 }
 
@@ -411,6 +415,8 @@ export async function deleteProduct(id: string): Promise<void> {
     deletedAt: existing.deletedAt ?? nowIso(),
     updatedAt: nowIso(),
   } satisfies ProductRecord);
+  notifyProductsChanged();
+  notifyLocalDataChanged();
 }
 
 /**
@@ -429,6 +435,7 @@ export async function bulkAdjustProductPrices(percent: number): Promise<ProductR
   }));
   for (const product of updated) await productStore.setItem(product.id, product);
   notifyProductsChanged();
+  notifyLocalDataChanged();
   return updated;
 }
 
