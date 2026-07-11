@@ -118,6 +118,11 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     );
     try {
       const token = await requestOneTimeGoogleToken();
+      setMsg(
+        mode === 'push-other'
+          ? 'Đã chọn tài khoản. Đang tải ảnh và ghi đè kho...'
+          : 'Đã chọn tài khoản. Đang tải và gộp kho...',
+      );
       const status =
         mode === 'push-other'
           ? await beginPushToOtherAccount(token)

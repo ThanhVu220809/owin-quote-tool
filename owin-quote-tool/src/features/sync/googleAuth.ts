@@ -34,6 +34,20 @@ interface BackendResponse {
   need_relogin?: boolean;
 }
 
+interface GooglePopupError {
+  type?: 'popup_failed_to_open' | 'popup_closed' | 'unknown' | string;
+}
+
+function popupErrorMessage(error: GooglePopupError): string {
+  if (error.type === 'popup_failed_to_open') {
+    return 'Không mở được cửa sổ Google. Hãy cho phép popup rồi thử lại.';
+  }
+  if (error.type === 'popup_closed') {
+    return 'Đã đóng cửa sổ chọn tài khoản Google.';
+  }
+  return 'Không thể mở cửa sổ xác thực Google. Vui lòng thử lại.';
+}
+
 /**
  * Gọi backend với Content-Type text/plain để NÉ CORS preflight của Apps Script
  * (mẹo bắt buộc — JSON content-type sẽ bị preflight chặn). VERIFY: xác nhận lại
@@ -70,15 +84,20 @@ export function connectGoogle(): Promise<string> {
           reject(new Error('Người dùng huỷ hoặc lỗi cấp quyền'));
           return;
         }
-        const data = await callBackend({ action: 'exchange', code: response.code });
-        if (data.error || !data.access_token) {
-          reject(new Error('Backend đổi token thất bại: ' + (data.error || 'unknown')));
-          return;
+        try {
+          const data = await callBackend({ action: 'exchange', code: response.code });
+          if (data.error || !data.access_token) {
+            reject(new Error('Backend đổi token thất bại: ' + (data.error || 'unknown')));
+            return;
+          }
+          accessToken = data.access_token;
+          tokenExpiryMs = Date.now() + ((data.expires_in ?? 0) - 60) * 1000;
+          resolve(accessToken);
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error('Không kết nối được backend Google.'));
         }
-        accessToken = data.access_token;
-        tokenExpiryMs = Date.now() + ((data.expires_in ?? 0) - 60) * 1000;
-        resolve(accessToken);
       },
+      error_callback: (error: GooglePopupError) => reject(new Error(popupErrorMessage(error))),
     });
     codeClient.requestCode();
   });
@@ -112,6 +131,7 @@ export function requestOneTimeGoogleToken(): Promise<string> {
         }
         resolve(response.access_token);
       },
+      error_callback: (error: GooglePopupError) => reject(new Error(popupErrorMessage(error))),
     });
     tokenClient.requestAccessToken({ prompt: 'select_account consent' });
   });
@@ -158,12 +178,14 @@ interface GoogleAccounts {
         access_type: string;
         prompt: string;
         callback: (response: { code?: string; error?: string }) => void;
+        error_callback?: (error: GooglePopupError) => void;
       }) => { requestCode: () => void };
       initTokenClient: (config: {
         client_id: string;
         scope: string;
         prompt: string;
         callback: (response: { access_token?: string; error?: string }) => void;
+        error_callback?: (error: GooglePopupError) => void;
       }) => { requestAccessToken: (overrideConfig?: { prompt?: string }) => void };
     };
   };

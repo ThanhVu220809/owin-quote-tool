@@ -8,6 +8,33 @@ export interface ImageSyncResult {
   errors: number;
 }
 
+const IMAGE_SYNC_CONCURRENCY = 4;
+
+async function processImageKeys(
+  keys: string[],
+  processKey: (key: string) => Promise<boolean>,
+): Promise<ImageSyncResult> {
+  let nextIndex = 0;
+  let count = 0;
+  let errors = 0;
+
+  const worker = async () => {
+    while (nextIndex < keys.length) {
+      const key = keys[nextIndex];
+      nextIndex += 1;
+      try {
+        if (await processKey(key)) count += 1;
+      } catch {
+        errors += 1;
+      }
+    }
+  };
+
+  const workerCount = Math.min(IMAGE_SYNC_CONCURRENCY, keys.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return { count, errors };
+}
+
 function addImagePath(paths: Set<string>, path: string | null | undefined): void {
   const key = imageStoreKeyFromPath(path);
   if (key) paths.add(key);
@@ -63,21 +90,12 @@ export async function uploadReferencedImages(
   quotes: QuoteRecord[] = [],
   token?: string,
 ): Promise<ImageSyncResult> {
-  let count = 0;
-  let errors = 0;
-
-  for (const key of collectReferencedImageKeys(products, quotes)) {
-    try {
-      const blob = await getLocalImageBlob(key);
-      if (!blob) continue;
-      await uploadImage(key, blob, token);
-      count += 1;
-    } catch {
-      errors += 1;
-    }
-  }
-
-  return { count, errors };
+  return processImageKeys(collectReferencedImageKeys(products, quotes), async (key) => {
+    const blob = await getLocalImageBlob(key);
+    if (!blob) return false;
+    await uploadImage(key, blob, token);
+    return true;
+  });
 }
 
 export async function downloadReferencedImages(
@@ -85,21 +103,12 @@ export async function downloadReferencedImages(
   quotes: QuoteRecord[] = [],
   token?: string,
 ): Promise<ImageSyncResult> {
-  let count = 0;
-  let errors = 0;
-
-  for (const key of collectReferencedImageKeys(products, quotes)) {
-    try {
-      const blob = await downloadImage(key, token);
-      if (!blob) continue;
-      await saveLocalImageBlob(key, blob);
-      count += 1;
-    } catch {
-      errors += 1;
-    }
-  }
-
-  return { count, errors };
+  return processImageKeys(collectReferencedImageKeys(products, quotes), async (key) => {
+    const blob = await downloadImage(key, token);
+    if (!blob) return false;
+    await saveLocalImageBlob(key, blob);
+    return true;
+  });
 }
 
 export async function syncReferencedImages(
@@ -107,26 +116,16 @@ export async function syncReferencedImages(
   quotes: QuoteRecord[] = [],
   token?: string,
 ): Promise<ImageSyncResult> {
-  let count = 0;
-  let errors = 0;
-
-  for (const key of collectReferencedImageKeys(products, quotes)) {
-    try {
-      const local = await getLocalImageBlob(key);
-      if (local) {
-        await uploadImage(key, local, token);
-        count += 1;
-        continue;
-      }
-
-      const remote = await downloadImage(key, token);
-      if (!remote) continue;
-      await saveLocalImageBlob(key, remote);
-      count += 1;
-    } catch {
-      errors += 1;
+  return processImageKeys(collectReferencedImageKeys(products, quotes), async (key) => {
+    const local = await getLocalImageBlob(key);
+    if (local) {
+      await uploadImage(key, local, token);
+      return true;
     }
-  }
 
-  return { count, errors };
+    const remote = await downloadImage(key, token);
+    if (!remote) return false;
+    await saveLocalImageBlob(key, remote);
+    return true;
+  });
 }
