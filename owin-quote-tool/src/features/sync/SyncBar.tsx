@@ -84,7 +84,7 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     clearConflict();
     const action =
       s.mode === 'push-other'
-        ? 'Đã đẩy kho sang tài khoản đã chọn'
+        ? 'Đã ghi đè toàn bộ kho sang tài khoản đã chọn'
         : 'Đã lấy và gộp kho từ tài khoản đã chọn';
     const imageSummary =
       s.imageErrors > 0
@@ -113,7 +113,7 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     clearConflict();
     setMsg(
       mode === 'push-other'
-        ? 'Chọn tài khoản Google nhận kho...'
+        ? 'Chọn tài khoản Google nhận kho (kho đích sẽ bị ghi đè toàn bộ)...'
         : 'Chọn tài khoản Google để lấy kho...',
     );
     try {
@@ -179,10 +179,10 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
         className="btn btn-ghost"
         disabled={busy}
         onClick={() => void handleTransfer('push-other')}
-        title="Đẩy kho sang tài khoản khác"
+        title="Đẩy và ghi đè toàn bộ kho sang tài khoản khác"
       >
         <Upload size={15} style={{ verticalAlign: '-3px' }} />
-        {compact ? '' : ' Đẩy kho'}
+        {compact ? '' : ' Đẩy & ghi đè kho'}
       </button>
       <button
         className="btn btn-ghost"

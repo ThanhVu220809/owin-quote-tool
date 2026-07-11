@@ -73,24 +73,29 @@ describe('transferEngine - chuyển dữ liệu tài khoản Google khác', () =
     expect(drive.uploadImage).toHaveBeenCalledWith('img-local', expect.any(Blob), 'other-token');
   });
 
-  it('đẩy sang tài khoản khác: cùng mã nhưng khác nội dung → CONFLICT, không nuốt thầm', async () => {
-    // local có S1 giá 2.0M
+  it('đẩy sang tài khoản khác: local ghi đè toàn bộ, không tạo BR-8 theo từng sản phẩm', async () => {
     await saveProduct({ id: 'S1', dvt: 'm²', ten: 'Cửa S1', ma: 'S1', donGiaGoc: 2000000, accessories: [] });
-    // tài khoản kia có S1 giá 1.5M (khác nội dung)
     drive.downloadDB.mockResolvedValue({
       schemaVersion: 1,
       systems: [],
-      products: [product({ id: 'S1', ma: 'S1', ten: 'Cửa S1', donGiaGoc: 1500000 })],
+      products: [
+        product({ id: 'S1', ma: 'S1', ten: 'Cửa S1', donGiaGoc: 1500000 }),
+        product({ id: 'REMOTE-ONLY', ma: 'REMOTE-ONLY', ten: 'Chỉ có ở kho đích' }),
+      ],
     });
 
     const status = await beginPushToOtherAccount('other-token');
 
-    expect(status.state).toBe('conflict');
-    if (status.state === 'conflict') {
-      expect(status.conflicts.map((c) => c.id)).toContain('S1');
-    }
-    // KHÔNG tự đẩy khi còn conflict
-    expect(drive.uploadDB).not.toHaveBeenCalled();
+    expect(status).toMatchObject({ state: 'done', mode: 'push-other', products: 1 });
+    expect(drive.downloadDB).not.toHaveBeenCalled();
+    expect(drive.uploadDB).toHaveBeenCalledWith(
+      expect.objectContaining({
+        products: [expect.objectContaining({ id: 'S1', unitPriceVnd: 2000000 })],
+      }),
+      'other-token',
+    );
+    const uploaded = drive.uploadDB.mock.calls[0]?.[0];
+    expect(uploaded.products.some((item: { id: string }) => item.id === 'REMOTE-ONLY')).toBe(false);
   });
 
   it('lấy kho từ tài khoản khác: ghi local và tải ảnh remote được chọn', async () => {

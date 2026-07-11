@@ -107,8 +107,28 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
   const localQuotes = await getAllQuotesRaw();
   const localSuggestions = await getAllSuggestionRecords();
   const localAluminum = await getAllAluminumCalculationsRaw();
+
+  // "Đẩy kho" là publish/replace: kho trên máy này là nguồn chuẩn và ghi đè toàn bộ
+  // tài khoản đích. Không tải rồi merge kho đích, vì khác biệt schema/sortOrder sau một
+  // lần deploy sẽ biến mọi sản phẩm thành BR-8 dù tên và giá hoàn toàn giống nhau.
+  if (mode === 'push-other') {
+    const context: TransferConflictContext = {
+      mode,
+      token,
+      local,
+      remote: [],
+      localQuotes,
+      remoteQuotes: [],
+      localSuggestions,
+      remoteSuggestions: [],
+      localAluminum,
+      remoteAluminum: [],
+    };
+    return finishTransfer(context, local);
+  }
+
   const remoteDB = await downloadDB(token);
-  if (mode === 'pull-other' && !remoteDB) return { state: 'empty-remote', mode };
+  if (!remoteDB) return { state: 'empty-remote', mode };
 
   const remote = (remoteDB?.products ?? []).map((product, index) =>
     normalizeProductRecord(product, index + 1),
@@ -116,9 +136,8 @@ async function beginTransfer(mode: TransferMode, token: string): Promise<Transfe
   const remoteQuotes = remoteDB?.quotes ?? [];
   const remoteSuggestions = remoteDB?.suggestions ?? [];
   const remoteAluminum = normalizeRemoteAluminum(remoteDB?.aluminumCalculations);
-  // Giao dịch giữa 2 tài khoản ĐỘC LẬP: KHÔNG dùng base của owner (vô nghĩa với tài
-  // khoản kia, dễ nuốt thầm). base rỗng → mọi khác biệt cùng mã đều thành conflict cho
-  // người chọn (đúng ý "gộp thông minh").
+  // "Lấy kho" vẫn gộp an toàn: hai tài khoản độc lập nên không có base chung; mọi
+  // khác biệt thực cùng mã phải được người dùng chọn, tránh nuốt thay đổi local.
   const { merged, conflicts } = mergeEntities(local, remote, []);
   const context: TransferConflictContext = {
     mode,
