@@ -121,17 +121,17 @@ export function parseFixedAccessoriesJson(
     // Keep blank named rows only if they have an id from an active editor payload.
     .filter((item) => item.name || item.id);
 
-  // Drop empty placeholders that only exist as blank shells when loading real data.
   const namedItems = parsedItems.filter((item) => item.name);
   const hasOnlyPlaceholderOneQuantities =
     namedItems.length > 1 && namedItems.every((item) => item.quantity === 1);
-  const items = (namedItems.length > 0 ? namedItems : parsedItems.length > 0 ? parsedItems : fallback.items).map(
-    (item) => ({
-      ...item,
-      id: item.id || newId(),
-      quantity: hasOnlyPlaceholderOneQuantities && item.name ? 0 : item.quantity,
-    }),
-  );
+  // Keep blank rows too — they carry a stable id from the live editor, so "Thêm món"
+  // must never vanish just because the package already has named items. Truly blank
+  // packages are stripped later by the non-keepEmpty serialize on final save.
+  const items = (parsedItems.length > 0 ? parsedItems : fallback.items).map((item) => ({
+    ...item,
+    id: item.id || newId(),
+    quantity: hasOnlyPlaceholderOneQuantities && item.name ? 0 : item.quantity,
+  }));
 
   const packageQuantity = numberOr(parsed.packageQuantity ?? parsed.quantity, fallbackQuantity);
   const unitPrice = numberOr(parsed.unitPrice ?? parsed.unitPriceVnd, 0);

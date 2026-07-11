@@ -52,6 +52,7 @@ type ProductInput = {
   extraAccessories?: string | null;
   isFeatured?: boolean;
   isPublic?: boolean;
+  sortOrder?: number;
   folderPath?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -247,6 +248,7 @@ export function normalizeProductRecord(input: ProductInput, numericIdFallback = 
     extraAccessories: normalizeJsonString(input.extraAccessories, '[]'),
     isFeatured: Boolean(input.isFeatured),
     isPublic: input.isPublic !== false,
+    sortOrder: Number.isFinite(Number(input.sortOrder)) ? Number(input.sortOrder) : undefined,
     folderPath: normalizeNullableString(input.folderPath),
     createdAt,
     updatedAt,
@@ -331,6 +333,14 @@ export async function getAllProducts(): Promise<Product[]> {
     .sort((a, b) => a.ma.localeCompare(b.ma));
 }
 
+/** Sort by manual drag order first (sortOrder), then code for any not yet ordered. */
+function byManualOrder(a: ProductRecord, b: ProductRecord): number {
+  const ao = Number.isFinite(a.sortOrder as number) ? (a.sortOrder as number) : Number.POSITIVE_INFINITY;
+  const bo = Number.isFinite(b.sortOrder as number) ? (b.sortOrder as number) : Number.POSITIVE_INFINITY;
+  if (ao !== bo) return ao - bo;
+  return a.code.localeCompare(b.code);
+}
+
 /** Tất cả ProductRecord kể cả tombstone — dùng cho sync/migration/test. */
 export async function getAllProductsRaw(): Promise<ProductRecord[]> {
   const out: ProductRecord[] = [];
@@ -338,7 +348,24 @@ export async function getAllProductsRaw(): Promise<ProductRecord[]> {
     if (key === SEED_FLAG || key === REFERENCE_SEED_FLAG || !value || typeof value === 'boolean') return;
     out.push(normalizeProductRecord(value as ProductInput, out.length + 1));
   });
-  return out.sort((a, b) => a.code.localeCompare(b.code));
+  return out.sort(byManualOrder);
+}
+
+/**
+ * Persist a manual catalogue order. `orderedIds` is the full alive-product list in the
+ * desired order; each gets sortOrder = its index (and a fresh updatedAt so the order syncs).
+ */
+export async function reorderProducts(orderedIds: string[]): Promise<void> {
+  const stamp = nowIso();
+  await Promise.all(
+    orderedIds.map(async (id, index) => {
+      const value = await productStore.getItem<ProductRecord | ProductInput | boolean>(id);
+      if (!value || typeof value === 'boolean') return;
+      const record = normalizeProductRecord(value as ProductInput);
+      await productStore.setItem(id, { ...record, sortOrder: index, updatedAt: stamp });
+    }),
+  );
+  notifyProductsChanged();
 }
 
 export async function getProductRecord(id: string): Promise<ProductRecord | null> {

@@ -58,6 +58,8 @@ export interface ProductRecord extends SyncEntity {
   extraAccessories: string;
   isFeatured: boolean;
   isPublic: boolean;
+  /** Manual display order in the catalogue (drag-to-reorder). Undefined → sorted by code. */
+  sortOrder?: number;
   folderPath?: string | null;
   createdAt: string;
 }

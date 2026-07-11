@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Check, ChevronsUpDown, Copy, Eye, FileDown, Package, Plus, Printer, Save, Search, Trash2, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Eye, FileDown, Package, Pencil, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -14,6 +14,7 @@ import { useProducts } from '@/features/products/useProducts';
 import { formatVND } from '@/utils/format';
 import { AutoSuggestInput } from '@/components/AutoSuggestInput';
 import { CurrencyInput } from '@/components/CurrencyInput';
+import { DragHandle, reorderList, useDragReorder } from '@/components/DragReorder';
 import { ExtraAccessoriesEditor, FixedAccessoryPackageEditor } from '@/components/AccessoryEditors';
 import { calculateQuote } from '@/lib/quote/quoteCalculator';
 import { generateQuoteCode } from '@/lib/quote/quoteCode';
@@ -145,6 +146,36 @@ function scrollPageTop() {
   window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
 }
 
+/**
+ * Drop the legacy phantom "Bộ phụ kiện đi kèm / Vật tư phụ" package (0đ, all-zero qty)
+ * that older quotes accidentally baked into every item. Real packages (priced, custom
+ * name, or non-zero quantities) are always kept untouched.
+ */
+function stripPhantomFixedPackage(value: string | null | undefined): string | null {
+  if (!value) return null;
+  let parsed: Record<string, unknown> | null = null;
+  try {
+    parsed = JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return value;
+  }
+  if (!parsed || typeof parsed !== 'object') return value;
+  const unitPrice = Number(parsed.unitPrice ?? parsed.unitPriceVnd ?? 0) || 0;
+  const name = String(parsed.name ?? '').trim();
+  const items = Array.isArray(parsed.items) ? parsed.items : [];
+  const allZeroQty = items.every((entry) => Number((entry as Record<string, unknown>).quantity ?? 0) === 0);
+  const onlyDefaultNames = items.every((entry) => {
+    const itemName = String((entry as Record<string, unknown>).name ?? '').trim();
+    return itemName === '' || itemName === 'Vật tư phụ';
+  });
+  const isPhantom =
+    unitPrice === 0 &&
+    (name === '' || name === 'Bộ phụ kiện đi kèm') &&
+    allZeroQty &&
+    onlyDefaultNames;
+  return isPhantom ? null : value;
+}
+
 function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
   return quote.snapshot.items.map((item) => ({
     sourceType: item.sourceType,
@@ -176,7 +207,7 @@ function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
       note: accessory.note || null,
       isEnabled: accessory.isEnabled !== false && accessory.enabled !== false,
     })),
-    fixedAccessoryPackage: item.fixedAccessoryPackage || null,
+    fixedAccessoryPackage: stripPhantomFixedPackage(item.fixedAccessoryPackage),
     extraAccessories: item.extraAccessories || null,
     numericId: item.numericId || null,
   }));
@@ -309,7 +340,8 @@ export function QuoteView() {
   const updateItem = (index: number, patch: Partial<QuoteItemInput>) =>
     setItems((current) => current.map((item, i) => (i === index ? { ...item, ...patch } : item)));
 
-  const confirmItem = (index: number) => {
+  /** Collapse an item to its compact card. Silently tidies blank rows — no confirm prompt. */
+  const collapseItem = (index: number) => {
     const key = itemUiKeys[index];
     setItems((current) =>
       current.map((item, i) => (i === index ? confirmNormalizeItem(item) : item)),
@@ -342,12 +374,12 @@ export function QuoteView() {
     }
   };
 
-  const moveItem = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= items.length) return;
-    setItems((current) => moveRow(current, index, direction));
-    setItemUiKeys((current) => moveRow(current, index, direction));
+  /** Drag-to-reorder items — moves the row and its parallel UI key together. */
+  const reorderItems = (from: number, to: number) => {
+    setItems((current) => reorderList(current, from, to));
+    setItemUiKeys((current) => reorderList(current, from, to));
   };
+  const itemDrag = useDragReorder(reorderItems);
 
   const duplicateItemAt = (index: number) => {
     const source = items[index];
@@ -727,13 +759,14 @@ export function QuoteView() {
               const uiKey = itemUiKeys[index] || `fallback-${index}`;
               const locked = !expandedItemKeys.has(uiKey);
               return (
+              <div key={uiKey} className="quote-item-drop" {...itemDrag.rowProps(index)}>
               <QuoteItemCard
-                key={uiKey}
                 index={index}
                 item={item}
                 locked={locked}
                 calculated={calculated.items[index]}
                 suggestions={seededSuggestions}
+                dragHandleProps={itemDrag.handleProps(index)}
                 onUpdate={(patch) => updateItem(index, patch)}
                 onDimension={(lineIndex, patch) => updateDimension(index, lineIndex, patch)}
                 onAccessory={(accIndex, patch) => updateAccessory(index, accIndex, patch)}
@@ -750,13 +783,12 @@ export function QuoteView() {
                     accessories: [...item.accessories, { name: '', quantityPerSet: 0, unitPriceVnd: 0, note: null, isEnabled: true }],
                   })
                 }
-                onConfirm={() => confirmItem(index)}
+                onCollapse={() => collapseItem(index)}
                 onExpand={() => expandItem(index)}
                 onDuplicate={() => duplicateItemAt(index)}
-                onMoveUp={() => moveItem(index, -1)}
-                onMoveDown={() => moveItem(index, 1)}
                 onDelete={() => removeItemAt(index)}
               />
+              </div>
               );
             })}
           </div>
@@ -1234,17 +1266,13 @@ function compactNumber(value: unknown): string {
     : parsed.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-function moveRow<T>(rows: T[], index: number, direction: -1 | 1): T[] {
-  const target = index + direction;
-  if (target < 0 || target >= rows.length) return rows;
-  const next = [...rows];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
-}
 
 /** Clean blank accessory shells for calculate/save while editors keep them with keepEmpty. */
 function cleanItemAccessoriesForPersist(item: QuoteItemInput): QuoteItemInput {
-  const fixed = parseFixedAccessoriesJson(item.fixedAccessoryPackage, 1);
+  // A null/empty package must stay empty — never materialize the phantom
+  // "Bộ phụ kiện đi kèm / Vật tư phụ" default that used to leak into every quote.
+  const hasFixed = item.fixedAccessoryPackage != null && item.fixedAccessoryPackage !== '';
+  const fixed = hasFixed ? parseFixedAccessoriesJson(item.fixedAccessoryPackage, 1) : null;
   const extras = parseExtraAccessoriesJson(item.extraAccessories);
   return {
     ...item,
@@ -1256,7 +1284,7 @@ function cleanItemAccessoriesForPersist(item: QuoteItemInput): QuoteItemInput {
         sortOrder,
       }))
       .filter((spec) => spec.key),
-    fixedAccessoryPackage: serializeFixedAccessoriesJson(fixed),
+    fixedAccessoryPackage: fixed ? serializeFixedAccessoriesJson(fixed) : null,
     extraAccessories: serializeExtraAccessoriesJson(extras),
   };
 }
@@ -1475,12 +1503,11 @@ function QuoteItemCard({
   onAccessory,
   onAddDimension,
   onAddAccessory,
-  onConfirm,
+  onCollapse,
   onExpand,
   onDuplicate,
-  onMoveUp,
-  onMoveDown,
   onDelete,
+  dragHandleProps,
 }: {
   index: number;
   item: QuoteItemInput;
@@ -1492,12 +1519,11 @@ function QuoteItemCard({
   onAccessory: (accIndex: number, patch: Partial<AccessoryInput>) => void;
   onAddDimension: () => void;
   onAddAccessory: () => void;
-  onConfirm: () => void;
+  onCollapse: () => void;
   onExpand: () => void;
   onDuplicate: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
   onDelete: () => void;
+  dragHandleProps: Record<string, unknown>;
 }) {
   // Always keep an editable fixed-package shell (empty name is allowed).
   const fixedDraft =
@@ -1516,15 +1542,14 @@ function QuoteItemCard({
       ),
     });
   };
-  const moveSpec = (specIndex: number, direction: -1 | 1) => {
+  const specDrag = useDragReorder((from, to) => {
     onUpdate({
-      specs: moveRow(specs, specIndex, direction).map((spec, sortOrder) => ({ ...spec, sortOrder })),
+      specs: reorderList(specs, from, to).map((spec, sortOrder) => ({ ...spec, sortOrder })),
     });
-  };
+  });
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const imagePath = item.coverImagePath || item.image || null;
-  const canConfirm = Boolean(String(item.itemName || '').trim());
 
   useEffect(() => {
     let revoked: string | null = null;
@@ -1557,30 +1582,32 @@ function QuoteItemCard({
           >
             <ProductThumb imagePath={imagePath} fill />
           </button>
-          <div className="quote-item-locked-main">
+          <button
+            type="button"
+            className="quote-item-locked-main"
+            onClick={onExpand}
+            aria-label={`Sửa hạng mục ${item.itemName || 'Hạng mục'}`}
+            title="Bấm để sửa hạng mục"
+          >
             <div className="quote-item-locked-title">
               <span className="quote-item-locked-index">#{index + 1}</span>
               <strong>{item.itemName || 'Hạng mục'}</strong>
             </div>
             <div className="quote-item-locked-meta">
-              <span>{unitLabel(item.unit)}</span>
-              <span>{item.quoteItemCode || item.productCode}</span>
               <span className="quote-item-locked-total">{formatVND(calculated?.itemTotalVnd ?? 0)}</span>
             </div>
-          </div>
+          </button>
           <div className="quote-item-actions quote-item-locked-actions">
-            <button className="btn btn-ghost btn-sm" type="button" onClick={onExpand}>
-              Sửa
+            <button className="btn btn-primary btn-sm" type="button" onClick={onExpand}>
+              <Pencil size={15} /> Sửa
             </button>
-            <button className="btn btn-ghost btn-sm" type="button" onClick={onExpand}>
-              <ChevronsUpDown size={15} /> Mở rộng
-            </button>
-            <button className="icon-btn" type="button" onClick={onDuplicate} aria-label="Nhân bản">
+            <button className="icon-btn" type="button" onClick={onDuplicate} aria-label="Nhân bản hạng mục">
               <Copy size={16} />
             </button>
-            <button className="icon-btn danger" type="button" onClick={onDelete} aria-label="Xóa">
+            <button className="icon-btn danger" type="button" onClick={onDelete} aria-label="Xóa hạng mục">
               <Trash2 size={16} />
             </button>
+            <DragHandle {...dragHandleProps} label="Kéo để đổi thứ tự hạng mục" />
           </div>
         </div>
         <ImageLightbox
@@ -1612,15 +1639,14 @@ function QuoteItemCard({
               <div className="product-sub">Tổng {formatVND(calculated?.itemTotalVnd ?? 0)}</div>
             </div>
             <div className="quote-item-actions">
-              <button className="icon-btn" onClick={onMoveUp} aria-label="Lên"><ChevronUp size={16} /></button>
-              <button className="icon-btn" onClick={onMoveDown} aria-label="Xuống"><ChevronDown size={16} /></button>
-              <button className="icon-btn" onClick={onDuplicate} aria-label="Nhân bản"><Copy size={16} /></button>
-              <button className="icon-btn danger" onClick={onDelete} aria-label="Xóa"><Trash2 size={16} /></button>
+              <DragHandle {...dragHandleProps} label="Kéo để đổi thứ tự hạng mục" />
+              <button className="icon-btn" onClick={onDuplicate} aria-label="Nhân bản hạng mục"><Copy size={16} /></button>
+              <button className="icon-btn danger" onClick={onDelete} aria-label="Xóa hạng mục"><Trash2 size={16} /></button>
             </div>
           </div>
 
-          {/* Bỏ trường Nhóm — giữ category ẩn từ sản phẩm; UI gọn cho người dùng. */}
-          <div className="quote-item-basic-grid quote-item-basic-grid-simple">
+          {/* Chỉ cần Tên hạng mục — ĐVT lấy theo từng dòng kích thước (cột DV). */}
+          <div className="quote-item-basic-grid quote-item-basic-grid-name-only">
             <Field
               label="Tên hạng mục"
               fieldKey="item_name"
@@ -1628,14 +1654,6 @@ function QuoteItemCard({
               onChange={(value) => onUpdate({ itemName: value })}
               suggestions={mergeSuggestionLists(suggestions.item_name, suggestions.product_name)}
             />
-            <div className="field">
-              <label>ĐVT</label>
-              <select className="input" value={item.unit} onChange={(e) => onUpdate({ unit: e.target.value as ProductUnit })}>
-                <option value="M2">m²</option>
-                <option value="BO">Bộ</option>
-                <option value="METER">md</option>
-              </select>
-            </div>
           </div>
         </div>
       </div>
@@ -1736,6 +1754,7 @@ function QuoteItemCard({
             </button>
           </div>
           <div className="spec-table-head">
+            <span />
             <span>Tên thông số</span>
             <span>Giá trị</span>
             <span />
@@ -1745,7 +1764,13 @@ function QuoteItemCard({
               <div className="empty-line">Chưa có thông số kỹ thuật.</div>
             ) : (
               specs.map((spec, specIndex) => (
-                <div key={specRowIds[specIndex]} className="spec-editor-row" data-row-id={specRowIds[specIndex]}>
+                <div
+                  key={specRowIds[specIndex]}
+                  className="spec-editor-row"
+                  data-row-id={specRowIds[specIndex]}
+                  {...specDrag.rowProps(specIndex)}
+                >
+                  <DragHandle {...specDrag.handleProps(specIndex)} label="Kéo để đổi thứ tự thông số" />
                   <AutoSuggestInput
                     label="Tên"
                     fieldKey="spec_key"
@@ -1761,24 +1786,6 @@ function QuoteItemCard({
                     suggestions={specValueSuggestionsForKey(spec.key, suggestions)}
                   />
                   <div className="row-action-group">
-                    <button
-                      className="icon-btn"
-                      type="button"
-                      disabled={specIndex === 0}
-                      onClick={() => moveSpec(specIndex, -1)}
-                      aria-label="Đưa thông số lên"
-                    >
-                      <ChevronUp size={15} />
-                    </button>
-                    <button
-                      className="icon-btn"
-                      type="button"
-                      disabled={specIndex === specs.length - 1}
-                      onClick={() => moveSpec(specIndex, 1)}
-                      aria-label="Đưa thông số xuống"
-                    >
-                      <ChevronDown size={15} />
-                    </button>
                     <button
                       className="icon-btn danger"
                       type="button"
@@ -1841,19 +1848,13 @@ function QuoteItemCard({
         <QuoteSummaryMetric label="Tổng hạng mục" value={formatVND(calculated?.itemTotalVnd ?? 0)} strong />
       </div>
 
-      <div className="quote-item-confirm-bar">
-        <div className="product-sub">
-          Xác nhận sẽ dọn dòng trống, khóa thẻ gọn (ảnh · tên · ĐVT · tổng). Bấm Sửa để mở lại đúng dữ liệu đã lưu.
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={!canConfirm}
-          onClick={onConfirm}
-        >
-          <Check size={16} /> Xác nhận hạng mục
-        </button>
-      </div>
+      <button
+        type="button"
+        className="btn btn-primary quote-item-collapse-btn"
+        onClick={onCollapse}
+      >
+        <Check size={18} /> Xong — thu gọn hạng mục
+      </button>
     </div>
   );
 }

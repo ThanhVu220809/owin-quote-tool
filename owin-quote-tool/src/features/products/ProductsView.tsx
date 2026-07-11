@@ -2,11 +2,14 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, BookOpen, Pencil, Plus, Search, X, Percent } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { useProducts } from './useProducts';
-import { bulkAdjustProductPrices, getProductRecord } from './productStore';
+import { bulkAdjustProductPrices, getProductRecord, reorderProducts } from './productStore';
+import { reorderList } from '@/components/DragReorder';
+import { sortProductsByColor } from '@/lib/products/productSort';
 import { ProductForm } from './ProductForm';
 import { ProductList } from './ProductList';
 import { ProductThumb } from './ProductThumb';
 import { rememberProductSuggestions } from '@/lib/suggestions';
+import { generateProductCode } from '@/lib/products/productCode';
 import { useSuggestions } from '@/lib/useSuggestions';
 import { formatVND } from '@/utils/format';
 import { sortCategoryNames } from '@/config/categoryOrder';
@@ -215,13 +218,16 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
     setDuplicatingId(p.id);
     setMessage('');
     try {
-      const copyCode = `${p.code}-COPY-${String(Date.now()).slice(-4)}`;
+      // Mã bản sao render theo thời gian (giống lúc tạo mới), không dính "-COPY-".
+      const copyCode = generateProductCode(true);
+      // Giữ nguyên tên gốc; gỡ mọi tiền tố "Copy:" cũ để bản sao không bao giờ dính chữ "Copy".
+      const cleanName = p.name.replace(/^\s*copy\s*:\s*/i, '').trim() || p.name;
       const saved = await saveProduct({
         ...p,
         id: undefined,
         numericId: undefined,
         code: copyCode,
-        name: `Copy: ${p.name}`,
+        name: cleanName,
         isFeatured: false,
         createdAt: undefined,
         updatedAt: undefined,
@@ -248,7 +254,7 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
 
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return productRecords.filter((product) => {
+    const filtered = productRecords.filter((product) => {
       const categoryOk = !selectedCategory || product.category === selectedCategory;
       const text = [
         product.code,
@@ -263,7 +269,16 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         .toLowerCase();
       return categoryOk && (!q || text.includes(q));
     });
+    // Mặc định: tự xếp theo màu (Trắc → Lim → Ghi → Xanh…); trong cùng màu giữ thứ tự đã kéo.
+    return sortProductsByColor(filtered);
   }, [productRecords, searchQuery, selectedCategory]);
+
+  // Drag reorder arranges products within the same colour group.
+  const canReorder = !searchQuery.trim() && !selectedCategory;
+  const handleReorder = async (from: number, to: number) => {
+    const nextOrder = reorderList(filteredProducts, from, to);
+    await reorderProducts(nextOrder.map((product) => product.id));
+  };
 
   const handleSave: typeof saveProduct = async (input) => {
     const saved = await saveProduct(input);
@@ -370,6 +385,8 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         loading={loading}
         totalCount={productRecords.length}
         duplicatingId={duplicatingId}
+        reorderable={canReorder}
+        onReorder={(from, to) => void handleReorder(from, to)}
         onEdit={openEdit}
         onDelete={handleDelete}
         onDuplicate={(product) => void handleDuplicate(product)}

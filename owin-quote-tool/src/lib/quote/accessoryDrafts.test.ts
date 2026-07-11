@@ -46,6 +46,24 @@ describe('fixed accessory draft normalization', () => {
     expect(reparsed.items.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('keeps a newly added blank món even when the package already has named items', () => {
+    // Regression: "Thêm món" used to vanish because parse dropped blank rows when named ones existed.
+    const existing = parseFixedAccessoriesJson(JSON.stringify({
+      name: 'Bộ phụ kiện cửa',
+      items: [
+        { id: 'a', name: 'Khóa', quantity: 0 },
+        { id: 'b', name: 'Bản lề', quantity: 0 },
+      ],
+      packageQuantity: 1,
+      unitPrice: 800000,
+    }));
+    const added = addEmptyFixedAccessoryItem(existing);
+    const json = serializeFixedAccessoriesJson(added, { keepEmpty: true });
+    const reparsed = parseFixedAccessoriesJson(json, 1);
+    expect(reparsed.items).toHaveLength(3);
+    expect(reparsed.items.filter((item) => item.name === '')).toHaveLength(1);
+  });
+
   it('adds blank extra accessory rows with quantity 0 and stable ids', () => {
     const next = addEmptyAccessoryDraft([]);
     expect(next).toHaveLength(1);

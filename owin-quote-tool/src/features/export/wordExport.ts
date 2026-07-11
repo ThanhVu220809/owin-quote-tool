@@ -467,6 +467,23 @@ function fixedPackageDescription(fixed: Record<string, unknown>): string {
 }
 
 /** Build ordered document rows for one quote item (REFERENCE print-group shape). */
+/**
+ * Estimate an item block's content height in EMU from its description lines, so the
+ * merged image can fill ~95% of the (content-driven) image cell. More specs/accessories
+ * → taller block → bigger image; a sparse item gets a smaller image. This is why the
+ * resize differs per product/category.
+ */
+const QUOTE_LINE_EMU = 175_000; // ~ one description line
+const QUOTE_ROW_PAD_EMU = 55_000; // cell padding per row
+function estimateQuoteBlockHeightEmu(rows: QuoteDocDataRow[]): number {
+  let total = 0;
+  for (const row of rows) {
+    const lines = Math.max(1, String(row.description || '').split('\n').filter(Boolean).length);
+    total += lines * QUOTE_LINE_EMU + QUOTE_ROW_PAD_EMU;
+  }
+  return total;
+}
+
 function buildQuoteItemDocRows(
   item: CalculatedQuote['items'][number],
   itemIndex: number,
@@ -862,10 +879,17 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
     const dataRows = buildQuoteItemDocRows(item, itemIndex);
     if (dataRows.length === 0) continue;
 
-    // Image once per item block — EMU caps from real REF quote export (column 95% contain).
+    // Image once per item block — fill 95% of the image column width, and up to ~95% of
+    // the content-driven cell height (so it grows with the block instead of leaving a gap,
+    // yet never stretches a sparse block). Height auto-varies per item/category.
+    const blockHeightEmu = estimateQuoteBlockHeightEmu(dataRows);
+    const imageMaxCy = Math.min(
+      QUOTE_IMG_PAGE_SAFE_MAX_CY,
+      Math.max(Math.round(QUOTE_IMG_MAX_CX * 0.9), Math.round(blockHeightEmu * 0.95)),
+    );
     const imageXml = await embedImage(item.image || item.coverImagePath, {
       maxCx: QUOTE_IMG_MAX_CX,
-      maxCy: Math.min(QUOTE_IMG_PAGE_SAFE_MAX_CY, Math.round(QUOTE_IMG_MAX_CX * 1.4)),
+      maxCy: imageMaxCy,
       geometry: 'roundRect',
       fallbackLogo: true,
     });
@@ -966,6 +990,28 @@ function renderCatalogueAccessoryRow(template: string, row: CatalogueBlockRow): 
   return ensureBoldFontRuns(applyCatalogueVerticalMerges(removeLeftoverTokens(xml), 'continue'));
 }
 
+/**
+ * Height (twips) of the image cell for the product at `productIndex` = the product row plus
+ * its accessory rows. Row height = max(min row height, description lines × line height), so
+ * items with more specs/accessories get a taller cell → a bigger image. Lets the image fill
+ * ~95% of the *content* height instead of a fixed cap.
+ */
+const CATALOGUE_LINE_TWIPS = 260;
+const CATALOGUE_IMG_PAGE_SAFE_CY = Math.round(150 * MM_TO_EMU);
+function catalogueBlockHeightTwips(rows: CatalogueBlockRow[], productIndex: number): number {
+  const rowHeight = (row: CatalogueBlockRow): number => {
+    const lines = Math.max(1, row.descriptionLines?.length ?? 1);
+    const min = row.rowType === 'extraAccessory' ? CATALOGUE_EXTRA_ROW_HEIGHT_TWIPS : CATALOGUE_PRODUCT_ROW_HEIGHT_TWIPS;
+    return Math.max(min, lines * CATALOGUE_LINE_TWIPS);
+  };
+  let total = rowHeight(rows[productIndex]);
+  for (let j = productIndex + 1; j < rows.length; j += 1) {
+    if (rows[j].rowType === 'product' || rows[j].rowType === 'category') break;
+    total += rowHeight(rows[j]);
+  }
+  return total;
+}
+
 export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRecord[]): Promise<string> {
   const documentFile = zip.file('word/document.xml');
   if (!documentFile) throw new Error('Template bảng giá không có word/document.xml.');
@@ -983,7 +1029,8 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
   const blocks: string[][] = [];
   let currentBlock: string[] | null = null;
 
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
     if (row.rowType === 'category') {
       if (currentBlock) {
         blocks.push(currentBlock);
@@ -992,13 +1039,20 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
       blocks.push([ensureCantSplit(renderCatalogueCategoryRow(templates.category.row, row))]);
     } else if (row.rowType === 'product') {
       if (currentBlock) blocks.push(currentBlock);
-      const imageKey = row.imagePath || `__logo__${row.productCode}`;
+      // Image fills 95% of the column width and up to ~95% of the content cell height
+      // (product + accessory rows), so it grows with the block instead of leaving a gap.
+      const blockEmu = catalogueBlockHeightTwips(rows, i) * DXA_TO_EMU;
+      const imageMaxCy = Math.min(
+        CATALOGUE_IMG_PAGE_SAFE_CY,
+        Math.max(CATALOGUE_IMG_MAX_CY, Math.round(blockEmu * 0.95)),
+      );
+      // Cache per image + height bucket so the same photo isn't re-embedded needlessly.
+      const imageKey = `${row.imagePath || `__logo__${row.productCode}`}::${imageMaxCy}`;
       let imageXml = imageCache.get(imageKey);
       if (!imageCache.has(imageKey)) {
-        // Real REF catalogue: max 42mm x 38mm EMU contain-fit, rect geometry (not roundRect).
         imageXml = await embedImage(row.imagePath || 'owin-user-assets/logo/logo.webp', {
           maxCx: CATALOGUE_IMG_MAX_CX,
-          maxCy: CATALOGUE_IMG_MAX_CY,
+          maxCy: imageMaxCy,
           geometry: 'rect',
           fallbackLogo: true,
         });
@@ -1035,6 +1089,9 @@ export async function renderBangGiaDocumentXml(zip: PizZip, products: ProductRec
   documentXml = ensureAllTablesBold(removeLeftoverTokens(documentXml));
   documentXml = replaceCatalogueHeaderTables(documentXml);
   documentXml = normalizeCatalogueLayout(documentXml);
+  // Header (logo · tiêu đề · dòng cột) chỉ hiện 1 lần ở đầu — bỏ lặp lại mỗi trang.
+  // Ranh giới các trang sau do "hàng nhóm" (I. CỬA CHÍNH…) đảm nhận.
+  documentXml = documentXml.replace(/<w:tblHeader\b[^>]*\/>/g, '');
   return ensureBoldFontRuns(documentXml);
 }
 

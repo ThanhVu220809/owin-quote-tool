@@ -966,7 +966,8 @@
   align-items: end;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(150px, 0.85fr) minmax(170px, 1fr) 104px;
+  /* [tay kéo] [Tên ngắn] [Giá trị rộng] [xóa] — kéo thả để đổi thứ tự, bỏ nút lên/xuống. */
+  grid-template-columns: 30px minmax(104px, 0.5fr) minmax(210px, 1.7fr) 40px;
 }
 .spec-table-head {
   color: var(--owin-ink-muted);
@@ -1054,13 +1055,22 @@
 .accessory-items { display: grid; gap: 8px; margin-bottom: 10px; }
 .accessory-item-line {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 84px 104px;
+  /* [tay kéo] [số thứ tự] [tên] [SL] [xóa] */
+  grid-template-columns: 26px 26px minmax(0, 1fr) 78px 40px;
   gap: 8px;
   align-items: end;
 }
 .accessory-item-line .field,
 .extra-accessory-line .field,
 .legacy-accessory-row .field { margin-bottom: 0; }
+/* Tên phụ kiện gọn lại (font nhỏ, dòng thấp) để không lấn phần thông số kỹ thuật. */
+.accessory-editor-panel .accessory-item-line .input,
+.accessory-editor-panel > .field .input {
+  font-size: 13px;
+  min-height: 36px;
+  padding: 7px 10px;
+}
+.accessory-item-line { gap: 6px; }
 .line-index {
   width: 24px;
   height: 24px;
@@ -1114,7 +1124,8 @@
 .extra-accessory-head,
 .extra-accessory-line {
   display: grid;
-  grid-template-columns: minmax(210px, 1.45fr) 78px 68px 82px minmax(122px, 1fr) minmax(132px, 1fr) 104px;
+  /* [tay kéo] [tên] [DV] [SL] [KL] [đơn giá] [thành tiền] [xóa] */
+  grid-template-columns: 26px minmax(200px, 1.45fr) 78px 68px 82px minmax(122px, 1fr) minmax(132px, 1fr) 40px;
   gap: 8px;
   align-items: end;
   min-width: 900px;
@@ -1146,6 +1157,42 @@
 .icon-btn:disabled {
   cursor: not-allowed;
   opacity: 0.38;
+}
+
+/* ───────────── Kéo-thả đổi thứ tự (thay nút lên/xuống) ───────────── */
+.drag-handle {
+  cursor: grab;
+  color: var(--owin-ink-muted);
+  align-self: center;
+  touch-action: none;
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
+.icon-btn.drag-handle:hover {
+  color: var(--owin-action);
+  background: rgba(0, 102, 204, 0.08);
+}
+[data-dragging] {
+  opacity: 0.45;
+}
+.spec-editor-row[data-drag-over],
+.accessory-item-line[data-drag-over],
+.extra-accessory-line[data-drag-over],
+.quote-item-drop[data-drag-over] {
+  outline: 2px dashed var(--owin-action);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+.quote-item-drop[data-drag-over] {
+  background: rgba(0, 102, 204, 0.04);
+}
+.product-drag-cell {
+  width: 36px;
+  text-align: center;
+}
+.product-table tbody tr[data-drag-over] td {
+  box-shadow: inset 0 2px 0 0 var(--owin-action);
 }
 @media (max-width: 1180px) {
   .product-basic-grid {
@@ -1495,6 +1542,21 @@
   display: grid;
   gap: 4px;
   min-width: 0;
+  /* Whole row is a tap target to open the editor — reset the native button chrome. */
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 6px 4px;
+  margin: -6px -4px;
+  border-radius: 12px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.quote-item-locked-main:hover {
+  background: rgba(10, 132, 255, 0.06);
 }
 .quote-item-locked-title {
   align-items: baseline;
@@ -1527,6 +1589,7 @@
 }
 .quote-item-locked-total {
   color: var(--owin-primary);
+  font-size: 16px;
   font-weight: 850;
 }
 .quote-item-locked-actions {
@@ -1541,18 +1604,18 @@
   border-radius: 999px;
   gap: 6px;
 }
-.quote-item-confirm-bar {
-  align-items: center;
+.quote-item-collapse-btn {
+  width: 100%;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  font-size: 16px;
+  font-weight: 750;
   border-top: 1px solid var(--owin-border);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: space-between;
-  padding-top: 12px;
 }
-.quote-item-confirm-bar .product-sub {
-  flex: 1 1 220px;
-  margin: 0;
+.quote-item-basic-grid-name-only {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 .quote-item-card > * {
   max-width: 100%;
@@ -1637,12 +1700,18 @@
   overflow: hidden;
   padding: 12px;
 }
-.quote-accessory-grid,
-.quote-item-config-grid {
+.quote-accessory-grid {
   align-items: start;
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+/* Thông số kỹ thuật + bộ phụ kiện xếp dọc, mỗi khối rộng hết hàng để dễ đọc/nhập. */
+.quote-item-config-grid {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
 }
 .quote-item-extra {
   min-width: 0;
@@ -1697,15 +1766,10 @@
   }
   .quote-item-locked-actions {
     grid-column: 1 / -1;
-    justify-content: flex-start;
+    justify-content: stretch;
   }
-  .quote-item-confirm-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .quote-item-confirm-bar .btn {
-    width: 100%;
-    justify-content: center;
+  .quote-item-locked-actions .btn-sm {
+    flex: 1;
   }
 }
 

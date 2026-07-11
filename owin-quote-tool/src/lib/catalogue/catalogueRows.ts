@@ -1,5 +1,6 @@
 import type { ProductRecord } from '@/types/models';
 import { categoryOrderIndex, normalizeCategoryName, sortCategoryNames } from '@/config/categoryOrder';
+import { productColorRank } from '@/lib/products/productSort';
 import { buildCatalogueMoneyBlocks, formatCatalogueDecimal } from './catalogueMoney';
 
 export type CatalogueBlockRowType = 'category' | 'product' | 'accessory' | 'extraAccessory';
@@ -161,6 +162,9 @@ export function buildCatalogueBlockRows(products: ProductRecord[]): CatalogueBlo
   const sortedProducts = [...products].sort((a, b) => {
     const categorySort = categoryOrderIndex(a.category) - categoryOrderIndex(b.category);
     if (categorySort !== 0) return categorySort;
+    // Trong mỗi nhóm: xếp theo màu (Trắc → Lim → Ghi → Xanh…) như danh sách sản phẩm.
+    const colorSort = productColorRank(a) - productColorRank(b);
+    if (colorSort !== 0) return colorSort;
     if ((a.numericId || 0) !== (b.numericId || 0)) return (a.numericId || 0) - (b.numericId || 0);
     return a.name.localeCompare(b.name, 'vi');
   });

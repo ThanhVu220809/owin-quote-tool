@@ -1,6 +1,7 @@
 import { Copy, Eye, Package, Pencil, Trash2 } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { formatVND } from '@/utils/format';
+import { DragHandle, useDragReorder } from '@/components/DragReorder';
 import { ProductThumb } from './ProductThumb';
 
 interface Props {
@@ -8,6 +9,9 @@ interface Props {
   loading?: boolean;
   totalCount?: number;
   duplicatingId?: string | null;
+  /** Enable drag-to-reorder (only when the list is unfiltered). */
+  reorderable?: boolean;
+  onReorder?: (from: number, to: number) => void;
   onEdit: (p: ProductRecord) => void;
   onDelete: (p: ProductRecord) => void;
   onDuplicate: (p: ProductRecord) => void;
@@ -25,11 +29,14 @@ export function ProductList({
   loading,
   totalCount,
   duplicatingId,
+  reorderable,
+  onReorder,
   onEdit,
   onDelete,
   onDuplicate,
   onPreview,
 }: Props) {
+  const { handleProps, rowProps } = useDragReorder((from, to) => onReorder?.(from, to));
   if (loading) {
     return (
       <div className="product-table-card product-list-skeleton">
@@ -56,6 +63,7 @@ export function ProductList({
         <table className="product-table">
           <thead>
             <tr>
+              {reorderable && <th aria-label="Kéo để đổi thứ tự" />}
               <th>Hình ảnh</th>
               <th>Tên sản phẩm</th>
               <th>Danh mục</th>
@@ -66,8 +74,13 @@ export function ProductList({
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr key={p.id} data-ma={p.code}>
+            {products.map((p, index) => (
+              <tr key={p.id} data-ma={p.code} {...(reorderable ? rowProps(index) : {})}>
+                {reorderable && (
+                  <td className="product-drag-cell">
+                    <DragHandle {...handleProps(index)} label={`Kéo để đổi thứ tự ${p.name}`} />
+                  </td>
+                )}
                 <td>
                   <button className="product-image-button" onClick={() => onPreview(p)} aria-label={`Xem ảnh ${p.code}`}>
                     <ProductThumb imagePath={p.coverImagePath} fill />

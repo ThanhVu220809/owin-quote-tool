@@ -1,7 +1,8 @@
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import type { ProductUnit } from '@/types/models';
 import { AutoSuggestInput } from './AutoSuggestInput';
 import { CurrencyInput } from './CurrencyInput';
+import { DragHandle, reorderList, useDragReorder } from './DragReorder';
 import { formatVND } from '@/utils/format';
 import {
   addEmptyAccessoryDraft,
@@ -16,14 +17,6 @@ import {
 interface AccessoryEditorSuggestions {
   accessoryName: string[];
   packageName?: string[];
-}
-
-function moveRow<T>(rows: T[], index: number, direction: -1 | 1): T[] {
-  const target = index + direction;
-  if (target < 0 || target >= rows.length) return rows;
-  const next = [...rows];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
 }
 
 function reindexExtraAccessories(rows: ExtraAccessoryDraft[]): ExtraAccessoryDraft[] {
@@ -43,6 +36,9 @@ export function FixedAccessoryPackageEditor({
 }) {
   const total = calculateFixedAccessoryDraftTotal(value);
   const patch = (next: Partial<FixedAccessoryDraft>) => onChange(updateFixedAccessoryDraft(value, next));
+  const { handleProps, rowProps } = useDragReorder((from, to) =>
+    patch({ items: reorderList(value.items, from, to) }),
+  );
 
   return (
     <div className="editor-panel accessory-editor-panel">
@@ -72,7 +68,8 @@ export function FixedAccessoryPackageEditor({
           <div className="empty-line">Chưa có món phụ kiện nào trong bộ.</div>
         ) : (
           value.items.map((item, index) => (
-            <div key={item.id} className="accessory-item-line" data-row-id={item.id}>
+            <div key={item.id} className="accessory-item-line" data-row-id={item.id} {...rowProps(index)}>
+              <DragHandle {...handleProps(index)} label="Kéo để đổi thứ tự món" />
               <span className="line-index">{index + 1}</span>
               <AutoSuggestInput
                 label="Tên món trong bộ"
@@ -101,24 +98,6 @@ export function FixedAccessoryPackageEditor({
                 />
               </div>
               <div className="row-action-group">
-                <button
-                  className="icon-btn"
-                  type="button"
-                  disabled={index === 0}
-                  onClick={() => patch({ items: moveRow(value.items, index, -1) })}
-                  aria-label="Đưa món phụ kiện lên"
-                >
-                  <ChevronUp size={15} />
-                </button>
-                <button
-                  className="icon-btn"
-                  type="button"
-                  disabled={index === value.items.length - 1}
-                  onClick={() => patch({ items: moveRow(value.items, index, 1) })}
-                  aria-label="Đưa món phụ kiện xuống"
-                >
-                  <ChevronDown size={15} />
-                </button>
                 <button
                   className="icon-btn danger"
                   type="button"
@@ -174,6 +153,9 @@ export function ExtraAccessoriesEditor({
   title?: string;
 }) {
   const total = value.reduce((sum, item) => sum + item.amount, 0);
+  const { handleProps, rowProps } = useDragReorder((from, to) =>
+    onChange(reindexExtraAccessories(reorderList(value, from, to))),
+  );
 
   return (
     <div className="editor-panel accessory-editor-panel">
@@ -193,6 +175,7 @@ export function ExtraAccessoriesEditor({
       ) : (
         <div className="extra-accessory-table">
           <div className="extra-accessory-head">
+            <span />
             <span>Tên phụ kiện</span>
             <span>DV</span>
             <span>SL</span>
@@ -202,7 +185,8 @@ export function ExtraAccessoriesEditor({
             <span />
           </div>
           {value.map((item, index) => (
-            <div key={item.id} className="extra-accessory-line" data-row-id={item.id}>
+            <div key={item.id} className="extra-accessory-line" data-row-id={item.id} {...rowProps(index)}>
+              <DragHandle {...handleProps(index)} label="Kéo để đổi thứ tự phụ kiện" />
               <AutoSuggestInput
                 label="Tên phụ kiện phát sinh"
                 fieldKey="extra_accessory_name"
@@ -266,24 +250,6 @@ export function ExtraAccessoriesEditor({
                 <div className="readonly-money">{formatVND(item.amount)}</div>
               </div>
               <div className="row-action-group">
-                <button
-                  className="icon-btn"
-                  type="button"
-                  disabled={index === 0}
-                  onClick={() => onChange(reindexExtraAccessories(moveRow(value, index, -1)))}
-                  aria-label="Đưa phụ kiện phát sinh lên"
-                >
-                  <ChevronUp size={15} />
-                </button>
-                <button
-                  className="icon-btn"
-                  type="button"
-                  disabled={index === value.length - 1}
-                  onClick={() => onChange(reindexExtraAccessories(moveRow(value, index, 1)))}
-                  aria-label="Đưa phụ kiện phát sinh xuống"
-                >
-                  <ChevronDown size={15} />
-                </button>
                 <button
                   className="icon-btn danger"
                   type="button"

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import type {
   ProductAccessoryRecord,
   ProductRecord,
@@ -22,6 +22,8 @@ import {
   serializeFixedAccessoriesJson,
 } from '@/lib/quote/accessoryDrafts';
 import { DEFAULT_SPEC_KEYS, suggestionTypesForSpecKey } from '@/lib/suggestions';
+import { generateProductCode } from '@/lib/products/productCode';
+import { DragHandle, reorderList, useDragReorder } from '@/components/DragReorder';
 
 type SpecDraft = ProductSpecRecord & { id: string };
 
@@ -132,27 +134,6 @@ function calculateSampleQuantity(unit: ProductUnit, width: string, height: strin
   return 1;
 }
 
-function generateProductCode(): string {
-  const now = new Date();
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return [
-    now.getFullYear(),
-    pad(now.getMonth() + 1),
-    pad(now.getDate()),
-    pad(now.getHours()),
-    pad(now.getMinutes()),
-    pad(now.getSeconds()),
-  ].join('');
-}
-
-function moveRow<T>(rows: T[], index: number, direction: -1 | 1): T[] {
-  const target = index + direction;
-  if (target < 0 || target >= rows.length) return rows;
-  const next = [...rows];
-  [next[index], next[target]] = [next[target], next[index]];
-  return next;
-}
-
 export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const initialSize = parseRawSizeText(editing?.rawSizeText);
   const [name, setName] = useState(editing?.name ?? '');
@@ -187,8 +168,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
 
   const updateSpec = (index: number, patch: Partial<ProductSpecRecord>) =>
     setSpecs((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-  const moveSpec = (index: number, direction: -1 | 1) =>
-    setSpecs((rows) => moveRow(rows, index, direction));
+  const specDrag = useDragReorder((from, to) => setSpecs((rows) => reorderList(rows, from, to)));
 
   const specValueSuggestions = (key: string) => {
     const types = suggestionTypesForSpecKey(key);
@@ -263,6 +243,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
         extraAccessories: extraAccessoriesJson,
         isFeatured: editing?.isFeatured ?? false,
         isPublic: editing?.isPublic ?? true,
+        sortOrder: editing?.sortOrder,
         folderPath: editing?.folderPath ?? null,
         createdAt: editing?.createdAt,
       });
@@ -347,13 +328,15 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
             }
           />
           <div className="spec-table-head">
+            <span />
             <span>Tên thông số</span>
             <span>Giá trị</span>
             <span />
           </div>
           <div className="spec-row-list">
             {specs.map((spec, index) => (
-              <div key={spec.id} className="spec-editor-row" data-row-id={spec.id}>
+              <div key={spec.id} className="spec-editor-row" data-row-id={spec.id} {...specDrag.rowProps(index)}>
+                <DragHandle {...specDrag.handleProps(index)} label="Kéo để đổi thứ tự thông số" />
                 <AutoSuggestInput
                   label="Tên"
                   fieldKey="spec_key"
@@ -369,12 +352,6 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
                   suggestions={specValueSuggestions(spec.key)}
                 />
                 <div className="row-action-group">
-                  <button className="icon-btn" type="button" disabled={index === 0} onClick={() => moveSpec(index, -1)} aria-label="Đưa thông số lên">
-                    <ChevronUp size={15} />
-                  </button>
-                  <button className="icon-btn" type="button" disabled={index === specs.length - 1} onClick={() => moveSpec(index, 1)} aria-label="Đưa thông số xuống">
-                    <ChevronDown size={15} />
-                  </button>
                   <button
                     className="icon-btn danger"
                     type="button"
