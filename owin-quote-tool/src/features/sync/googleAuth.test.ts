@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 async function setupTokenClient(onRequest: (config: TokenClientConfig) => void) {
-  vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'test-client-id');
+  vi.stubEnv('VITE_GOOGLE_CLIENT_ID', '123456789-abcdef.apps.googleusercontent.com');
   let config: TokenClientConfig | null = null;
   const requestAccessToken = vi.fn(() => {
     if (!config) throw new Error('Token client chưa khởi tạo');
@@ -62,11 +62,13 @@ describe('requestOneTimeGoogleToken', () => {
 
 describe('ensureToken', () => {
   it('tự lấy access token mới từ backend và dùng lại trong RAM, không mở popup', async () => {
-    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'test-client-id');
+    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', '123456789-abcdef.apps.googleusercontent.com');
     vi.stubEnv('VITE_BACKEND_URL', 'https://backend.example.test');
     vi.stubEnv('VITE_SHARED_SECRET', 'test-secret');
     const fetchMock = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({ access_token: 'restored-token', expires_in: 3600 }),
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: () => Promise.resolve(JSON.stringify({ access_token: 'restored-token', expires_in: 3600 })),
     });
     vi.stubGlobal('fetch', fetchMock);
     const auth = await import('./googleAuth');

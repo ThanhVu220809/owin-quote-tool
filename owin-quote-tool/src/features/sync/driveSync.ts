@@ -12,6 +12,7 @@
 
 import type { OwinDB } from '@/types/models';
 import { ensureToken } from './googleAuth';
+import { parseApiResponse } from './apiResponse';
 
 const DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -43,7 +44,7 @@ export async function findFileMetadata(name: string, token?: string): Promise<Dr
   const url = `${DRIVE_FILES}?spaces=appDataFolder&q=${q}&fields=files(id,name,modifiedTime,version,md5Checksum)`;
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error('Không đọc được metadata Google Drive: ' + res.status);
-  const data = await res.json();
+  const data = await parseApiResponse<{ files?: DriveFileMetadata[] }>(res);
   return data.files?.[0] ?? null;
 }
 
@@ -58,7 +59,7 @@ export async function downloadDB(token?: string): Promise<OwinDB | null> {
   const headers = await authHeader(token);
   const res = await fetch(`${DRIVE_FILES}/${id}?alt=media`, { headers });
   if (!res.ok) return null;
-  return res.json();
+  return parseApiResponse<OwinDB>(res);
 }
 
 /** Tạo/ghi đè owin_db.json (multipart: metadata + nội dung). */

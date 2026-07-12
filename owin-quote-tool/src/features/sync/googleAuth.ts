@@ -14,7 +14,9 @@
  *   <script src="https://accounts.google.com/gsi/client" async defer></script>
  */
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
+import { getGoogleClientId, getValidatedGoogleClientId, isValidGoogleClientId } from './googleClientId';
+import { parseApiResponse } from './apiResponse';
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
 const SHARED_SECRET = import.meta.env.VITE_SHARED_SECRET ?? '';
 const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
@@ -22,9 +24,13 @@ const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 let accessToken: string | null = null;
 let tokenExpiryMs = 0;
 
-/** Đã cấu hình đủ env chưa (để UI biết có nên hiện nút Kết nối không). */
+/**
+ * Đã cấu hình đủ env chưa (để UI biết có nên hiện nút Kết nối không).
+ * Client ID phải ĐÚNG ĐỊNH DẠNG — cấu hình sai coi như chưa cấu hình để CHẶN mọi
+ * lời gọi backend/Drive khi OAuth chắc chắn sẽ lỗi.
+ */
 export function isConfigured(): boolean {
-  return Boolean(CLIENT_ID && BACKEND_URL && SHARED_SECRET);
+  return Boolean(isValidGoogleClientId(getGoogleClientId()) && BACKEND_URL && SHARED_SECRET);
 }
 
 interface BackendResponse {
@@ -59,7 +65,7 @@ async function callBackend(payload: Record<string, unknown>): Promise<BackendRes
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ ...payload, shared_secret: SHARED_SECRET }),
   });
-  return res.json();
+  return parseApiResponse<BackendResponse>(res);
 }
 
 /**
@@ -68,13 +74,20 @@ async function callBackend(payload: Record<string, unknown>): Promise<BackendRes
  */
 export function connectGoogle(): Promise<string> {
   return new Promise((resolve, reject) => {
+    let clientId: string;
+    try {
+      clientId = getValidatedGoogleClientId();
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error('Cấu hình Google Client ID không hợp lệ.'));
+      return;
+    }
     const g = (window as unknown as { google?: GoogleAccounts }).google;
     if (!g?.accounts?.oauth2) {
       reject(new Error('Chưa nạp Google Identity Services (GIS)'));
       return;
     }
     const codeClient = g.accounts.oauth2.initCodeClient({
-      client_id: CLIENT_ID,
+      client_id: clientId,
       scope: SCOPE,
       ux_mode: 'popup',
       access_type: 'offline',
@@ -109,8 +122,11 @@ export function connectGoogle(): Promise<string> {
  */
 export function requestOneTimeGoogleToken(): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (!CLIENT_ID) {
-      reject(new Error('Chưa cấu hình Google Client ID.'));
+    let clientId: string;
+    try {
+      clientId = getValidatedGoogleClientId();
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error('Cấu hình Google Client ID không hợp lệ.'));
       return;
     }
 
@@ -121,7 +137,7 @@ export function requestOneTimeGoogleToken(): Promise<string> {
     }
 
     const tokenClient = g.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
+      client_id: clientId,
       scope: SCOPE,
       prompt: 'select_account consent',
       callback: (response: { access_token?: string; error?: string }) => {
