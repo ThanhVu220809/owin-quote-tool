@@ -7,6 +7,7 @@ import { aluminumEstimatorStore } from '@/features/aluminum/aluminumEstimatorSto
 
 const mocks = vi.hoisted(() => ({
   downloadDB: vi.fn(),
+  getDBMetadata: vi.fn(),
   uploadDB: vi.fn(),
   syncReferencedImages: vi.fn(),
 }));
@@ -17,6 +18,7 @@ vi.mock('./googleAuth', () => ({
 
 vi.mock('./driveSync', () => ({
   downloadDB: mocks.downloadDB,
+  getDBMetadata: mocks.getDBMetadata,
   uploadDB: mocks.uploadDB,
 }));
 
@@ -36,6 +38,7 @@ describe('syncNow image staging', () => {
       aluminumEstimatorStore.clear(),
     ]);
     mocks.downloadDB.mockResolvedValue(null);
+    mocks.getDBMetadata.mockResolvedValue({ id: 'db-1', name: 'owin_db.json', modifiedTime: '2026-07-12T00:00:00.000Z', version: '1' });
     mocks.uploadDB.mockResolvedValue(undefined);
     mocks.syncReferencedImages.mockResolvedValue({ count: 1, errors: 0 });
     await saveProduct({ id: 'P1', ma: 'P1', ten: 'Cửa P1', dvt: 'm²', donGiaGoc: 1_000_000 });
@@ -49,5 +52,24 @@ describe('syncNow image staging', () => {
     await syncNow();
     expect(mocks.syncReferencedImages).toHaveBeenCalledTimes(1);
     expect(mocks.uploadDB).toHaveBeenCalledTimes(2);
+  });
+
+  it('metadata không đổi thì polling không tải toàn bộ DB', async () => {
+    const { checkRemoteChanges, saveRemoteSignature } = await import('./syncEngine');
+    await saveRemoteSignature('db-1:2026-07-12T00:00:00.000Z:1');
+    const result = await checkRemoteChanges();
+    expect(result).toEqual({ state: 'unchanged' });
+    expect(mocks.downloadDB).not.toHaveBeenCalled();
+  });
+
+  it('metadata đổi thì tải remote rồi merge và upload kết quả', async () => {
+    const { checkRemoteChanges, syncNow, saveRemoteSignature } = await import('./syncEngine');
+    await saveRemoteSignature('old:old:1');
+    expect(await checkRemoteChanges()).toMatchObject({ state: 'changed' });
+    mocks.downloadDB.mockResolvedValue({ schemaVersion: 2, systems: [], products: [], quotes: [], suggestions: [], aluminumCalculations: [] });
+    const result = await syncNow(undefined, { includeImages: false });
+    expect(result.state).toBe('done');
+    expect(mocks.downloadDB).toHaveBeenCalledTimes(1);
+    expect(mocks.uploadDB).toHaveBeenCalledTimes(1);
   });
 });

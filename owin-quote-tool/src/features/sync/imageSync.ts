@@ -1,7 +1,8 @@
 import type { ProductRecord, QuoteRecord } from '@/types/models';
 import { getImage, getQuoteImage, saveImage, saveQuoteImage } from '@/utils/imageStorage';
 import { imageStoreKeyFromPath } from '@/utils/imagePaths';
-import { downloadImage, uploadImage } from './driveSync';
+import { downloadImage, findFileMetadata, uploadImage } from './driveSync';
+import localforage from 'localforage';
 
 export interface ImageSyncResult {
   count: number;
@@ -9,6 +10,11 @@ export interface ImageSyncResult {
 }
 
 const IMAGE_SYNC_CONCURRENCY = 4;
+const imageMetaStore = localforage.createInstance({
+  name: 'owin-quote-tool',
+  storeName: 'sync-image-meta',
+  driver: localforage.INDEXEDDB,
+});
 
 async function processImageKeys(
   keys: string[],
@@ -118,14 +124,28 @@ export async function syncReferencedImages(
 ): Promise<ImageSyncResult> {
   return processImageKeys(collectReferencedImageKeys(products, quotes), async (key) => {
     const local = await getLocalImageBlob(key);
+    const remoteMeta = await findFileMetadata(`img_${key}`, token);
+    const lastRemoteModified = await imageMetaStore.getItem<string>(key);
+
+    // Remote changed since the last successful image sync: pull it before any upload.
+    if (remoteMeta && remoteMeta.modifiedTime && remoteMeta.modifiedTime !== lastRemoteModified) {
+      const remote = await downloadImage(key, token);
+      if (!remote) return false;
+      await saveLocalImageBlob(key, remote);
+      await imageMetaStore.setItem(key, remoteMeta.modifiedTime);
+      return true;
+    }
     if (local) {
       await uploadImage(key, local, token);
+      const refreshed = await findFileMetadata(`img_${key}`, token);
+      await imageMetaStore.setItem(key, refreshed?.modifiedTime ?? remoteMeta?.modifiedTime ?? '');
       return true;
     }
 
     const remote = await downloadImage(key, token);
     if (!remote) return false;
     await saveLocalImageBlob(key, remote);
+    await imageMetaStore.setItem(key, remoteMeta?.modifiedTime ?? '');
     return true;
   });
 }

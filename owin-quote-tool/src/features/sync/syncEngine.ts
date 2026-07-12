@@ -23,7 +23,7 @@ import {
   normalizeAluminumCalculationRecord,
 } from '@/features/aluminum/aluminumEstimatorStorage';
 import { mergeEntities, type Conflict } from './merge';
-import { downloadDB, uploadDB } from './driveSync';
+import { downloadDB, getDBMetadata, uploadDB } from './driveSync';
 import { isConfigured } from './googleAuth';
 import { clearQueue } from './syncQueue';
 import { notifyProductsChanged } from '@/features/products/productEvents';
@@ -41,6 +41,7 @@ const BASE_PRODUCTS_KEY = 'lastSyncProducts';
 const BASE_QUOTES_KEY = 'lastSyncQuotes';
 const BASE_SUGGESTIONS_KEY = 'lastSyncSuggestions';
 const BASE_ALUMINUM_KEY = 'lastSyncAluminumCalculations';
+const REMOTE_SIGNATURE_KEY = 'lastSyncRemoteSignature';
 
 async function loadBaseProducts(): Promise<ProductRecord[]> {
   return (await metaStore.getItem<ProductRecord[]>(BASE_PRODUCTS_KEY)) ?? [];
@@ -76,13 +77,57 @@ function normalizeRemoteAluminum(records: unknown): AluminumCalculationRecord[] 
 
 export type SyncStatus =
   | { state: 'skipped'; reason: 'offline' | 'not-configured' }
+  | { state: 'unchanged' }
   | { state: 'need-relogin' }
-  | { state: 'conflict'; conflicts: Conflict<ProductRecord>[]; merged: ProductRecord[] }
+  | {
+      state: 'conflict';
+      conflicts: Conflict<ProductRecord>[];
+      quoteConflicts: Conflict<QuoteRecord>[];
+      merged: ProductRecord[];
+      mergedQuotes: QuoteRecord[];
+    }
+  | { state: 'error'; message: string; imageErrors?: number }
   | { state: 'done'; pushed: number; images?: number; imageErrors?: number };
 
 export interface SyncOptions {
   /** Auto-save metadata có thể hoãn ảnh sang nhịp idle dài hơn để không làm chậm UI. */
   includeImages?: boolean;
+  /** Bắt buộc xác nhận rõ ràng trước thao tác ghi đè toàn bộ. */
+  confirmed?: boolean;
+}
+
+export interface ResolvedSync {
+  products: ProductRecord[];
+  quotes?: QuoteRecord[];
+}
+
+export async function loadRemoteSignature(): Promise<string | null> {
+  return (await metaStore.getItem<string>(REMOTE_SIGNATURE_KEY)) ?? null;
+}
+
+export async function saveRemoteSignature(signature: string | null): Promise<void> {
+  if (signature) await metaStore.setItem(REMOTE_SIGNATURE_KEY, signature);
+  else await metaStore.removeItem(REMOTE_SIGNATURE_KEY);
+}
+
+function remoteSignature(metadata: { id: string; modifiedTime?: string; version?: string }): string {
+  return [metadata.id, metadata.modifiedTime ?? '', metadata.version ?? ''].join(':');
+}
+
+/** Chỉ đọc metadata Drive; không tải JSON hay ảnh khi file chưa đổi. */
+export async function checkRemoteChanges(): Promise<
+  | { state: 'skipped'; reason: 'offline' | 'not-configured' }
+  | { state: 'unchanged' }
+  | { state: 'changed'; signature: string }
+> {
+  if (!isConfigured()) return { state: 'skipped', reason: 'not-configured' };
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { state: 'skipped', reason: 'offline' };
+  }
+  const metadata = await getDBMetadata();
+  const signature = metadata ? remoteSignature(metadata) : 'missing';
+  if (signature === (await loadRemoteSignature())) return { state: 'unchanged' };
+  return { state: 'changed', signature };
 }
 
 /**
@@ -90,7 +135,7 @@ export interface SyncOptions {
  * @param resolvedMerged nếu UI đã giải quyết conflict xong, truyền mảng đã chốt để đẩy thẳng.
  */
 export async function syncNow(
-  resolvedMerged?: ProductRecord[],
+  resolvedMerged?: ProductRecord[] | ResolvedSync,
   options: SyncOptions = {},
 ): Promise<SyncStatus> {
   if (!isConfigured()) return { state: 'skipped', reason: 'not-configured' };
@@ -111,25 +156,38 @@ export async function syncNow(
     const remoteSuggestions = remoteDB?.suggestions ?? [];
     const remoteAluminum = normalizeRemoteAluminum(remoteDB?.aluminumCalculations);
 
+    let productConflicts: Conflict<ProductRecord>[] = [];
     let finalProducts: ProductRecord[];
-
-    if (resolvedMerged) {
+    if (resolvedMerged && !Array.isArray(resolvedMerged)) {
+      finalProducts = resolvedMerged.products;
+    } else if (Array.isArray(resolvedMerged)) {
       finalProducts = resolvedMerged;
     } else {
       const base = await loadBaseProducts();
       const { merged, conflicts } = mergeEntities(local, remote, base);
-      if (conflicts.length > 0) {
-        return { state: 'conflict', conflicts, merged };
-      }
+      productConflicts = conflicts;
       finalProducts = merged;
     }
 
     const quoteBase = await loadBaseQuotes();
-    const finalQuotes = mergeEntities(localQuotes, remoteQuotes, quoteBase).merged;
+    const quoteMerge = mergeEntities(localQuotes, remoteQuotes, quoteBase);
+    const finalQuotes = resolvedMerged && !Array.isArray(resolvedMerged) && resolvedMerged.quotes
+      ? resolvedMerged.quotes
+      : quoteMerge.merged;
     const suggestionBase = await loadBaseSuggestions();
     const finalSuggestions = mergeEntities(localSuggestions, remoteSuggestions, suggestionBase).merged;
     const aluminumBase = await loadBaseAluminumCalculations();
     const finalAluminum = mergeEntities(localAluminum, remoteAluminum, aluminumBase).merged;
+
+    if (productConflicts.length > 0 || quoteMerge.conflicts.length > 0) {
+      return {
+        state: 'conflict',
+        conflicts: productConflicts,
+        quoteConflicts: quoteMerge.conflicts,
+        merged: finalProducts,
+        mergedQuotes: finalQuotes,
+      };
+    }
 
     // Ghi kết quả về local + đẩy lên Drive (chỉ metadata — BR-9, ảnh đẩy riêng).
     await bulkPut(finalProducts);
@@ -140,6 +198,9 @@ export async function syncNow(
     const imageResult = options.includeImages === false
       ? { count: 0, errors: 0 }
       : await syncReferencedImages(finalProducts, finalQuotes);
+    if (imageResult.errors > 0) {
+      return { state: 'error', message: 'Đồng bộ ảnh thất bại; dữ liệu chưa được báo là đã đồng bộ.', imageErrors: imageResult.errors };
+    }
     const db: OwinDB = {
       schemaVersion: SCHEMA_VERSION,
       systems: [],
@@ -153,6 +214,8 @@ export async function syncNow(
     await saveBaseQuotes(finalQuotes);
     await saveBaseSuggestions(finalSuggestions);
     await saveBaseAluminumCalculations(finalAluminum);
+    const uploadedMetadata = await getDBMetadata();
+    await saveRemoteSignature(uploadedMetadata ? remoteSignature(uploadedMetadata) : null);
     await clearQueue();
     return {
       state: 'done',
@@ -164,16 +227,15 @@ export async function syncNow(
     if (e instanceof Error && e.message === 'NEED_RELOGIN') {
       return { state: 'need-relogin' };
     }
-    throw e;
+    return { state: 'error', message: e instanceof Error ? e.message : 'Lỗi đồng bộ' };
   }
 }
 
 /**
- * FORCE PUSH (ghi đè) — đẩy TOÀN BỘ kho local lên Drive, KHÔNG merge, KHÔNG hỏi xung đột.
- * Dùng cho auto-backup "im N giây → sao lưu": local luôn là bản đúng, Drive bị ghi đè.
- * Cập nhật luôn base = local để lần merge thủ công sau đó không thấy khác biệt (hết xung đột ảo).
+ * FORCE PUSH chỉ dành cho thao tác thủ công đã xác nhận rõ ràng; không được gọi bởi auto-sync.
  */
 export async function forcePushToDrive(options: SyncOptions = {}): Promise<SyncStatus> {
+  if (!options.confirmed) return { state: 'error', message: 'Cần xác nhận ghi đè toàn bộ dữ liệu Google Drive.' };
   if (!isConfigured()) return { state: 'skipped', reason: 'not-configured' };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { state: 'skipped', reason: 'offline' };
@@ -187,6 +249,9 @@ export async function forcePushToDrive(options: SyncOptions = {}): Promise<SyncS
 
     const imageResult =
       options.includeImages === false ? { count: 0, errors: 0 } : await syncReferencedImages(products, quotes);
+    if (imageResult.errors > 0) {
+      return { state: 'error', message: 'Ghi đè thất bại vì ảnh chưa đồng bộ.', imageErrors: imageResult.errors };
+    }
 
     const db: OwinDB = {
       schemaVersion: SCHEMA_VERSION,

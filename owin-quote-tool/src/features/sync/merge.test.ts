@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Product } from '@/types/models';
+import type { Product, QuoteRecord } from '@/types/models';
 import { mergeEntities, resolveConflict } from '@/features/sync/merge';
 
 function p(id: string, over: Partial<Product> = {}): Product {
@@ -7,6 +7,20 @@ function p(id: string, over: Partial<Product> = {}): Product {
     id, updatedAt: '2026-06-12T16:00:00.000Z', dvt: 'm²', ten: id, ma: id,
     donGiaGoc: 1000000, accessories: [], ...over,
   };
+}
+
+function q(id: string, over: Partial<QuoteRecord> = {}): QuoteRecord {
+  return {
+    id,
+    updatedAt: '2026-06-12T16:00:00.000Z',
+    code: id,
+    customerName: 'Khách hàng',
+    customerPhone: '',
+    customerAddress: '',
+    items: [],
+    snapshot: { quoteCode: id, customerName: 'Khách hàng', customerPhone: '', customerAddress: '', depositVnd: 0, items: [], summary: { subtotalProductVnd: 0, subtotalAccessoryVnd: 0, totalVnd: 0, roundedTotalVnd: 0, depositVnd: 0, balanceVnd: 0 }, createdAt: '2026-06-12T16:00:00.000Z', company: { name: '', phone: '', email: '', address: '' } },
+    ...over,
+  } as QuoteRecord;
 }
 
 describe('TEST 5.3 — merge LWW + tombstone + conflict (BR-8)', () => {
@@ -75,5 +89,14 @@ describe('TEST 5.3 — merge LWW + tombstone + conflict (BR-8)', () => {
     expect(afterRemote.find((e) => e.id === 'S1')!.ten).toBe('A-remote');
     const afterLocal = resolveConflict(merged, conflicts[0], 'local');
     expect(afterLocal.find((e) => e.id === 'S1')!.ten).toBe('A-local');
+  });
+
+  it('hai máy sửa cùng báo giá → conflict rõ ràng, không silent LWW', () => {
+    const base = [q('Q1', { customerName: 'Cũ' })];
+    const local = [q('Q1', { customerName: 'Máy A', updatedAt: '2026-06-12T16:40:00.000Z' })];
+    const remote = [q('Q1', { customerName: 'Máy B', updatedAt: '2026-06-12T16:41:00.000Z' })];
+    const result = mergeEntities(local, remote, base);
+    expect(result.conflicts).toHaveLength(1);
+    expect(result.conflicts[0]?.remote.customerName).toBe('Máy B');
   });
 });

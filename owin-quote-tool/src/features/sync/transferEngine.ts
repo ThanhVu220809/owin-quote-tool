@@ -70,6 +70,7 @@ export async function finishTransfer(
       context.localQuotes,
       context.token,
     );
+    if (errors > 0) throw new Error(`Không thể tải lên ${errors} ảnh; kho chưa được ghi đè.`);
     await uploadDB(
       buildDB(finalProducts, context.localQuotes, context.localSuggestions, context.localAluminum),
       context.token,
@@ -92,6 +93,7 @@ export async function finishTransfer(
     context.remoteQuotes,
     context.token,
   );
+  if (errors > 0) throw new Error(`Không thể tải xuống ${errors} ảnh; dữ liệu chưa báo đã đồng bộ.`);
   notifyProductsChanged();
   return {
     state: 'done',

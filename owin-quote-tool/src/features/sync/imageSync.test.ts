@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import 'fake-indexeddb/auto';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProductRecord } from '@/types/models';
 
 const mocks = vi.hoisted(() => ({
@@ -8,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   saveQuoteImage: vi.fn(),
   uploadImage: vi.fn(),
   downloadImage: vi.fn(),
+  findFileMetadata: vi.fn(),
 }));
 
 vi.mock('@/utils/imageStorage', () => ({
@@ -20,9 +22,10 @@ vi.mock('@/utils/imageStorage', () => ({
 vi.mock('./driveSync', () => ({
   uploadImage: mocks.uploadImage,
   downloadImage: mocks.downloadImage,
+  findFileMetadata: mocks.findFileMetadata,
 }));
 
-import { uploadReferencedImages } from './imageSync';
+import { syncReferencedImages, uploadReferencedImages } from './imageSync';
 
 function productWithImage(id: string): ProductRecord {
   return {
@@ -33,6 +36,10 @@ function productWithImage(id: string): ProductRecord {
 }
 
 describe('uploadReferencedImages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.findFileMetadata.mockResolvedValue(null);
+  });
   it('xử lý ảnh song song có giới hạn và vẫn tổng hợp lỗi', async () => {
     let active = 0;
     let maxActive = 0;
@@ -54,5 +61,15 @@ describe('uploadReferencedImages', () => {
     expect(maxActive).toBeGreaterThan(1);
     expect(maxActive).toBeLessThanOrEqual(4);
     expect(result).toEqual({ count: 7, errors: 1 });
+  });
+
+  it('remote có metadata mới hơn thì tải xuống, không upload đè ảnh local', async () => {
+    mocks.getImage.mockResolvedValue(new Blob(['local']));
+    mocks.findFileMetadata.mockResolvedValue({ id: 'remote-1', name: 'img_products/1/cover.webp', modifiedTime: 'remote-new' });
+    mocks.downloadImage.mockResolvedValue(new Blob(['remote']));
+    const result = await syncReferencedImages([productWithImage('1')]);
+    expect(result).toEqual({ count: 1, errors: 0 });
+    expect(mocks.downloadImage).toHaveBeenCalled();
+    expect(mocks.uploadImage).not.toHaveBeenCalled();
   });
 });

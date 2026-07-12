@@ -15,6 +15,7 @@ const drive = vi.hoisted(() => ({
   downloadImage: vi.fn(),
   uploadDB: vi.fn(),
   uploadImage: vi.fn(),
+  findFileMetadata: vi.fn(),
 }));
 
 vi.mock('./driveSync', () => drive);
@@ -43,6 +44,7 @@ beforeEach(async () => {
   drive.downloadImage.mockResolvedValue(null);
   drive.uploadDB.mockResolvedValue(undefined);
   drive.uploadImage.mockResolvedValue(undefined);
+  drive.findFileMetadata.mockResolvedValue(null);
 });
 
 describe('transferEngine - chuyển dữ liệu tài khoản Google khác', () => {

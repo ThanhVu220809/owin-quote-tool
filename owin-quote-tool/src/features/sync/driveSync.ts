@@ -18,6 +18,14 @@ const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 const DB_FILENAME = 'owin_db.json';
 const IMG_PREFIX = 'img_';
 
+export interface DriveFileMetadata {
+  id: string;
+  name: string;
+  modifiedTime?: string;
+  version?: string;
+  md5Checksum?: string;
+}
+
 async function authHeader(token?: string): Promise<Record<string, string>> {
   const t = token ?? (await ensureToken());
   return { Authorization: 'Bearer ' + t };
@@ -25,12 +33,22 @@ async function authHeader(token?: string): Promise<Record<string, string>> {
 
 /** Tìm file theo tên trong appDataFolder → trả fileId hoặc null. */
 export async function findFile(name: string, token?: string): Promise<string | null> {
+  return (await findFileMetadata(name, token))?.id ?? null;
+}
+
+/** Đọc metadata nhẹ để polling không phải tải toàn bộ JSON/ảnh. */
+export async function findFileMetadata(name: string, token?: string): Promise<DriveFileMetadata | null> {
   const headers = await authHeader(token);
   const q = encodeURIComponent(`name='${name}'`);
-  const url = `${DRIVE_FILES}?spaces=appDataFolder&q=${q}&fields=files(id,name)`;
+  const url = `${DRIVE_FILES}?spaces=appDataFolder&q=${q}&fields=files(id,name,modifiedTime,version,md5Checksum)`;
   const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error('Không đọc được metadata Google Drive: ' + res.status);
   const data = await res.json();
-  return data.files?.[0]?.id ?? null;
+  return data.files?.[0] ?? null;
+}
+
+export async function getDBMetadata(token?: string): Promise<DriveFileMetadata | null> {
+  return findFileMetadata(DB_FILENAME, token);
 }
 
 /** Tải metadata DB (owin_db.json). null nếu chưa có. */
