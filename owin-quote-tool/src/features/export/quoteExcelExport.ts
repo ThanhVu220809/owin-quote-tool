@@ -1,5 +1,7 @@
 import ExcelJS from 'exceljs';
-import type { CalculatedQuote, CalculatedQuoteItem, ProductUnit } from '@/types/models';
+import type { CalculatedQuote, CalculatedQuoteItem, ProductRecord, ProductUnit } from '@/types/models';
+import { resolveItemImage } from '@/lib/media/itemImageResolver';
+import { toExcelImage } from '@/utils/excelImage';
 import { downloadBlob } from '@/utils/download';
 
 type QuoteExcelRowKind = 'dimension' | 'accessory';
@@ -188,7 +190,7 @@ function buildQuoteExcelRows(quote: CalculatedQuote): QuoteExcelRow[] {
     }]).map((line, lineIndex) => ({
       stt: lineIndex === 0 ? String(itemIndex + 1) : '',
       productCode: lineIndex === 0 ? item.quoteItemCode || item.productCode : '',
-      imageLabel: lineIndex === 0 && (item.image || item.coverImagePath) ? 'Có ảnh' : '',
+      imageLabel: lineIndex === 0 && (item.image || item.coverImagePath || item.imageReference || item.sourceProductId) ? 'Có ảnh' : '',
       description: lineIndex === 0 ? quoteDescription(item, line.description) : String(line.description || ''),
       unit: unitLabel(line.unit),
       width: line.unit === 'BO' ? '' : optionalNumber(line.widthM),
@@ -225,7 +227,8 @@ function sanitizeFileName(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '_').trim() || 'OWIN-BG';
 }
 
-export async function exportQuoteExcel(quote: CalculatedQuote, quoteCode: string): Promise<string> {
+
+export async function exportQuoteExcel(quote: CalculatedQuote, quoteCode: string, products: ProductRecord[] = []): Promise<string> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'OWIN Quote Tool';
   const sheet = workbook.addWorksheet('Báo Giá OWIN', {
@@ -307,7 +310,7 @@ export async function exportQuoteExcel(quote: CalculatedQuote, quoteCode: string
   const mergeRanges: Array<{ startRow: number; endRow: number; column: number; vertical: 'middle' | 'top' }> = [];
   const tableRows = buildQuoteExcelRows(quote);
 
-  tableRows.forEach((row) => {
+  for (const row of tableRows) {
     const excelRow = sheet.addRow([
       row.stt,
       row.productCode,
@@ -322,6 +325,18 @@ export async function exportQuoteExcel(quote: CalculatedQuote, quoteCode: string
       row.lineTotalVnd,
     ]);
     excelRow.height = Math.max(row.imageLabel ? 64 : 24, estimateHeight(row.description) / (row.descriptionRowSpan || 1));
+    const item = row.rowType === 'dimension'
+      ? quote.items.find((candidate) => candidate.quoteItemCode === row.productCode || candidate.productCode === row.productCode)
+      : undefined;
+    if (item && row.imageLabel) {
+      const resolved = await resolveItemImage(item, products);
+      if (resolved.blob) {
+        const image = await toExcelImage(resolved.blob);
+        const imageId = workbook.addImage(image);
+        sheet.addImage(imageId, { tl: { col: 2.1, row: excelRow.number - 1 + 0.1 }, ext: { width: 92, height: 58 } });
+      }
+      if (resolved.revoke && resolved.url) URL.revokeObjectURL(resolved.url);
+    }
 
     for (let colIndex = 1; colIndex <= 11; colIndex += 1) {
       const cell = excelRow.getCell(colIndex);
@@ -351,7 +366,7 @@ export async function exportQuoteExcel(quote: CalculatedQuote, quoteCode: string
     if (row.descriptionRowSpan && row.descriptionRowSpan > 1) {
       mergeRanges.push({ startRow: excelRow.number, endRow: excelRow.number + row.descriptionRowSpan - 1, column: 4, vertical: 'top' });
     }
-  });
+  }
 
   mergeRanges.forEach(({ startRow, endRow, column, vertical }) => {
     if (endRow < tableStartRow || endRow <= startRow) return;

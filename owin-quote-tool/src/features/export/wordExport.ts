@@ -14,6 +14,7 @@ import type { CalculatedQuote, Customer, ProductRecord, ProductUnit, QuoteLine }
 import { downloadBlob } from '@/utils/download';
 import { formatSoVND } from '@/utils/format';
 import { getImageDataUrlByPath } from '@/utils/imagePaths';
+import { resolveItemImage } from '@/lib/media/itemImageResolver';
 import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue/catalogueRows';
 import { tinhDong, tinhTongBaoGia, tinhTongLamTron } from '@/features/quote/quoteCalc';
 
@@ -65,7 +66,8 @@ type ImageEmbedOptions = {
   geometry?: 'rect' | 'roundRect';
   fallbackLogo?: boolean;
 };
-type ImageEmbedder = (path: string | null | undefined, options?: ImageEmbedOptions) => Promise<string | null>;
+type ImageSource = string | Blob | null | undefined;
+type ImageEmbedder = (source: ImageSource, options?: ImageEmbedOptions) => Promise<string | null>;
 
 async function fetchTemplateZip(url: string): Promise<PizZip> {
   const response = await fetch(url);
@@ -203,6 +205,15 @@ function dataUrlToUint8Array(dataUrl: string): Uint8Array {
   return bytes;
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 function imageInfoFromDataUrl(dataUrl: string): { ext: string; contentType: string } {
   const contentType = dataUrl.match(/^data:([^;]+);base64,/i)?.[1]?.toLowerCase() || 'image/png';
   if (contentType.includes('jpeg') || contentType.includes('jpg')) return { ext: 'jpg', contentType: 'image/jpeg' };
@@ -276,9 +287,11 @@ function createImageEmbedder(zip: PizZip): ImageEmbedder {
   let nextDocPrId = 5000;
   let nextImageId = 1;
 
-  return async (path, options = {}) => {
+  return async (source, options = {}) => {
     const fallbackLogo = options.fallbackLogo !== false;
-    const dataUrl = await getImageDataUrlByPath(path, { fallbackLogo });
+    const dataUrl = source instanceof Blob
+      ? await blobToDataUrl(source)
+      : await getImageDataUrlByPath(source, { fallbackLogo });
     if (!dataUrl) return null;
     const { ext, contentType } = imageInfoFromDataUrl(dataUrl);
     const imageName = `owin-browser-${nextImageId++}.${ext}`;
@@ -889,7 +902,7 @@ function normalizeCatalogueLayout(documentXml: string): string {
   return next;
 }
 
-export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote): Promise<string> {
+export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote, products: ProductRecord[] = []): Promise<string> {
   const documentFile = zip.file('word/document.xml');
   if (!documentFile) throw new Error('Template báo giá không có word/document.xml.');
 
@@ -923,7 +936,8 @@ export async function renderQuoteDocumentXml(zip: PizZip, quote: CalculatedQuote
       QUOTE_IMG_PAGE_SAFE_MAX_CY,
       Math.max(Math.round(QUOTE_IMG_MAX_CX * 0.9), Math.round(blockHeightEmu * 0.95)),
     );
-    const imageXml = await embedImage(item.image || item.coverImagePath, {
+    const resolvedImage = await resolveItemImage(item, products);
+    const imageXml = await embedImage(resolvedImage.blob || resolvedImage.path || item.image || item.coverImagePath, {
       maxCx: QUOTE_IMG_MAX_CX,
       maxCy: imageMaxCy,
       geometry: 'roundRect',
@@ -975,9 +989,9 @@ export function buildQuoteWordData(quote: CalculatedQuote): Record<string, strin
   };
 }
 
-export async function exportQuoteWord(quote: CalculatedQuote, quoteCode: string): Promise<string> {
+export async function exportQuoteWord(quote: CalculatedQuote, quoteCode: string, products: ProductRecord[] = []): Promise<string> {
   const zip = await fetchTemplateZip(tplBaoGiaUrl);
-  const documentXml = await renderQuoteDocumentXml(zip, quote);
+  const documentXml = await renderQuoteDocumentXml(zip, quote, products);
   zip.file('word/document.xml', documentXml);
   const fileName = `Bao_gia_${quoteCode}.docx`;
   downloadBlob(generateDocxBlob(zip), fileName);
@@ -1071,7 +1085,6 @@ function catalogueWrappedLineCount(text: string): number {
     }
     if (currentWidthEm > 0) {
       lineCount += 1;
-      currentWidthEm = 0;
     }
     while (wordWidthEm > maxWidthEm) {
       lineCount += 1;

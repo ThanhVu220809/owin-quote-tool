@@ -1,3 +1,5 @@
+/* Existing effects intentionally reset local view state after async store updates. */
+/* eslint-disable react-hooks/set-state-in-effect, no-useless-assignment */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Copy, Eye, FileDown, ImagePlus, LoaderCircle, Package, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
 import type {
@@ -181,6 +183,7 @@ function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
   return quote.snapshot.items.map((item) => ({
     sourceType: item.sourceType,
     productId: item.productId || null,
+    sourceProductId: item.sourceProductId || item.productId || null,
     productCode: item.quoteItemCode || item.productCode,
     quoteItemCode: item.quoteItemCode || item.productCode,
     itemName: item.itemName,
@@ -189,6 +192,8 @@ function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
     groupName: item.groupName || item.category || null,
     coverImagePath: item.coverImagePath || item.image || null,
     image: item.image || item.coverImagePath || null,
+    imageReference: item.imageReference || item.coverImagePath || item.image || null,
+    imageOverridePath: item.imageOverridePath || null,
     unit: item.unit,
     description: item.description || '',
     unitPriceVnd: item.unitPriceVnd,
@@ -454,10 +459,13 @@ export function QuoteView() {
           id: `${item.quoteItemCode}-${index}`,
           sourceType: item.sourceType,
           productId: item.productId || null,
+          sourceProductId: item.sourceProductId || item.productId || null,
           productCode: item.quoteItemCode || item.productCode,
           itemName: item.itemName,
           category: item.category || null,
           imagePath: item.image || item.coverImagePath || null,
+          imageReference: item.imageReference || item.coverImagePath || item.image || null,
+          imageOverridePath: item.imageOverridePath || null,
           unit: item.unit,
           description: item.description || null,
           unitPriceVnd: item.unitPriceVnd,
@@ -525,7 +533,7 @@ export function QuoteView() {
       const existing = await getAllQuotes();
       const code = quoteCode || generateQuoteCode(existing);
       const { exportQuoteWord } = await import('@/features/export/wordExport');
-      const fileName = await exportQuoteWord({ ...calculated, quoteCode: code }, code);
+      const fileName = await exportQuoteWord({ ...calculated, quoteCode: code }, code, productRecords);
       await persistQuote('EXPORTED', { code, exportFileName: fileName, exportType: 'docx' });
     } finally {
       setSaving(false);
@@ -540,7 +548,7 @@ export function QuoteView() {
       const existing = await getAllQuotes();
       const code = quoteCode || generateQuoteCode(existing);
       const { exportQuoteExcel } = await import('@/features/export/quoteExcelExport');
-      const fileName = await exportQuoteExcel({ ...calculated, quoteCode: code }, code);
+      const fileName = await exportQuoteExcel({ ...calculated, quoteCode: code }, code, productRecords);
       await persistQuote('EXPORTED', { code, exportFileName: fileName, exportType: 'xlsx' });
     } finally {
       setSaving(false);
@@ -552,7 +560,7 @@ export function QuoteView() {
     setMessage('');
     try {
       const { exportQuoteWord } = await import('@/features/export/wordExport');
-      const fileName = await exportQuoteWord(quote.snapshot, quote.code);
+      const fileName = await exportQuoteWord(quote.snapshot, quote.code, productRecords);
       const saved = await saveQuoteRecord({
         ...quote,
         status: 'EXPORTED',
@@ -580,7 +588,7 @@ export function QuoteView() {
     setMessage('');
     try {
       const { exportQuoteExcel } = await import('@/features/export/quoteExcelExport');
-      const fileName = await exportQuoteExcel(quote.snapshot, quote.code);
+      const fileName = await exportQuoteExcel(quote.snapshot, quote.code, productRecords);
       const saved = await saveQuoteRecord({
         ...quote,
         status: 'EXPORTED',
@@ -663,6 +671,7 @@ export function QuoteView() {
     return (
       <QuoteDetailPanel
         quote={detailQuote}
+        products={productRecords}
         saving={saving}
         onBack={() => setView('list')}
         onEdit={() => loadQuote(detailQuote)}
@@ -764,6 +773,7 @@ export function QuoteView() {
               <QuoteItemCard
                 index={index}
                 item={item}
+                products={productRecords}
                 locked={locked}
                 calculated={calculated.items[index]}
                 suggestions={seededSuggestions}
@@ -796,7 +806,7 @@ export function QuoteView() {
         )}
       </div>
 
-      <QuotePrintDocument quote={calculated} />
+      <QuotePrintDocument quote={calculated} products={productRecords} />
       <ProductPickerModal
         isOpen={productPickerOpen}
         search={search}
@@ -1115,6 +1125,7 @@ function QuoteListPanel({
 
 function QuoteDetailPanel({
   quote,
+  products,
   saving,
   onBack,
   onEdit,
@@ -1124,6 +1135,7 @@ function QuoteDetailPanel({
   onExportExcel,
 }: {
   quote: QuoteRecord;
+  products: ProductRecord[];
   saving: boolean;
   onBack: () => void;
   onEdit: () => void;
@@ -1190,7 +1202,7 @@ function QuoteDetailPanel({
         <div className="quote-detail-items">
           {quote.snapshot.items.map((item) => (
             <div key={`${item.quoteItemCode}-${item.sortOrder}`} className="quote-detail-item">
-              <ProductThumb imagePath={item.coverImagePath || item.image || null} />
+              <ProductThumb item={item} products={products} imagePath={item.coverImagePath || item.image || null} />
               <div>
                 <div className="product-name">{item.quoteItemCode} · {item.itemName}</div>
                 <div className="product-sub">
@@ -1203,7 +1215,7 @@ function QuoteDetailPanel({
         </div>
       </section>
 
-      <QuotePrintDocument quote={quote.snapshot} />
+      <QuotePrintDocument quote={quote.snapshot} products={products} />
     </section>
   );
 }
@@ -1397,7 +1409,7 @@ function buildQuotePrintAccessoryRows(item: ReturnType<typeof calculateQuote>['i
     }));
 }
 
-function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote> }) {
+function QuotePrintDocument({ quote, products }: { quote: ReturnType<typeof calculateQuote>; products: ProductRecord[] }) {
   const today = new Date(quote.quoteDate || new Date());
   return (
     <div className="preview-doc quote-print-doc">
@@ -1437,7 +1449,7 @@ function QuotePrintDocument({ quote }: { quote: ReturnType<typeof calculateQuote
                   {lineIndex === 0 && <td rowSpan={rowSpan}>{item.quoteItemCode || item.productCode}</td>}
                   {lineIndex === 0 && (
                     <td rowSpan={rowSpan} className="quote-image-cell">
-                      <ProductThumb imagePath={item.image || item.coverImagePath} fill />
+                      <ProductThumb item={item} products={products} imagePath={item.image || item.coverImagePath} fill />
                     </td>
                   )}
                   {lineIndex === 0 && (
@@ -1509,6 +1521,7 @@ function QuoteItemCard({
   onDuplicate,
   onDelete,
   dragHandleProps,
+  products,
 }: {
   index: number;
   item: QuoteItemInput;
@@ -1525,6 +1538,7 @@ function QuoteItemCard({
   onDuplicate: () => void;
   onDelete: () => void;
   dragHandleProps: Record<string, unknown>;
+  products: ProductRecord[];
 }) {
   // Always keep an editable fixed-package shell (empty name is allowed).
   const fixedDraft =
@@ -1559,7 +1573,7 @@ function QuoteItemCard({
     setImageBusy(true);
     try {
       const { id } = await compressAndStore(file);
-      onUpdate({ coverImagePath: `legacy-images/${id}`, image: `legacy-images/${id}` });
+      onUpdate({ coverImagePath: `legacy-images/${id}`, image: `legacy-images/${id}`, imageOverridePath: `legacy-images/${id}` });
     } finally {
       setImageBusy(false);
     }
@@ -1594,7 +1608,7 @@ function QuoteItemCard({
             aria-label="Xem ảnh lớn"
             title="Bấm để xem ảnh lớn"
           >
-            <ProductThumb imagePath={imagePath} fill />
+            <ProductThumb item={item} products={products} imagePath={imagePath} fill />
           </button>
           <button
             type="button"
@@ -1651,7 +1665,7 @@ function QuoteItemCard({
           aria-label="Chọn ảnh từ máy"
           title="Bấm để chọn ảnh từ máy"
         >
-          <ProductThumb imagePath={imagePath} fill />
+          <ProductThumb item={item} products={products} imagePath={imagePath} fill />
           <span className="quote-item-thumb-overlay">
             {imageBusy ? <LoaderCircle size={16} className="spin" /> : <ImagePlus size={16} />}
           </span>

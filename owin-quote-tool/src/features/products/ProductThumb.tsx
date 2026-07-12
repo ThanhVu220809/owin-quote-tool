@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { resolveImageUrl } from '@/utils/imagePaths';
+import { resolveItemImage, type ImageItem } from '@/lib/media/itemImageResolver';
+import type { ProductRecord } from '@/types/models';
 
 const OWIN_LOGO = `${import.meta.env.BASE_URL}owin-user-assets/logo/logo.webp`;
 
@@ -12,11 +14,15 @@ export function ProductThumb({
   imagePath,
   size = 52,
   fill = false,
+  item,
+  products = [],
 }: {
   imageId?: string;
   imagePath?: string | null;
   size?: number;
   fill?: boolean;
+  item?: ImageItem;
+  products?: ProductRecord[];
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -24,19 +30,31 @@ export function ProductThumb({
   useEffect(() => {
     let revoked: string | null = null;
     let active = true;
-    setFailed(false);
     void Promise.resolve().then(() => {
       if (!active) return;
+      setFailed(false);
       const path = imagePath || (imageId ? `legacy-images/${imageId}` : null);
       if (!path) {
-        setUrl(null);
+        if (item) {
+          resolveItemImage(item, products).then((resolved) => {
+            if (!active) {
+              if (resolved.revoke && resolved.url) URL.revokeObjectURL(resolved.url);
+              return;
+            }
+            if (resolved.revoke) revoked = resolved.url;
+            setUrl(resolved.url);
+          });
+        } else setUrl(null);
         return;
       }
-      resolveImageUrl(path).then((resolved) => {
-        if (active && resolved.url) {
+      const resolving = item ? resolveItemImage({ ...item, imagePath: path }, products) : resolveImageUrl(path);
+      resolving.then((resolved) => {
+        if (!active) {
+          if (resolved.revoke && resolved.url) URL.revokeObjectURL(resolved.url);
+        } else if (resolved.url) {
           if (resolved.revoke) revoked = resolved.url;
           setUrl(resolved.url);
-        } else if (active) {
+        } else {
           setUrl(null);
         }
       });
@@ -45,7 +63,7 @@ export function ProductThumb({
       active = false;
       if (revoked) URL.revokeObjectURL(revoked);
     };
-  }, [imageId, imagePath]);
+  }, [imageId, imagePath, item, products]);
 
   const displayUrl = !failed && url ? url : OWIN_LOGO;
   const sizeStyle = fill ? { width: '95%', height: '95%' } : { width: size, height: size };

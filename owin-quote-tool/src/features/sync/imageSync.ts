@@ -53,6 +53,7 @@ function addQuoteSnapshotImages(paths: Set<string>, quote: QuoteRecord): void {
     addImagePath(paths, item.categoryImage);
     addImagePath(paths, item.categoryImagePath);
     addImagePath(paths, item.companyLogo);
+    addImagePath(paths, item.imageReference);
   }
 }
 
@@ -68,7 +69,10 @@ export function collectReferencedImageKeys(
   }
 
   for (const quote of quotes) {
-    for (const item of quote.items ?? []) addImagePath(paths, item.imagePath);
+    for (const item of quote.items ?? []) {
+      addImagePath(paths, item.imagePath);
+      addImagePath(paths, item.imageReference);
+    }
     addQuoteSnapshotImages(paths, quote);
   }
 
@@ -98,7 +102,7 @@ export async function uploadReferencedImages(
 ): Promise<ImageSyncResult> {
   return processImageKeys(collectReferencedImageKeys(products, quotes), async (key) => {
     const blob = await getLocalImageBlob(key);
-    if (!blob) return false;
+    if (!blob) throw new Error(`Thiếu blob ảnh local: ${key}`);
     await uploadImage(key, blob, token);
     return true;
   });
@@ -136,6 +140,7 @@ export async function syncReferencedImages(
       return true;
     }
     if (local) {
+      // Metadata is published only after this binary upload succeeds.
       await uploadImage(key, local, token);
       const refreshed = await findFileMetadata(`img_${key}`, token);
       await imageMetaStore.setItem(key, refreshed?.modifiedTime ?? remoteMeta?.modifiedTime ?? '');
@@ -143,7 +148,7 @@ export async function syncReferencedImages(
     }
 
     const remote = await downloadImage(key, token);
-    if (!remote) return false;
+    if (!remote) throw new Error(`Không tìm thấy ảnh local/Drive: ${key}`);
     await saveLocalImageBlob(key, remote);
     await imageMetaStore.setItem(key, remoteMeta?.modifiedTime ?? '');
     return true;

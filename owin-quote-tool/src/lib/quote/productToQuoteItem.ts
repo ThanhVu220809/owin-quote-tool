@@ -92,7 +92,9 @@ export function createQuoteItemFromProduct(
   return {
     sourceType: 'PRODUCT',
     productId: product.id,
+    sourceProductId: product.id,
     productCode: quoteItemCode,
+    productName: product.name,
     quoteItemCode,
     itemName: product.name,
     productType: null,
@@ -100,6 +102,7 @@ export function createQuoteItemFromProduct(
     groupName: product.category,
     coverImagePath: product.coverImagePath,
     image: product.coverImagePath,
+    imageReference: product.coverImagePath,
     unit: unit as ProductUnit,
     description: '',
     unitPriceVnd,

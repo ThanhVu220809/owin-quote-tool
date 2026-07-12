@@ -1,9 +1,12 @@
 import ExcelJS from 'exceljs';
 import type { ProductRecord } from '@/types/models';
+import { resolveItemImage } from '@/lib/media/itemImageResolver';
+import { toExcelImage } from '@/utils/excelImage';
 import { buildCatalogueBlockRows } from '@/lib/catalogue/catalogueRows';
 import { downloadBlob } from '@/utils/download';
 
 const HEADERS = ['STT', 'Hình ảnh', 'Mô tả chi tiết', 'DV', 'Rộng', 'Cao', 'KL', 'Đơn giá', 'Thành tiền', 'Tổng tiền'];
+
 
 function money(value: number | null): number | '' {
   return value ? value : '';
@@ -77,6 +80,16 @@ export async function exportBangGiaExcel(products: ProductRecord[]): Promise<voi
       money(row.completedTotalVnd),
     ]);
     excelRow.height = Math.max(24, row.descriptionLines.length * 18);
+    const product = products.find((candidate) => candidate.code === row.productCode);
+    if (product && row.imagePath) {
+      const resolved = await resolveItemImage(product, products);
+      if (resolved.blob) {
+        const image = await toExcelImage(resolved.blob);
+        const imageId = workbook.addImage(image);
+        sheet.addImage(imageId, { tl: { col: 1.1, row: excelRow.number - 1 + 0.1 }, ext: { width: 105, height: 58 } });
+      }
+      if (resolved.revoke && resolved.url) URL.revokeObjectURL(resolved.url);
+    }
     excelRow.eachCell((cell, columnNumber) => {
       cell.border = styleBorder();
       cell.alignment = {

@@ -28,6 +28,7 @@ import { isConfigured } from './googleAuth';
 import { clearQueue } from './syncQueue';
 import { notifyProductsChanged } from '@/features/products/productEvents';
 import { syncReferencedImages } from './imageSync';
+import { backfillQuoteImageReferences } from '@/lib/media/imageMigration';
 import localforage from 'localforage';
 
 const SCHEMA_VERSION = 2;
@@ -171,9 +172,10 @@ export async function syncNow(
 
     const quoteBase = await loadBaseQuotes();
     const quoteMerge = mergeEntities(localQuotes, remoteQuotes, quoteBase);
-    const finalQuotes = resolvedMerged && !Array.isArray(resolvedMerged) && resolvedMerged.quotes
+    let finalQuotes = resolvedMerged && !Array.isArray(resolvedMerged) && resolvedMerged.quotes
       ? resolvedMerged.quotes
       : quoteMerge.merged;
+    finalQuotes = backfillQuoteImageReferences(finalQuotes, finalProducts).quotes;
     const suggestionBase = await loadBaseSuggestions();
     const finalSuggestions = mergeEntities(localSuggestions, remoteSuggestions, suggestionBase).merged;
     const aluminumBase = await loadBaseAluminumCalculations();

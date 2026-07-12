@@ -123,7 +123,11 @@ export interface QuoteExtraAccessory {
 export interface QuoteItemInput {
   sourceType?: 'PRODUCT' | 'CUSTOM';
   productId?: string | null;
+  /** Stable reference to the source product; kept separate for legacy imports. */
+  sourceProductId?: string | null;
   productCode: string;
+  /** Snapshot of the product code/name used when the quote was created. */
+  productName?: string | null;
   quoteItemCode?: string;
   itemName: string;
   productType?: string | null;
@@ -134,6 +138,11 @@ export interface QuoteItemInput {
   categoryImage?: string | null;
   companyLogo?: string | null;
   image?: string | null;
+  /** Product image path at quote creation; override paths live under quotes/. */
+  imageReference?: string | null;
+  imageOverridePath?: string | null;
+  imageChecksum?: string | null;
+  missingImageReference?: boolean;
   unit: ProductUnit;
   description?: string | null;
   unitPriceVnd: number;
@@ -181,6 +190,7 @@ export interface CalculatedAccessory {
 export interface CalculatedQuoteItem {
   sourceType: 'PRODUCT' | 'CUSTOM';
   productId?: string | null;
+  sourceProductId?: string | null;
   productCode: string;
   quoteItemCode: string;
   itemName: string;
@@ -193,6 +203,10 @@ export interface CalculatedQuoteItem {
   categoryImage?: string | null;
   companyLogo?: string | null;
   image?: string | null;
+  imageReference?: string | null;
+  imageOverridePath?: string | null;
+  imageChecksum?: string | null;
+  missingImageReference?: boolean;
   unit: ProductUnit;
   description?: string | null;
   unitPriceVnd: number;
@@ -269,10 +283,16 @@ export interface QuoteItemRecord {
   id: string;
   sourceType: 'PRODUCT' | 'CUSTOM';
   productId: string | null;
+  sourceProductId?: string | null;
   productCode: string;
+  productName?: string | null;
   itemName: string;
   category: string | null;
   imagePath: string | null;
+  imageReference?: string | null;
+  imageOverridePath?: string | null;
+  imageChecksum?: string | null;
+  missingImageReference?: boolean;
   unit: ProductUnit;
   description: string | null;
   unitPriceVnd: number;

@@ -5,7 +5,7 @@
  *
  * Quy ước: thêm class 'printing-quote' lên <body>; CSS chỉ hiện .preview-doc khi in.
  */
-export function printPreviewDocument(): void {
+export async function printPreviewDocument(): Promise<void> {
   const body = document.body;
   body.classList.add('printing-quote');
 
@@ -15,7 +15,14 @@ export function printPreviewDocument(): void {
   };
   window.addEventListener('afterprint', cleanup);
 
-  // In (người dùng chọn "Save as PDF"). setTimeout đảm bảo class kịp áp dụng.
+  const images = Array.from(document.querySelectorAll<HTMLImageElement>('.preview-doc img'));
+  await Promise.race([
+    Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
+      image.addEventListener('load', () => resolve(), { once: true });
+      image.addEventListener('error', () => resolve(), { once: true });
+    }))),
+    new Promise<void>((resolve) => window.setTimeout(resolve, 5000)),
+  ]);
   setTimeout(() => {
     window.print();
     // Dự phòng nếu trình duyệt không bắn afterprint; để lâu để Chrome kịp dựng preview.
@@ -24,5 +31,5 @@ export function printPreviewDocument(): void {
 }
 
 export function exportQuotePDF(): void {
-  printPreviewDocument();
+  void printPreviewDocument();
 }

@@ -191,6 +191,7 @@ export function calculateQuoteItem(item: QuoteItemInput, sortOrder: number): Cal
   return {
     sourceType: item.productId ? 'PRODUCT' : item.sourceType || 'CUSTOM',
     productId: item.productId || null,
+    sourceProductId: item.sourceProductId || item.productId || null,
     productCode,
     quoteItemCode: productCode,
     itemName: normalizeText(item.itemName),
@@ -203,6 +204,10 @@ export function calculateQuoteItem(item: QuoteItemInput, sortOrder: number): Cal
     categoryImage: item.categoryImage || item.categoryImagePath || null,
     companyLogo: item.companyLogo || null,
     image: item.image || item.coverImagePath || null,
+    imageReference: item.imageReference || item.coverImagePath || item.image || null,
+    imageOverridePath: item.imageOverridePath || null,
+    imageChecksum: item.imageChecksum || null,
+    missingImageReference: item.missingImageReference || false,
     unit: itemUnit,
     description: item.description ? normalizeText(item.description) : null,
     unitPriceVnd: Number(item.unitPriceVnd || 0),

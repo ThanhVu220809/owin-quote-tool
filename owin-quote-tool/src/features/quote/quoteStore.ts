@@ -106,12 +106,15 @@ export function hydrateQuoteSnapshot(input: QuoteInput): QuoteSnapshotData {
     snapshotItemAliases({
       sourceType: item.sourceType || 'PRODUCT',
       productId: item.productId || null,
+      sourceProductId: item.sourceProductId || item.productId || null,
       productCode: item.productCode || `HM-${String(index + 1).padStart(2, '0')}`,
       quoteItemCode: item.productCode || `HM-${String(index + 1).padStart(2, '0')}`,
       itemName: item.itemName || '',
       category: item.category || null,
       image: item.imagePath || null,
       coverImagePath: item.imagePath || null,
+      imageReference: item.imageReference || item.imagePath || null,
+      imageOverridePath: item.imageOverridePath || null,
       unit: item.unit || 'M2',
       description: item.description || null,
       unitPriceVnd: safeNumber(item.unitPriceVnd),
@@ -200,6 +203,9 @@ export function normalizeQuoteRecord(input: QuoteInput): QuoteRecord {
     items: Array.isArray(input.items)
       ? input.items.map((item) => ({
           ...item,
+          sourceProductId: item.sourceProductId || item.productId || null,
+          imageReference: item.imageReference || item.imagePath || null,
+          imageOverridePath: item.imageOverridePath || null,
           fixedAccessoryPackage: normalizeFixedAccessoryPackage(item.fixedAccessoryPackage),
         }))
       : [],
