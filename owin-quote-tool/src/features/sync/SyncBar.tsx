@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Cloud, CloudOff, Download, RefreshCw, Upload } from 'lucide-react';
+import { Cloud, CloudOff, MoreHorizontal, RefreshCw } from 'lucide-react';
 import type { ProductRecord, QuoteRecord } from '@/types/models';
 import { LOCAL_DATA_CHANGED_EVENT } from '@/lib/dataChangeEvents';
 import { isConfigured, connectGoogle, ensureToken, requestOneTimeGoogleToken } from './googleAuth';
 import { checkRemoteChanges, forcePushToDrive, syncNow, type SyncStatus } from './syncEngine';
 import { createSyncPoller, type SyncPoller } from './syncPolling';
 import { resolveConflict, type Conflict } from './merge';
+import { DataDiagnostics } from './DataDiagnostics';
 import {
   beginPullFromOtherAccount,
   beginPushToOtherAccount,
@@ -26,6 +27,7 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
   const [conflictFlow, setConflictFlow] = useState<ConflictFlow | null>(null);
   const [working, setWorking] = useState<ProductRecord[]>([]);
   const [workingQuotes, setWorkingQuotes] = useState<QuoteRecord[]>([]);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const syncInFlightRef = useRef(false);
   const pendingSyncRef = useRef(false);
   const localTimerRef = useRef<number | null>(null);
@@ -208,7 +210,7 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     if (!window.confirm('Ghi đè toàn bộ dữ liệu Google Drive bằng dữ liệu trên máy này?')) return;
     setBusy(true);
     setMsg('Đang ghi đè theo xác nhận...');
-    try { applyStatus(await forcePushToDrive({ includeImages: true, confirmed: true })); }
+    try { applyStatus(await forcePushToDrive({ confirmed: true })); }
     catch (error) { setMsg(error instanceof Error ? error.message : 'Lỗi ghi đè Drive'); }
     finally { setBusy(false); }
   };
@@ -219,9 +221,8 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
     <div className={`sync-bar${compact ? ' sync-bar-compact' : ''}`}>
       {connected ? <Cloud size={16} color="var(--ios-green)" /> : <CloudOff size={16} color="var(--ios-gray1)" />}
       {!connected ? <button className="btn btn-ghost" disabled={busy} onClick={handleConnect}>{compact ? 'Google' : 'Kết nối Google'}</button> : <button className="btn btn-ghost" disabled={busy} onClick={() => void runOwnerSync(false, true)} title="Đồng bộ"><RefreshCw size={15} className={busy ? 'spin' : ''} style={{ verticalAlign: '-3px' }} />{compact ? '' : ' Đồng bộ'}</button>}
-      {connected && <button className="btn btn-ghost" disabled={busy} onClick={() => void handleForcePush()} title="Ghi đè toàn bộ Drive sau khi xác nhận">{compact ? '' : ' Ghi đè Drive'}</button>}
-      <button className="btn btn-ghost" disabled={busy} onClick={() => void handleTransfer('push-other')} title="Đẩy kho sang tài khoản khác"><Upload size={15} style={{ verticalAlign: '-3px' }} />{compact ? '' : ' Đẩy kho khác'}</button>
-      <button className="btn btn-ghost" disabled={busy} onClick={() => void handleTransfer('pull-other')} title="Lấy kho từ tài khoản khác"><Download size={15} style={{ verticalAlign: '-3px' }} />{compact ? '' : ' Lấy kho'}</button>
+      <button className="btn btn-ghost" disabled={busy} onClick={() => setDiagnosticsOpen((value) => !value)} title="Dữ liệu và đồng bộ"><MoreHorizontal size={15} />{compact ? '' : ' Menu nâng cao'}</button>
+      {diagnosticsOpen && <DataDiagnostics onClose={() => setDiagnosticsOpen(false)} connected={connected} busy={busy} onPullLatest={() => void handleTransfer('pull-other')} onPushOther={() => void handleTransfer('push-other')} onForcePush={() => void handleForcePush()} />}
       {msg && <span className="muted sync-bar-msg" title={msg} style={{ fontSize: 13 }}>{msg}</span>}
       {(conflicts.length > 0 || quoteConflicts.length > 0) && <div className="conflict-dialog card">
         <div className="section-label">Xung đột đồng bộ - chọn bản giữ lại</div>

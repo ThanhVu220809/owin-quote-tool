@@ -43,6 +43,8 @@ const BASE_QUOTES_KEY = 'lastSyncQuotes';
 const BASE_SUGGESTIONS_KEY = 'lastSyncSuggestions';
 const BASE_ALUMINUM_KEY = 'lastSyncAluminumCalculations';
 const REMOTE_SIGNATURE_KEY = 'lastSyncRemoteSignature';
+const LAST_SUCCESS_KEY = 'lastSyncSuccessAt';
+const BOOTSTRAP_STATE_KEY = 'bootstrapState';
 
 async function loadBaseProducts(): Promise<ProductRecord[]> {
   return (await metaStore.getItem<ProductRecord[]>(BASE_PRODUCTS_KEY)) ?? [];
@@ -111,6 +113,13 @@ export async function saveRemoteSignature(signature: string | null): Promise<voi
   else await metaStore.removeItem(REMOTE_SIGNATURE_KEY);
 }
 
+export async function getSyncDiagnostics(): Promise<{ lastSuccessAt: string | null; bootstrapState: string }> {
+  return {
+    lastSuccessAt: (await metaStore.getItem<string>(LAST_SUCCESS_KEY)) ?? null,
+    bootstrapState: (await metaStore.getItem<string>(BOOTSTRAP_STATE_KEY)) ?? 'unknown',
+  };
+}
+
 function remoteSignature(metadata: { id: string; modifiedTime?: string; version?: string }): string {
   return [metadata.id, metadata.modifiedTime ?? '', metadata.version ?? ''].join(':');
 }
@@ -145,6 +154,7 @@ export async function syncNow(
   }
 
   try {
+    await metaStore.setItem(BOOTSTRAP_STATE_KEY, 'pulling');
     const local = await getAllProductsRaw();
     const localQuotes = await getAllQuotesRaw();
     const localSuggestions = await getAllSuggestionRecords();
@@ -218,6 +228,8 @@ export async function syncNow(
     await saveBaseAluminumCalculations(finalAluminum);
     const uploadedMetadata = await getDBMetadata();
     await saveRemoteSignature(uploadedMetadata ? remoteSignature(uploadedMetadata) : null);
+    await metaStore.setItem(LAST_SUCCESS_KEY, new Date().toISOString());
+    await metaStore.setItem(BOOTSTRAP_STATE_KEY, 'ready');
     await clearQueue();
     return {
       state: 'done',

@@ -72,4 +72,13 @@ describe('syncNow image staging', () => {
     expect(mocks.downloadDB).toHaveBeenCalledTimes(1);
     expect(mocks.uploadDB).toHaveBeenCalledTimes(1);
   });
+
+  it('ghi nhận bootstrap và lần đồng bộ thành công cho diagnostics', async () => {
+    const { getSyncDiagnostics } = await import('./syncEngine');
+    expect((await getSyncDiagnostics()).bootstrapState).toMatch(/unknown|ready/);
+    await syncNow(undefined, { includeImages: false });
+    const diagnostics = await getSyncDiagnostics();
+    expect(diagnostics.bootstrapState).toBe('ready');
+    expect(diagnostics.lastSuccessAt).toEqual(expect.any(String));
+  });
 });
