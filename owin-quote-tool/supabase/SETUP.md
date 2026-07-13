@@ -3,8 +3,8 @@
 ## Supabase
 
 1. Chạy toàn bộ `schema.sql` trong SQL Editor. File có thể chạy lại an toàn.
-2. Bật Email/Password Auth và tạo user trong Authentication.
-3. Bucket public `product-images`, RLS và Realtime được cấu hình bởi schema.
+2. Bật Email/Password Auth, tắt public signup và tạo/xác nhận user trong Authentication.
+3. Bucket `product-images` cho URL ảnh catalogue công khai nhưng chặn anon list; bucket `quote-images` private cho ảnh riêng trong báo giá. RLS và Realtime được cấu hình bởi schema.
 4. Chỉ đưa Project URL và anon key vào frontend. Không bao giờ đưa `service_role` hoặc PAT vào GitHub Pages.
 
 Các bảng dùng chung:
@@ -13,6 +13,8 @@ Các bảng dùng chung:
 - `quotes`: báo giá + snapshot đầy đủ.
 - `suggestions`: autocomplete đã học.
 - `app_data`: meta và trạng thái tính nhôm.
+
+Mọi bảng nghiệp vụ bật RLS và chỉ role `authenticated` được đọc/ghi. Trigger `revision` đánh dấu mỗi lần cập nhật; trigger xóa mềm ngăn một form cũ hồi sinh sản phẩm/báo giá đã bị xóa trên máy khác. Realtime là cơ chế tự cập nhật, không có nút Sync và không có browser database dự phòng.
 
 ## GitHub Pages
 

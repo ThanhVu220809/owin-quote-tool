@@ -82,7 +82,7 @@ export async function exportBangGiaExcel(products: ProductRecord[]): Promise<voi
     excelRow.height = Math.max(24, row.descriptionLines.length * 18);
     const product = products.find((candidate) => candidate.code === row.productCode);
     if (product && row.imagePath) {
-      const resolved = await resolveItemImage(product, products);
+      const resolved = await resolveItemImage(product, products, { loadBlob: true });
       if (resolved.blob) {
         const image = await toExcelImage(resolved.blob);
         const imageId = workbook.addImage(image);

@@ -9,11 +9,32 @@ vi.mock('@/features/supabase/productsRepo', () => ({
   ),
   listProductsRaw: vi.fn(async () => Array.from(productDb.values())),
   getProductById: vi.fn(async (id: string) => productDb.get(id) ?? null),
+  compareAndSwapProduct: vi.fn(async (product: ProductRecord) => {
+    const revision = (productDb.get(product.id)?.revision ?? 0) + 1;
+    const record = { ...product, revision };
+    productDb.set(product.id, record);
+    return { status: 'applied' as const, record };
+  }),
   upsertProduct: vi.fn(async (product: ProductRecord) => {
     productDb.set(product.id, product);
   }),
   upsertProductsBatch: vi.fn(async (products: ProductRecord[]) => {
     for (const product of products) productDb.set(product.id, product);
+  }),
+  setHostedProductOrder: vi.fn(async (orderedIds: string[]) => {
+    orderedIds.forEach((id, sortOrder) => {
+      const product = productDb.get(id);
+      if (product && !product.deleted && !product.deletedAt) productDb.set(id, { ...product, sortOrder });
+    });
+  }),
+  adjustHostedProductPrices: vi.fn(async (percent: number) => {
+    productDb.forEach((product, id) => {
+      if (product.deleted || product.deletedAt) return;
+      productDb.set(id, {
+        ...product,
+        unitPriceVnd: Math.max(0, Math.round(product.unitPriceVnd * (1 + percent / 100))),
+      });
+    });
   }),
 }));
 
@@ -66,11 +87,26 @@ describe('soft deletes and timestamps', () => {
       dvt: 'm²', ten: 'Y', ma: 'Y1', donGiaGoc: 2_000_000, accessories: [],
     });
     await new Promise((resolve) => setTimeout(resolve, 5));
-    const edited = await saveProduct({ ...product, donGiaGoc: 1_900_000 });
+    const edited = await saveProduct({ ...product, unitPriceVnd: 1_900_000 });
 
     expect(edited.id).toBe(product.id);
     expect(edited.donGiaGoc).toBe(1_900_000);
     expect(new Date(edited.updatedAt).getTime()).toBeGreaterThan(new Date(product.updatedAt).getTime());
+  });
+
+  it('does not undo a newer remote reorder when an older form autosaves', async () => {
+    const product = await saveProduct({
+      code: 'ORDERED', name: 'Ordered', category: 'Cửa', unit: 'M2', unitPriceVnd: 1_000,
+      sortOrder: 1,
+    });
+    const remote = productDb.get(product.id);
+    if (!remote) throw new Error('Missing test product');
+    productDb.set(product.id, { ...remote, sortOrder: 9 });
+
+    await saveProduct({ ...remote, name: 'Ordered edited', sortOrder: 1 });
+
+    expect(productDb.get(product.id)?.sortOrder).toBe(9);
+    expect(productDb.get(product.id)?.name).toBe('Ordered edited');
   });
 });
 

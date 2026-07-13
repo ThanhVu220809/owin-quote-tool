@@ -1,6 +1,12 @@
 import { ALUMINUM_SYSTEMS } from '@/lib/aluminum-estimator/aluminum-systems';
 import { parseEstimatorNumber } from '@/lib/aluminum-estimator/aluminum-estimator';
-import { getHostedAppData, upsertHostedAppData } from '@/features/supabase/sharedDataRepo';
+import {
+  compareAndSwapHostedAppData,
+  getHostedAppData,
+  getHostedAppDataVersioned,
+  upsertHostedAppData,
+  type HostedAppDataSnapshot,
+} from '@/features/supabase/sharedDataRepo';
 import type {
   AluminumCalculationRecord,
   AluminumEstimatorInputState,
@@ -13,6 +19,13 @@ export interface AluminumEstimatorPageState {
   selectedSystemId: string;
   inputRows: AluminumEstimatorRowsBySystem;
   updatedAt: string | null;
+}
+
+/** Last server-acknowledged state and the revision token required for CAS. */
+export interface AluminumEstimatorStorageSnapshot {
+  state: AluminumEstimatorPageState | null;
+  revision: number;
+  createdAt: string | null;
 }
 
 export type AluminumEstimatorRowPatch = Partial<AluminumEstimatorInputState>;
@@ -73,6 +86,97 @@ function normalizeInputRows(value: unknown): AluminumEstimatorRowsBySystem {
   return rowsBySystem;
 }
 
+function inputStateEquals(
+  left: AluminumEstimatorInputState | undefined,
+  right: AluminumEstimatorInputState | undefined,
+): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return left.quantity === right.quantity
+    && left.unitPrice === right.unitPrice
+    && left.note === right.note;
+}
+
+/** Compare the editable estimator payload while deliberately ignoring sync metadata. */
+export function aluminumEstimatorStateContentEquals(
+  left: AluminumEstimatorPageState,
+  right: AluminumEstimatorPageState,
+): boolean {
+  if (left.selectedSystemId !== right.selectedSystemId) return false;
+
+  const systemIds = new Set([
+    ...Object.keys(left.inputRows),
+    ...Object.keys(right.inputRows),
+  ]);
+  for (const systemId of systemIds) {
+    const leftRows = left.inputRows[systemId] ?? {};
+    const rightRows = right.inputRows[systemId] ?? {};
+    const rowIds = new Set([...Object.keys(leftRows), ...Object.keys(rightRows)]);
+    for (const rowId of rowIds) {
+      if (!inputStateEquals(leftRows[rowId], rightRows[rowId])) return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Merge a hosted update against the last server-confirmed base.
+ *
+ * Rows are the conflict boundary: a locally edited/deleted row wins when the
+ * same row also changed remotely, while untouched rows accept the remote value.
+ * This preserves pending input on the current machine and still incorporates
+ * independent edits made on another machine.
+ */
+export function mergeAluminumEstimatorStates(
+  base: AluminumEstimatorPageState,
+  local: AluminumEstimatorPageState,
+  remote: AluminumEstimatorPageState,
+): AluminumEstimatorPageState {
+  const inputRows: AluminumEstimatorRowsBySystem = {};
+  const systemIds = new Set([
+    ...Object.keys(base.inputRows),
+    ...Object.keys(local.inputRows),
+    ...Object.keys(remote.inputRows),
+  ]);
+
+  for (const systemId of systemIds) {
+    const baseRows = base.inputRows[systemId] ?? {};
+    const localRows = local.inputRows[systemId] ?? {};
+    const remoteRows = remote.inputRows[systemId] ?? {};
+    const mergedRows: Record<string, AluminumEstimatorInputState> = {};
+    const rowIds = new Set([
+      ...Object.keys(baseRows),
+      ...Object.keys(localRows),
+      ...Object.keys(remoteRows),
+    ]);
+
+    for (const rowId of rowIds) {
+      const localChanged = !inputStateEquals(localRows[rowId], baseRows[rowId]);
+      const chosen = localChanged ? localRows[rowId] : remoteRows[rowId];
+      if (chosen) mergedRows[rowId] = { ...chosen };
+    }
+
+    if (Object.keys(mergedRows).length > 0) inputRows[systemId] = mergedRows;
+  }
+
+  const selectedSystemId = local.selectedSystemId !== base.selectedSystemId
+    ? local.selectedSystemId
+    : remote.selectedSystemId;
+  const mergedContent: AluminumEstimatorPageState = {
+    selectedSystemId,
+    inputRows,
+    updatedAt: null,
+  };
+
+  return {
+    ...mergedContent,
+    updatedAt: aluminumEstimatorStateContentEquals(mergedContent, remote)
+      ? remote.updatedAt
+      : local.updatedAt ?? remote.updatedAt ?? base.updatedAt,
+  };
+}
+
 export function normalizeAluminumEstimatorState(value: unknown): AluminumEstimatorPageState | null {
   if (!value || typeof value !== 'object') return null;
   const parsed = value as Partial<AluminumEstimatorPageState>;
@@ -123,69 +227,111 @@ export function isAluminumEstimatorDirty(state: AluminumEstimatorPageState): boo
   );
 }
 
-let cachedRecord: AluminumCalculationRecord | null | undefined;
 let writeQueue: Promise<void> = Promise.resolve();
 
-async function readHostedRecord(force = false): Promise<AluminumCalculationRecord | null> {
-  if (!force && cachedRecord !== undefined) return cachedRecord;
-  cachedRecord = normalizeAluminumCalculationRecord(
-    await getHostedAppData<unknown>(ALUMINUM_ESTIMATOR_STORAGE_KEY),
+function snapshotFromHosted(
+  hosted: HostedAppDataSnapshot<unknown>,
+): AluminumEstimatorStorageSnapshot {
+  const record = normalizeAluminumCalculationRecord(hosted.data);
+  return {
+    state: record ? toPageState(record) : null,
+    revision: hosted.revision,
+    createdAt: record?.createdAt ?? null,
+  };
+}
+
+async function readHostedSnapshot(): Promise<AluminumEstimatorStorageSnapshot> {
+  return snapshotFromHosted(
+    await getHostedAppDataVersioned<unknown>(ALUMINUM_ESTIMATOR_STORAGE_KEY),
   );
-  return cachedRecord;
 }
 
-async function putHostedRecord(record: AluminumCalculationRecord): Promise<void> {
-  await upsertHostedAppData(record.id, record);
-  if (record.id === ALUMINUM_ESTIMATOR_STORAGE_KEY) cachedRecord = record;
-}
-
-function enqueueWrite(operation: () => Promise<void>): Promise<void> {
+function enqueueWrite<T>(operation: () => Promise<T>): Promise<T> {
   const pending = writeQueue.then(operation);
-  writeQueue = pending.catch(() => undefined);
+  writeQueue = pending.then(() => undefined, () => undefined);
   return pending;
 }
 
-export async function loadAluminumEstimatorStorage(): Promise<AluminumEstimatorPageState | null> {
+function pageStateOrDefault(
+  snapshot: AluminumEstimatorStorageSnapshot,
+): AluminumEstimatorPageState {
+  return snapshot.state ?? createDefaultAluminumEstimatorState();
+}
+
+function recordFromPageState(
+  state: AluminumEstimatorPageState,
+  base: AluminumEstimatorStorageSnapshot,
+): AluminumCalculationRecord {
+  const updatedAt = state.updatedAt || nowIso();
+  return {
+    id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
+    selectedSystemId: state.selectedSystemId,
+    inputRows: normalizeInputRows(state.inputRows),
+    createdAt: base.createdAt ?? updatedAt,
+    updatedAt,
+    deleted: undefined,
+    deletedAt: null,
+  };
+}
+
+const MAX_CAS_ATTEMPTS = 5;
+
+/**
+ * Persist a local edit against the exact server snapshot it was based on.
+ * A stale revision is re-read, merged row-by-row, and retried. The returned
+ * snapshot is the actual row acknowledged by Postgres, never an optimistic
+ * copy manufactured in the browser.
+ */
+async function saveWithCas(
+  initialBase: AluminumEstimatorStorageSnapshot,
+  initialLocal: AluminumEstimatorPageState,
+): Promise<AluminumEstimatorStorageSnapshot> {
+  let base = initialBase;
+  let local = initialLocal;
+
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
+    const record = recordFromPageState(local, base);
+    const applied = await compareAndSwapHostedAppData(
+      ALUMINUM_ESTIMATOR_STORAGE_KEY,
+      base.revision,
+      record,
+    );
+    if (applied) return snapshotFromHosted(applied);
+
+    const remote = await readHostedSnapshot();
+    const remoteState = pageStateOrDefault(remote);
+    local = mergeAluminumEstimatorStates(pageStateOrDefault(base), local, remoteState);
+    if (aluminumEstimatorStateContentEquals(local, remoteState)) return remote;
+    base = remote;
+  }
+
+  throw new Error('Dữ liệu tính nhôm đang được chỉnh sửa liên tục. Vui lòng thử lại.');
+}
+
+export async function loadAluminumEstimatorStorage(): Promise<AluminumEstimatorStorageSnapshot> {
   await writeQueue;
-  const currentRecord = await readHostedRecord(true);
-  return currentRecord ? toPageState(currentRecord) : null;
+  return readHostedSnapshot();
 }
 
-export async function saveAluminumEstimatorStorage(state: AluminumEstimatorPageState): Promise<void> {
-  await enqueueWrite(async () => {
-    const existing = await readHostedRecord();
-    const updatedAt = state.updatedAt || nowIso();
-    await putHostedRecord({
-      id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
-      selectedSystemId: state.selectedSystemId,
-      inputRows: normalizeInputRows(state.inputRows),
-      createdAt: existing?.createdAt ?? updatedAt,
-      updatedAt,
-      deleted: undefined,
-      deletedAt: null,
-    });
-  });
+export function saveAluminumEstimatorStorage(
+  base: AluminumEstimatorStorageSnapshot,
+  state: AluminumEstimatorPageState,
+): Promise<AluminumEstimatorStorageSnapshot> {
+  return enqueueWrite(() => saveWithCas(base, state));
 }
 
-export async function clearAluminumEstimatorStorage(): Promise<void> {
-  await enqueueWrite(async () => {
-    const existing = await readHostedRecord();
-    const updatedAt = nowIso();
-    await putHostedRecord({
-      id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
-      selectedSystemId: existing?.selectedSystemId ?? ALUMINUM_SYSTEMS[0]?.id ?? '',
-      inputRows: {},
-      createdAt: existing?.createdAt ?? updatedAt,
-      updatedAt,
-      deleted: true,
-      deletedAt: updatedAt,
-    });
+export function clearAluminumEstimatorStorage(): Promise<AluminumEstimatorStorageSnapshot> {
+  return enqueueWrite(async () => {
+    const base = await readHostedSnapshot();
+    return saveWithCas(base, touchAluminumEstimatorState(createDefaultAluminumEstimatorState()));
   });
 }
 
 export async function getAllAluminumCalculationsRaw(): Promise<AluminumCalculationRecord[]> {
   await writeQueue;
-  const record = await readHostedRecord(true);
+  const record = normalizeAluminumCalculationRecord(
+    (await getHostedAppDataVersioned<unknown>(ALUMINUM_ESTIMATOR_STORAGE_KEY)).data,
+  );
   return record ? [record] : [];
 }
 
@@ -193,7 +339,13 @@ export async function bulkPutAluminumCalculations(records: AluminumCalculationRe
   await enqueueWrite(async () => {
     for (const record of records) {
       const normalized = normalizeAluminumCalculationRecord(record);
-      if (normalized) await putHostedRecord(normalized);
+      if (!normalized) continue;
+      if (normalized.id !== ALUMINUM_ESTIMATOR_STORAGE_KEY) {
+        await upsertHostedAppData(normalized.id, normalized);
+        continue;
+      }
+      const state = toPageState(normalized);
+      if (state) await saveWithCas(await readHostedSnapshot(), state);
     }
   });
 }
@@ -205,10 +357,13 @@ export const aluminumEstimatorStore = {
   },
   async setItem<T>(key: string, value: T): Promise<T> {
     await enqueueWrite(async () => {
-      await upsertHostedAppData(key, value);
-      cachedRecord = key === ALUMINUM_ESTIMATOR_STORAGE_KEY
-        ? normalizeAluminumCalculationRecord(value)
-        : cachedRecord;
+      if (key !== ALUMINUM_ESTIMATOR_STORAGE_KEY) {
+        await upsertHostedAppData(key, value);
+        return;
+      }
+      const record = normalizeAluminumCalculationRecord(value);
+      const state = record ? toPageState(record) : null;
+      if (state) await saveWithCas(await readHostedSnapshot(), state);
     });
     return value;
   },

@@ -10,7 +10,25 @@ interface SuggestionRow {
   updated_at: string;
 }
 
+interface AppDataRow<T> {
+  data: T;
+  revision: number;
+  updated_at: string;
+}
+
+export interface HostedAppDataSnapshot<T> {
+  data: T | null;
+  revision: number;
+  updatedAt: string | null;
+}
+
 let realtimeChannelSequence = 0;
+
+export type RealtimeSubscriptionStatus =
+  | 'SUBSCRIBED'
+  | 'TIMED_OUT'
+  | 'CLOSED'
+  | 'CHANNEL_ERROR';
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? value as Record<string, unknown> : {};
@@ -113,13 +131,27 @@ export async function upsertHostedSuggestions(
 }
 
 export async function getHostedAppData<T>(key: string): Promise<T | null> {
+  return (await getHostedAppDataVersioned<T>(key)).data;
+}
+
+/**
+ * Read both an app document and the revision used by the server-side CAS RPC.
+ * Revision zero is the explicit version of a document that does not exist yet.
+ */
+export async function getHostedAppDataVersioned<T>(key: string): Promise<HostedAppDataSnapshot<T>> {
   const { data, error } = await supabase
     .from('app_data')
-    .select('data')
+    .select('data,revision,updated_at')
     .eq('key', key)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? (data as { data: T }).data : null;
+  if (!data) return { data: null, revision: 0, updatedAt: null };
+  const row = data as AppDataRow<T>;
+  return {
+    data: row.data,
+    revision: Math.max(1, Math.floor(Number(row.revision) || 1)),
+    updatedAt: row.updated_at,
+  };
 }
 
 export async function upsertHostedAppData<T>(key: string, data: T): Promise<void> {
@@ -129,16 +161,48 @@ export async function upsertHostedAppData<T>(key: string, data: T): Promise<void
   if (error) throw new Error(error.message);
 }
 
-export function subscribeToSuggestions(onChange: () => void): () => void {
+/**
+ * Atomically replace an app document only when its revision is still the one
+ * the caller last read. A null result is a normal conflict, not a transport
+ * error; callers must fetch the new revision, merge, and retry.
+ */
+export async function compareAndSwapHostedAppData<T>(
+  key: string,
+  expectedRevision: number,
+  data: T,
+): Promise<HostedAppDataSnapshot<T> | null> {
+  const { data: rows, error } = await supabase.rpc('compare_and_swap_app_data', {
+    p_key: key,
+    p_expected_revision: Math.max(0, Math.floor(expectedRevision)),
+    p_data: data,
+  });
+  if (error) throw new Error(error.message);
+  const row = (rows as AppDataRow<T>[] | null)?.[0];
+  if (!row) return null;
+  return {
+    data: row.data,
+    revision: Math.max(1, Math.floor(Number(row.revision) || 1)),
+    updatedAt: row.updated_at,
+  };
+}
+
+export function subscribeToSuggestions(
+  onChange: () => void,
+  onStatus?: (status: RealtimeSubscriptionStatus, error?: Error) => void,
+): () => void {
   realtimeChannelSequence += 1;
   const channel = supabase
     .channel(`suggestions-live-${realtimeChannelSequence}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'suggestions' }, onChange)
-    .subscribe();
-  return () => { void supabase.removeChannel(channel); };
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'suggestions' }, () => onChange())
+    .subscribe((status, error) => onStatus?.(status, error));
+  return () => { void supabase.removeChannel(channel).catch(() => undefined); };
 }
 
-export function subscribeToAppData(key: string, onChange: () => void): () => void {
+export function subscribeToAppData(
+  key: string,
+  onChange: () => void,
+  onStatus?: (status: RealtimeSubscriptionStatus, error?: Error) => void,
+): () => void {
   realtimeChannelSequence += 1;
   const channel = supabase
     .channel(`app-data-live-${realtimeChannelSequence}`)
@@ -151,6 +215,6 @@ export function subscribeToAppData(key: string, onChange: () => void): () => voi
         if (next?.key === key || previous?.key === key) onChange();
       },
     )
-    .subscribe();
-  return () => { void supabase.removeChannel(channel); };
+    .subscribe((status, error) => onStatus?.(status, error));
+  return () => { void supabase.removeChannel(channel).catch(() => undefined); };
 }

@@ -22,9 +22,10 @@ function Money({ value }: { value: number | null }) {
 }
 
 export function BangGiaView() {
-  const { productRecords, loading } = useProducts();
+  const { productRecords, loading, error: productsError, retry } = useProducts();
   const [exporting, setExporting] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportError, setExportError] = useState('');
   const rows = useMemo(() => buildCatalogueBlockRows(productRecords), [productRecords]);
   // Group so category stays with first product and accessories stay with product for print keep-together.
   const blocks = useMemo(() => {
@@ -57,6 +58,41 @@ export function BangGiaView() {
     return out;
   }, [rows]);
 
+  const exportWord = async () => {
+    setExporting(true);
+    setExportError('');
+    try {
+      const { exportBangGiaWord } = await import('@/features/export/wordExport');
+      await exportBangGiaWord(productRecords);
+    } catch {
+      setExportError('Không thể xuất bảng giá Word. Vui lòng kiểm tra mạng và thử lại.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportExcel = async () => {
+    setExportingExcel(true);
+    setExportError('');
+    try {
+      const { exportBangGiaExcel } = await import('@/features/export/catalogueExcelExport');
+      await exportBangGiaExcel(productRecords);
+    } catch {
+      setExportError('Không thể xuất bảng giá Excel. Vui lòng thử lại.');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const printCatalogue = async () => {
+    setExportError('');
+    try {
+      await printPreviewDocument();
+    } catch {
+      setExportError('Không thể mở chế độ In/PDF. Vui lòng thử lại.');
+    }
+  };
+
   return (
     <section className="admin-page catalogue-page">
       <div className="toolbar catalogue-toolbar no-print">
@@ -68,31 +104,32 @@ export function BangGiaView() {
         <button
           className="btn btn-ghost"
           disabled={productRecords.length === 0 || exporting}
-          onClick={() => {
-            setExporting(true);
-            import('@/features/export/wordExport')
-              .then(({ exportBangGiaWord }) => exportBangGiaWord(productRecords))
-              .finally(() => setExporting(false));
-          }}
+          onClick={() => void exportWord()}
         >
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Tải Word (.docx)'}
         </button>
         <button
           className="btn btn-ghost"
           disabled={productRecords.length === 0 || exportingExcel}
-          onClick={() => {
-            setExportingExcel(true);
-            import('@/features/export/catalogueExcelExport')
-              .then(({ exportBangGiaExcel }) => exportBangGiaExcel(productRecords))
-              .finally(() => setExportingExcel(false));
-          }}
+          onClick={() => void exportExcel()}
         >
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? 'Đang xuất…' : 'Tải Excel (.xlsx)'}
         </button>
-        <button className="btn btn-primary" onClick={printPreviewDocument}>
+        <button className="btn btn-primary" onClick={() => void printCatalogue()}>
           <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> In / PDF
         </button>
       </div>
+
+      {(productsError || exportError) && (
+        <div className="product-data-error no-print" role="alert">
+          <span>{exportError || productsError}</span>
+          {productsError && (
+            <button type="button" className="btn btn-ghost" onClick={() => void retry()}>
+              Thử tải lại
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="preview-doc bang-gia-doc">
         <table className="bang-gia-table">

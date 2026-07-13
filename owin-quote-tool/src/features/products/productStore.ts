@@ -17,16 +17,20 @@ import type {
 import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
 import { notifyProductsChanged } from './productEvents';
 import {
+  compareAndSwapProduct,
   getProductById,
+  adjustHostedProductPrices,
   listProducts,
   listProductsRaw,
   upsertProduct,
   upsertProductsBatch,
+  setHostedProductOrder,
 } from '@/features/supabase/productsRepo';
+import { mergeTopLevel } from '@/features/supabase/threeWayMerge';
 
 const DEFAULT_CATEGORY = 'Khác';
 
-type ProductInput = {
+export type ProductInput = {
   id?: string;
   numericId?: number;
   code?: string;
@@ -52,6 +56,7 @@ type ProductInput = {
   updatedAt?: string;
   deleted?: boolean;
   deletedAt?: string | null;
+  revision?: number;
   dvt?: DVT | ProductUnit | string;
   ten?: string;
   ma?: string;
@@ -135,15 +140,12 @@ function rawSizeFromLegacy(input: ProductInput): string | null {
   return null;
 }
 
-function legacyImageToPath(value: unknown): string | null {
-  if (!hasText(value)) return null;
-  return `legacy-images/${value.trim()}`;
+function imageIdToPath(value: unknown): string | null {
+  return normalizeNullableString(value);
 }
 
-function legacyImageFromPath(value: string | null): string | undefined {
-  if (!value) return undefined;
-  const prefix = 'legacy-images/';
-  return value.startsWith(prefix) ? value.slice(prefix.length) : value;
+function imageIdFromPath(value: string | null): string | undefined {
+  return value || undefined;
 }
 
 function spec(key: string, value: unknown, sortOrder: number): ProductSpecRecord | null {
@@ -220,8 +222,9 @@ export function normalizeProductRecord(input: ProductInput, numericIdFallback = 
   const updatedAt = normalizeString(input.updatedAt, nowIso());
   const unit = existingRecord ? legacyDvtToUnit(input.unit) : legacyDvtToUnit(input.dvt);
   const coverImagePath =
-    normalizeNullableString(input.coverImagePath) ?? legacyImageToPath(input.imageId);
+    normalizeNullableString(input.coverImagePath) ?? imageIdToPath(input.imageId);
 
+  const revision = Number(input.revision);
   return {
     id: normalizeString(input.id, code),
     numericId: normalizeNumber(input.numericId, numericIdFallback),
@@ -246,6 +249,7 @@ export function normalizeProductRecord(input: ProductInput, numericIdFallback = 
     folderPath: normalizeNullableString(input.folderPath),
     createdAt,
     updatedAt,
+    revision: Number.isSafeInteger(revision) && revision > 0 ? revision : undefined,
     deleted: Boolean(input.deleted) || undefined,
     deletedAt: normalizeNullableString(input.deletedAt),
   };
@@ -256,6 +260,7 @@ export function toLegacyProduct(record: ProductRecord): Product {
   return {
     id: record.id,
     updatedAt: record.updatedAt,
+    revision: record.revision,
     deleted: record.deleted,
     deletedAt: record.deletedAt,
     dvt: unitToLegacyDvt(record.unit),
@@ -264,7 +269,7 @@ export function toLegacyProduct(record: ProductRecord): Product {
     donGiaGoc: record.unitPriceVnd,
     rongMacDinh: width,
     caoMacDinh: height,
-    imageId: legacyImageFromPath(record.coverImagePath),
+    imageId: imageIdFromPath(record.coverImagePath),
     mau: getSpecValue(record, ['Màu', 'Mau']),
     heNhom: getSpecValue(record, ['Hệ Nhôm', 'He Nhom', 'Hệ nhôm']),
     khungBao: getSpecValue(record, ['Khung Bao', 'Khung bao']),
@@ -324,13 +329,7 @@ export async function getAllProductsRaw(): Promise<ProductRecord[]> {
  * desired order; each gets sortOrder = its index (and a fresh updatedAt so the order syncs).
  */
 export async function reorderProducts(orderedIds: string[]): Promise<void> {
-  const stamp = nowIso();
-  const byId = new Map((await listProducts()).map((product) => [product.id, product]));
-  const reordered = orderedIds.flatMap((id, index) => {
-    const value = byId.get(id);
-    return value ? [{ ...normalizeProductRecord(value as ProductInput), sortOrder: index, updatedAt: stamp }] : [];
-  });
-  await upsertProductsBatch(reordered);
+  await setHostedProductOrder(orderedIds);
   notifyProductsChanged();
 }
 
@@ -344,41 +343,133 @@ export async function getProduct(id: string): Promise<Product | null> {
   return record ? toLegacyProduct(record) : null;
 }
 
-/** Tạo/sửa sản phẩm. Persist ProductRecord; trả compatibility Product cho UI cũ. */
+export interface SaveProductOptions {
+  /** Document acknowledged when this editor started (or after its previous save). */
+  baseRecord?: ProductRecord | null;
+}
+
+export type SavedProduct = Product & { record: ProductRecord };
+
+const MAX_CAS_ATTEMPTS = 6;
+
+/** Product-specific 3-way merge: catalogue ordering and identity are server-owned here. */
+export function mergeProductDocuments(
+  base: ProductRecord | null,
+  local: ProductRecord,
+  remote: ProductRecord,
+): ProductRecord {
+  const merged = mergeTopLevel(
+    base as unknown as Record<string, unknown> | null,
+    local as unknown as Record<string, unknown>,
+    remote as unknown as Record<string, unknown>,
+    {
+      remoteWins: ['id', 'revision', 'numericId', 'createdAt', 'sortOrder', 'deleted', 'deletedAt'],
+    },
+  ) as unknown as ProductRecord;
+  return {
+    ...merged,
+    id: remote.id,
+    numericId: remote.numericId,
+    createdAt: remote.createdAt,
+    sortOrder: remote.sortOrder,
+    deleted: undefined,
+    deletedAt: null,
+    revision: remote.revision,
+    updatedAt: nowIso(),
+  };
+}
+
+async function persistProductCas(
+  initialLocal: ProductRecord,
+  initialBase: ProductRecord | null,
+): Promise<ProductRecord> {
+  let local = initialLocal;
+  let base = initialBase;
+  let expectedRevision = base?.revision ?? null;
+
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
+    const result = await compareAndSwapProduct(local, expectedRevision);
+    if (result.status === 'applied' && result.record) return result.record;
+    if (result.status === 'deleted') {
+      throw new Error('Sản phẩm đã bị xoá trên một máy khác và không thể khôi phục từ bản cũ.');
+    }
+    if (result.status === 'missing') {
+      throw new Error('Sản phẩm không còn tồn tại trên Supabase.');
+    }
+    if (!result.record?.revision) {
+      throw new Error('Không nhận được phiên bản sản phẩm mới nhất từ Supabase.');
+    }
+    local = mergeProductDocuments(base, local, result.record);
+    base = result.record;
+    expectedRevision = result.record.revision;
+  }
+  throw new Error('Sản phẩm được sửa liên tục trên máy khác. Vui lòng thử lưu lại.');
+}
+
+/** Tạo/sửa sản phẩm bằng CAS; trả cả compatibility view và server ACK document. */
 export async function saveProduct(
   p: ProductInput & { id?: string; updatedAt?: string },
-): Promise<Product> {
+  options: SaveProductOptions = {},
+): Promise<SavedProduct> {
   const id = normalizeString(p.id, crypto.randomUUID());
-  const existing = await getProductById(id);
-  const numericId = existing
-    ? normalizeProductRecord(existing as ProductInput).numericId
-    : await getNextNumericId();
-  const saved = normalizeProductRecord(
+  const currentValue = await getProductById(id);
+  const current = currentValue ? normalizeProductRecord(currentValue as ProductInput) : null;
+  if (current?.deleted || current?.deletedAt) {
+    throw new Error('Sản phẩm đã bị xoá trên một máy khác và không thể khôi phục từ bản cũ.');
+  }
+  const hasExplicitBase = Object.prototype.hasOwnProperty.call(options, 'baseRecord');
+  const base = hasExplicitBase
+    ? (options.baseRecord ? normalizeProductRecord(options.baseRecord as ProductInput) : null)
+    : current;
+  const identitySource = current ?? base;
+  const numericId = identitySource ? identitySource.numericId : await getNextNumericId();
+  const local = normalizeProductRecord(
     {
+      ...(base ?? current ?? {}),
       ...p,
       id,
       numericId: p.numericId ?? numericId,
+      // Ordering is changed only by set_product_order; an open form never owns it.
+      sortOrder: current?.sortOrder ?? base?.sortOrder ?? p.sortOrder,
+      createdAt: current?.createdAt ?? base?.createdAt ?? p.createdAt,
       updatedAt: nowIso(),
     },
     numericId,
   );
-  await upsertProduct(saved);
+  const saved = await persistProductCas(local, base);
   notifyProductsChanged();
-  return toLegacyProduct(saved);
+  return { ...toLegacyProduct(saved), record: saved };
 }
 
 /** Xoá mềm trực tiếp trên Supabase. */
 export async function deleteProduct(id: string): Promise<void> {
   const existing = await getProductRecord(id);
   if (!existing) return;
+  if (existing.deleted || existing.deletedAt) return;
   const deletedAt = existing.deletedAt ?? nowIso();
-  await upsertProduct({
+  let proposal: ProductRecord = {
     ...existing,
     deleted: true,
     deletedAt,
     updatedAt: deletedAt,
-  } satisfies ProductRecord);
-  notifyProductsChanged();
+  };
+  let expectedRevision = existing.revision ?? null;
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
+    const result = await compareAndSwapProduct(proposal, expectedRevision);
+    if (result.status === 'applied' || result.status === 'deleted' || result.status === 'missing') {
+      notifyProductsChanged();
+      return;
+    }
+    if (!result.record?.revision) throw new Error('Không nhận được phiên bản sản phẩm mới nhất.');
+    proposal = {
+      ...result.record,
+      deleted: true,
+      deletedAt,
+      updatedAt: deletedAt,
+    };
+    expectedRevision = result.record.revision;
+  }
+  throw new Error('Sản phẩm được sửa liên tục trên máy khác. Vui lòng thử xoá lại.');
 }
 
 /**
@@ -388,16 +479,9 @@ export async function deleteProduct(id: string): Promise<void> {
  */
 export async function bulkAdjustProductPrices(percent: number): Promise<ProductRecord[]> {
   if (!Number.isFinite(percent)) throw new Error('Phần trăm điều chỉnh không hợp lệ.');
-  const all = await getAllProductsRaw();
-  const active = all.filter((product) => !product.deleted && !product.deletedAt);
-  const updated = active.map((product) => ({
-    ...product,
-    unitPriceVnd: Math.max(0, Math.round(product.unitPriceVnd * (1 + percent / 100))),
-    updatedAt: nowIso(),
-  }));
-  await upsertProductsBatch(updated);
+  await adjustHostedProductPrices(percent);
   notifyProductsChanged();
-  return updated;
+  return (await getAllProductsRaw()).filter((product) => !product.deleted && !product.deletedAt);
 }
 
 /** Compatibility bulk write; persists directly to Supabase. */

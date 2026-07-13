@@ -11,10 +11,17 @@ interface QuoteRow {
   status: string | null;
   total_vnd: number | null;
   data: QuoteRecord;
+  revision: number;
   deleted_at: string | null;
 }
 
 let realtimeChannelSequence = 0;
+
+export type RealtimeSubscriptionStatus =
+  | 'SUBSCRIBED'
+  | 'TIMED_OUT'
+  | 'CLOSED'
+  | 'CHANNEL_ERROR';
 
 function deletedAtFromQuote(quote: QuoteRecord): string | null {
   if (quote.deletedAt) return quote.deletedAt;
@@ -28,6 +35,7 @@ function rowFromQuote(quote: QuoteRecord): QuoteRow {
     deleted: deletedAt ? true : undefined,
     deletedAt,
   };
+  delete data.revision;
 
   return {
     id: quote.id,
@@ -38,15 +46,21 @@ function rowFromQuote(quote: QuoteRecord): QuoteRow {
     status: quote.status ?? null,
     total_vnd: Math.round(Number(quote.roundedTotalVnd ?? quote.totalVnd ?? 0)),
     data,
+    revision: quote.revision ?? 1,
     deleted_at: deletedAt,
   };
 }
 
-function quoteFromRow(row: Pick<QuoteRow, 'id' | 'data' | 'deleted_at'>): QuoteRecord {
-  const deletedAt = row.deleted_at ?? row.data.deletedAt ?? null;
+export function quoteFromRow(
+  row: Pick<QuoteRow, 'id' | 'data' | 'revision' | 'deleted_at'>,
+): QuoteRecord {
+  // The indexed column is authoritative even when it is explicitly NULL.
+  // Legacy JSON may still contain a stale tombstone after a server migration.
+  const deletedAt = row.deleted_at;
   return {
     ...row.data,
     id: row.id,
+    revision: row.revision,
     deleted: deletedAt ? true : undefined,
     deletedAt,
   };
@@ -58,7 +72,7 @@ async function selectQuotes(includeDeleted: boolean): Promise<QuoteRecord[]> {
   for (let from = 0; ; from += pageSize) {
     let query = supabase
       .from('quotes')
-      .select('id,data,deleted_at')
+      .select('id,data,revision,deleted_at')
       .order('quote_date', { ascending: false, nullsFirst: false })
       .order('id', { ascending: true })
       .range(from, from + pageSize - 1);
@@ -66,7 +80,7 @@ async function selectQuotes(includeDeleted: boolean): Promise<QuoteRecord[]> {
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     records.push(...(data ?? []).map((row) =>
-      quoteFromRow(row as Pick<QuoteRow, 'id' | 'data' | 'deleted_at'>),
+      quoteFromRow(row as Pick<QuoteRow, 'id' | 'data' | 'revision' | 'deleted_at'>),
     ));
     if ((data?.length ?? 0) < pageSize) break;
   }
@@ -87,11 +101,55 @@ export async function listQuotesRaw(): Promise<QuoteRecord[]> {
 export async function getQuoteById(id: string): Promise<QuoteRecord | null> {
   const { data, error } = await supabase
     .from('quotes')
-    .select('id,data,deleted_at')
+    .select('id,data,revision,deleted_at')
     .eq('id', id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? quoteFromRow(data as Pick<QuoteRow, 'id' | 'data' | 'deleted_at'>) : null;
+  return data
+    ? quoteFromRow(data as Pick<QuoteRow, 'id' | 'data' | 'revision' | 'deleted_at'>)
+    : null;
+}
+
+export type CasWriteStatus = 'applied' | 'conflict' | 'deleted' | 'missing';
+
+export interface QuoteCasWriteResult {
+  status: CasWriteStatus;
+  record: QuoteRecord | null;
+}
+
+interface QuoteCasPayload {
+  status?: CasWriteStatus;
+  id?: string;
+  data?: QuoteRecord;
+  revision?: number;
+  deleted_at?: string | null;
+}
+
+/** Compare-and-swap one quote and return the latest row whenever the token is stale. */
+export async function compareAndSwapQuote(
+  quote: QuoteRecord,
+  expectedRevision: number | null,
+): Promise<QuoteCasWriteResult> {
+  const proposed = rowFromQuote(quote).data;
+  const { data, error } = await supabase.rpc('save_quote_cas', {
+    proposed,
+    expected_revision: expectedRevision,
+  });
+  if (error) throw new Error(error.message);
+  const payload = (data ?? {}) as QuoteCasPayload;
+  const status = payload.status;
+  if (!status || !['applied', 'conflict', 'deleted', 'missing'].includes(status)) {
+    throw new Error('Supabase trả về kết quả lưu báo giá không hợp lệ.');
+  }
+  const record = payload.data && payload.id && Number.isFinite(Number(payload.revision))
+    ? quoteFromRow({
+        id: payload.id,
+        data: payload.data,
+        revision: Number(payload.revision),
+        deleted_at: payload.deleted_at ?? null,
+      })
+    : null;
+  return { status, record };
 }
 
 /** Insert or replace one complete quote document. */
@@ -125,7 +183,10 @@ export async function softDeleteQuote(id: string): Promise<void> {
 }
 
 /** Subscribe to quote changes made by every authenticated client. */
-export function subscribeToQuotes(onChange: () => void): () => void {
+export function subscribeToQuotes(
+  onChange: () => void,
+  onStatus?: (status: RealtimeSubscriptionStatus, error?: Error) => void,
+): () => void {
   realtimeChannelSequence += 1;
   const channel = supabase
     .channel(`quotes-live-${realtimeChannelSequence}`)
@@ -134,9 +195,9 @@ export function subscribeToQuotes(onChange: () => void): () => void {
       { event: '*', schema: 'public', table: 'quotes' },
       () => onChange(),
     )
-    .subscribe();
+    .subscribe((status, error) => onStatus?.(status, error));
 
   return () => {
-    void supabase.removeChannel(channel);
+    void supabase.removeChannel(channel).catch(() => undefined);
   };
 }

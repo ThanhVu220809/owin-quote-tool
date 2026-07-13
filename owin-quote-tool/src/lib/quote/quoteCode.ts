@@ -18,5 +18,6 @@ export function generateQuoteCode(existingQuotes: QuoteRecord[], date: Date = ne
     code = `${prefix}${String(sequence).padStart(4, '0')}`;
   }
 
-  return code;
+  const entropy = crypto.randomUUID().replaceAll('-', '').slice(0, 4).toUpperCase();
+  return `${code}-${entropy}`;
 }

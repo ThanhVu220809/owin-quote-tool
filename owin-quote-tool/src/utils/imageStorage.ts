@@ -2,9 +2,10 @@
  * Image compression + Supabase Storage persistence.
  *
  * Images are compressed in the browser (including EXIF orientation handling),
- * then uploaded directly to the public `product-images` bucket. Only the CDN
- * URL is persisted in product/quote records. The small Maps below are transient
- * runtime caches and are never written to browser storage.
+ * then uploaded directly to Supabase Storage. Product images use the public
+ * `product-images` bucket; quote-only overrides use the private `quote-images`
+ * bucket. Records persist only a Storage URL/reference. The small Maps below
+ * are transient runtime caches and are never written to browser storage.
  */
 import imageCompression from 'browser-image-compression';
 import {
@@ -14,6 +15,8 @@ import {
   storagePathFromPublicUrl,
   uploadImageBlob,
   uploadImageDedupResult,
+  uploadPrivateQuoteImage,
+  uploadPrivateQuoteImageBlob,
 } from '@/features/supabase/imagesRepo';
 import { isSupabaseConfigured } from '@/features/supabase/supabaseClient';
 
@@ -22,7 +25,9 @@ export const COMPRESS_OPTIONS = {
   maxSizeMB: 0.1,
   maxWidthOrHeight: 800,
   initialQuality: 0.7,
-  useWebWorker: true,
+  // Keep customer/product bytes inside this app process; do not load a worker
+  // program from a third-party CDN at runtime.
+  useWebWorker: false,
 } as const;
 
 export type ImageErrorCode = 'NOT_IMAGE' | 'COMPRESS_FAILED' | 'STORE_FAILED';
@@ -62,7 +67,6 @@ export async function compressImage(
 
 const productCache = new Map<string, Blob>();
 const quoteCache = new Map<string, Blob>();
-const legacyCache = new Map<string, Blob>();
 
 function remotePersistenceEnabled(): boolean {
   // Unit tests exercise the compatibility API without mutating a real project.
@@ -132,6 +136,30 @@ export async function compressAndStore(
   return { id: uploaded.url, blob: uploaded.blob };
 }
 
+/** Compress and upload an image used only by a quote to authenticated Storage. */
+export async function compressAndUploadQuoteImage(
+  file: File,
+  options: Partial<typeof COMPRESS_OPTIONS> = {},
+): Promise<{ id: string; path: string; url: string; blob: Blob }> {
+  const blob = await compressImage(file, options);
+  try {
+    if (remotePersistenceEnabled()) {
+      const uploaded = await uploadPrivateQuoteImage(blob);
+      remember(quoteCache, uploaded.path, blob);
+      remember(quoteCache, uploaded.url, blob);
+      return { id: uploaded.url, ...uploaded, blob };
+    }
+    const memoryPath = `memory-quote-images/${crypto.randomUUID()}`;
+    remember(quoteCache, memoryPath, blob);
+    return { id: memoryPath, path: memoryPath, url: memoryPath, blob };
+  } catch (error) {
+    throw new ImageError(
+      `Tải ảnh báo giá lên Supabase thất bại: ${error instanceof Error ? error.message : String(error)}`,
+      'STORE_FAILED',
+    );
+  }
+}
+
 /** Compatibility API: upload a blob to Storage under a known object path. */
 export async function saveImage(id: string, blob: Blob): Promise<void> {
   try {
@@ -150,7 +178,7 @@ export async function saveImage(id: string, blob: Blob): Promise<void> {
 
 /** Fetch a Storage/public image as a Blob; useful for binary exports. */
 export async function getImage(id: string): Promise<Blob | null> {
-  const cached = recalled(productCache, id) || recalled(legacyCache, id);
+  const cached = recalled(productCache, id);
   if (cached) return cached;
   if (!remotePersistenceEnabled() && !/^(https?:|blob:|data:)/i.test(id)) return null;
   const blob = await downloadImageBlob(id);
@@ -173,14 +201,13 @@ export async function getImageDataUrl(id: string): Promise<string | null> {
 export async function deleteImage(id: string): Promise<void> {
   for (const key of aliases(id)) {
     productCache.delete(key);
-    legacyCache.delete(key);
   }
   if (remotePersistenceEnabled()) await deleteImageObject(id);
 }
 
 /** Runtime-cache keys only; persistent listing belongs to Supabase Storage. */
 export async function listImageIds(): Promise<string[]> {
-  return [...new Set([...productCache.keys(), ...legacyCache.keys()])];
+  return [...new Set(productCache.keys())];
 }
 
 export async function countImages(): Promise<number> {
@@ -189,7 +216,10 @@ export async function countImages(): Promise<number> {
 
 export async function saveQuoteImage(path: string, blob: Blob): Promise<void> {
   try {
-    if (remotePersistenceEnabled()) await uploadImageBlob(path, blob);
+    if (remotePersistenceEnabled()) {
+      const uploaded = await uploadPrivateQuoteImageBlob(path, blob);
+      remember(quoteCache, uploaded.url, blob);
+    }
     remember(quoteCache, path, blob);
   } catch (error) {
     throw new ImageError(
@@ -237,10 +267,9 @@ function transientStore(cache: Map<string, Blob>): TransientStore {
 /** Small in-memory store facades retained for test compatibility. */
 const productImageStore = transientStore(productCache);
 const quoteImageStore = transientStore(quoteCache);
-const legacyImageStore = transientStore(legacyCache);
 const imageStore = productImageStore;
 
-export { imageStore, productImageStore, quoteImageStore, legacyImageStore };
+export { imageStore, productImageStore, quoteImageStore };
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {

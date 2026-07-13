@@ -12,10 +12,12 @@ export const isSupabaseConfigured = Boolean(url && anonKey);
 
 /** Bucket ảnh sản phẩm (public). */
 export const PRODUCT_IMAGE_BUCKET = 'product-images';
+/** Ảnh chụp/ghi đè riêng trong báo giá (private, cần đăng nhập để đọc). */
+export const QUOTE_IMAGE_BUCKET = 'quote-images';
 
 // Placeholder hợp lệ khi CHƯA cấu hình để createClient KHÔNG ném lỗi lúc import
 // (nếu không, biến env rỗng sẽ làm trắng cả app). Khi chưa cấu hình, SupabaseGate
-// render app cũ và không đụng tới client này.
+// hiển thị lỗi cấu hình rõ ràng và không đụng tới client này.
 const safeUrl = url || 'https://placeholder.supabase.co';
 const safeKey = anonKey || 'placeholder-anon-key';
 

@@ -26,39 +26,51 @@ export function ProductThumb({
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [resolving, setResolving] = useState(true);
 
   useEffect(() => {
     let revoked: string | null = null;
     let active = true;
-    void Promise.resolve().then(() => {
-      if (!active) return;
+    // Reset loading/fallback UI when the image inputs change, before re-resolving.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setResolving(true);
+    setFailed(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    const resolve = async () => {
       setFailed(false);
-      const path = imagePath || (imageId ? `legacy-images/${imageId}` : null);
+      const path = imagePath || imageId || null;
       if (!path) {
         if (item) {
-          resolveItemImage(item, products).then((resolved) => {
-            if (!active) {
-              if (resolved.revoke && resolved.url) URL.revokeObjectURL(resolved.url);
-              return;
-            }
-            if (resolved.revoke) revoked = resolved.url;
-            setUrl(resolved.url);
-          });
-        } else setUrl(null);
-        return;
-      }
-      const resolving = item ? resolveItemImage({ ...item, imagePath: path }, products) : resolveImageUrl(path);
-      resolving.then((resolved) => {
-        if (!active) {
-          if (resolved.revoke && resolved.url) URL.revokeObjectURL(resolved.url);
-        } else if (resolved.url) {
+          const resolved = await resolveItemImage(item, products);
           if (resolved.revoke) revoked = resolved.url;
-          setUrl(resolved.url);
-        } else {
-          setUrl(null);
+          return resolved.url;
         }
+        return null;
+      }
+      const resolved = item
+        ? await resolveItemImage({ ...item, imagePath: path }, products)
+        : await resolveImageUrl(path);
+      if (resolved.revoke) revoked = resolved.url;
+      return resolved.url;
+    };
+
+    void resolve()
+      .then((resolvedUrl) => {
+        if (!active) {
+          if (revoked) URL.revokeObjectURL(revoked);
+          revoked = null;
+          return;
+        }
+        setUrl(resolvedUrl);
+      })
+      .catch(() => {
+        if (active) setUrl(null);
+      })
+      .finally(() => {
+        if (active) setResolving(false);
       });
-    });
+
     return () => {
       active = false;
       if (revoked) URL.revokeObjectURL(revoked);
@@ -74,8 +86,11 @@ export function ProductThumb({
       className={className}
       src={displayUrl}
       alt=""
+      data-image-loading={resolving ? 'true' : 'false'}
+      aria-busy={resolving}
       style={sizeStyle}
       onError={() => {
+        setResolving(false);
         if (!failed) setFailed(true);
       }}
     />

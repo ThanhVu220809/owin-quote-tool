@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, BookOpen, Pencil, Plus, Search, X, Percent } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { useProducts } from './useProducts';
 import { bulkAdjustProductPrices, getProductRecord, reorderProducts } from './productStore';
 import { reorderList } from '@/components/DragReorder';
 import { sortProductsByColor } from '@/lib/products/productSort';
-import { ProductForm } from './ProductForm';
+import { ProductForm, type ProductFormSaveOptions } from './ProductForm';
 import { ProductList } from './ProductList';
 import { ProductThumb } from './ProductThumb';
 import { rememberProductSuggestions } from '@/lib/suggestions';
@@ -102,8 +102,20 @@ function extraAccessoryNames(products: ProductRecord[]): string[] {
 
 /** Màn quản lý sản phẩm gốc (catalog). */
 export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void }) {
-  const { productRecords, loading, saveProduct, deleteProduct } = useProducts();
-  const { suggestions: seededSuggestions, refreshSuggestions } = useSuggestions(PRODUCT_SUGGESTION_TYPES);
+  const {
+    productRecords,
+    loading,
+    error: productsError,
+    retry: retryProducts,
+    saveProduct,
+    deleteProduct,
+  } = useProducts();
+  const {
+    suggestions: seededSuggestions,
+    error: suggestionsError,
+    refreshSuggestions,
+    retry: retrySuggestions,
+  } = useSuggestions(PRODUCT_SUGGESTION_TYPES);
   const [editing, setEditing] = useState<ProductRecord | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,9 +123,11 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
   const [previewProduct, setPreviewProduct] = useState<ProductRecord | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [operationError, setOperationError] = useState('');
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
   const [bulkPercent, setBulkPercent] = useState('');
   const [bulkSaving, setBulkSaving] = useState(false);
+  const productFormCloseRef = useRef<(() => Promise<void>) | null>(null);
 
   // Field-specific suggestion pools (no noisy global bucket for all fields).
   const suggestions = useMemo(
@@ -195,28 +209,44 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
   const openNew = () => {
     setEditing(null);
     setMessage('');
+    setOperationError('');
     setShowForm(true);
   };
   const openEdit = (p: ProductRecord) => {
     setEditing(p);
     setMessage('');
+    setOperationError('');
     setShowForm(true);
   };
-  const closeForm = () => {
+  const closeForm = useCallback(() => {
     setShowForm(false);
     setEditing(null);
+  }, []);
+  const registerProductFormClose = useCallback((handler: (() => Promise<void>) | null) => {
+    productFormCloseRef.current = handler;
+  }, []);
+  const requestProductFormClose = () => {
+    const handler = productFormCloseRef.current;
+    if (handler) void handler();
+    else closeForm();
   };
 
   const handleDelete = async (p: ProductRecord) => {
     if (confirm(`Xoá sản phẩm "${p.name}" (${p.code})?`)) {
-      await deleteProduct(p.id);
-      setMessage(`Đã xoá "${p.name}".`);
+      setOperationError('');
+      try {
+        await deleteProduct(p.id);
+        setMessage(`Đã xoá "${p.name}".`);
+      } catch {
+        setOperationError('Không thể xoá sản phẩm trên Supabase. Vui lòng thử lại.');
+      }
     }
   };
 
   const handleDuplicate = async (p: ProductRecord) => {
     setDuplicatingId(p.id);
     setMessage('');
+    setOperationError('');
     try {
       // Mã bản sao render theo thời gian (giống lúc tạo mới), không dính "-COPY-".
       const copyCode = generateProductCode(true);
@@ -234,14 +264,22 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
         deletedAt: null,
         deleted: undefined,
       });
-      const record = await getProductRecord(saved.id);
-      if (record) {
-        await rememberProductSuggestions(record);
-        setEditing(record);
-        setShowForm(true);
-      }
-      await refreshSuggestions();
       setMessage(`Đã nhân bản "${p.name}".`);
+      // Suggestions are secondary metadata. A failure here must never make a
+      // successfully-created product look failed and tempt the user to retry.
+      try {
+        const record = await getProductRecord(saved.id);
+        if (record) {
+          setEditing(record);
+          setShowForm(true);
+          await rememberProductSuggestions(record);
+        }
+        await refreshSuggestions();
+      } catch {
+        // The product is already safely committed; Realtime will refresh it.
+      }
+    } catch {
+      setOperationError('Không thể nhân bản sản phẩm trên Supabase. Vui lòng thử lại.');
     } finally {
       setDuplicatingId(null);
     }
@@ -277,14 +315,28 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
   const canReorder = !searchQuery.trim() && !selectedCategory;
   const handleReorder = async (from: number, to: number) => {
     const nextOrder = reorderList(filteredProducts, from, to);
-    await reorderProducts(nextOrder.map((product) => product.id));
+    setOperationError('');
+    try {
+      await reorderProducts(nextOrder.map((product) => product.id));
+    } catch {
+      setOperationError('Không thể lưu thứ tự sản phẩm. Vui lòng thử lại.');
+    }
   };
 
-  const handleSave: typeof saveProduct = async (input) => {
-    const saved = await saveProduct(input);
-    const record = await getProductRecord(saved.id);
-    if (record) await rememberProductSuggestions(record);
-    await refreshSuggestions();
+  const handleSave = async (
+    input: Parameters<typeof saveProduct>[0],
+    options?: ProductFormSaveOptions,
+  ) => {
+    const saved = await saveProduct(input, { baseRecord: options?.baseRecord });
+    if (options?.learnSuggestions !== false) {
+      try {
+        const record = await getProductRecord(saved.id);
+        if (record) await rememberProductSuggestions(record);
+        await refreshSuggestions();
+      } catch {
+        // Autocomplete ranking is secondary; the product save already succeeded.
+      }
+    }
     return saved;
   };
 
@@ -300,11 +352,14 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
     if (!Number.isFinite(bulkPercentValue) || bulkPercent.trim() === '') return;
     if (!confirm(`Áp dụng thay đổi ${bulkPercentValue}% cho ${productRecords.length} sản phẩm đang hoạt động?`)) return;
     setBulkSaving(true);
+    setOperationError('');
     try {
       await bulkAdjustProductPrices(bulkPercentValue);
       setMessage(`Đã cập nhật giá ${productRecords.length} sản phẩm.`);
       setBulkPriceOpen(false);
       setBulkPercent('');
+    } catch {
+      setOperationError('Không thể cập nhật giá trên Supabase. Không có dữ liệu cục bộ nào được dùng thay thế.');
     } finally {
       setBulkSaving(false);
     }
@@ -315,7 +370,7 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
       <section className="admin-page product-workflow-page">
         <div className="admin-page-heading">
           <div className="title-row">
-            <button className="admin-back-button" onClick={closeForm} aria-label="Quay lại danh sách sản phẩm">
+            <button className="admin-back-button" onClick={requestProductFormClose} aria-label="Quay lại danh sách sản phẩm">
               <ArrowLeft size={20} />
             </button>
             <div>
@@ -330,6 +385,7 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
           suggestions={suggestions}
           onSave={handleSave}
           onCancel={closeForm}
+          registerCloseHandler={registerProductFormClose}
         />
       </section>
     );
@@ -358,6 +414,23 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
       </div>
 
       {message && <div className="product-toast">{message}</div>}
+      {(productsError || suggestionsError || operationError) && (
+        <div className="product-data-error" role="alert">
+          <span>{operationError || productsError || suggestionsError}</span>
+          {(productsError || suggestionsError) && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setOperationError('');
+                void Promise.all([retryProducts(), retrySuggestions()]);
+              }}
+            >
+              Thử tải lại
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="product-filter-card">
         <div className="field product-filter-search">

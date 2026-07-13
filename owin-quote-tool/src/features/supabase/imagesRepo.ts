@@ -3,7 +3,20 @@
  * Database records store the returned public URL; image bytes never need a
  * browser database.
  */
-import { supabase, PRODUCT_IMAGE_BUCKET } from './supabaseClient';
+import { supabase, PRODUCT_IMAGE_BUCKET, QUOTE_IMAGE_BUCKET } from './supabaseClient';
+
+export const PRIVATE_QUOTE_IMAGE_PREFIX = 'quote-private:';
+
+export function privateQuoteImagePath(value: string | null | undefined): string | null {
+  const raw = String(value || '').trim();
+  if (!raw.startsWith(PRIVATE_QUOTE_IMAGE_PREFIX)) return null;
+  const path = raw.slice(PRIVATE_QUOTE_IMAGE_PREFIX.length).replace(/^\/+/, '');
+  return path || null;
+}
+
+export function privateQuoteImageReference(path: string): string {
+  return `${PRIVATE_QUOTE_IMAGE_PREFIX}${path.replace(/^\/+/, '')}`;
+}
 
 function sanitize(part: string): string {
   return (part || 'x').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
@@ -82,6 +95,29 @@ export async function uploadImageDedupResult(blob: Blob, seen?: Set<string>): Pr
   return { path, url: publicUrl(path) };
 }
 
+/** Upload a quote-only image to a private bucket and return a stable DB reference. */
+export async function uploadPrivateQuoteImage(blob: Blob): Promise<UploadedImage> {
+  const hash = await blobHash(blob);
+  const path = `img/${hash}.${extensionForBlob(blob)}`;
+  const { error } = await supabase.storage
+    .from(QUOTE_IMAGE_BUCKET)
+    .upload(path, blob, { upsert: true, contentType: blob.type || 'image/webp' });
+  if (error) throw new Error(error.message);
+  return { path, url: privateQuoteImageReference(path) };
+}
+
+/** Upload a quote image under a caller-provided private object path. */
+export async function uploadPrivateQuoteImageBlob(path: string, blob: Blob): Promise<UploadedImage> {
+  const privatePath = privateQuoteImagePath(path)
+    ?? path.trim().replace(/^\/+/, '').replace(new RegExp(`^${QUOTE_IMAGE_BUCKET}/+`), '');
+  if (!privatePath) throw new Error('Duong dan anh bao gia khong hop le.');
+  const { error } = await supabase.storage
+    .from(QUOTE_IMAGE_BUCKET)
+    .upload(privatePath, blob, { upsert: true, contentType: blob.type || 'image/webp' });
+  if (error) throw new Error(error.message);
+  return { path: privatePath, url: privateQuoteImageReference(privatePath) };
+}
+
 /**
  * Upload ảnh theo NỘI DUNG (content-addressed): cùng ảnh → cùng path `img/<hash>` →
  * chỉ lưu 1 lần, nhiều sản phẩm trỏ chung 1 URL. `seen` bỏ qua lần upload lặp trong 1 phiên.
@@ -90,10 +126,16 @@ export async function uploadImageDedup(blob: Blob, seen?: Set<string>): Promise<
   return (await uploadImageDedupResult(blob, seen)).url;
 }
 
-/** Download image bytes for DOCX/Excel embedding or a one-time legacy migration. */
+/** Download image bytes for DOCX/Excel embedding. */
 export async function downloadImageBlob(source: string): Promise<Blob | null> {
   const raw = String(source || '').trim();
   if (!raw) return null;
+  const privateQuotePath = privateQuoteImagePath(raw)
+    ?? (!/^(https?:|blob:|data:)/i.test(raw) && raw.startsWith('quotes/') ? raw : null);
+  if (privateQuotePath) {
+    const { data, error } = await supabase.storage.from(QUOTE_IMAGE_BUCKET).download(privateQuotePath);
+    return error ? null : data;
+  }
   if (/^(https?:|blob:|data:)/i.test(raw)) {
     try {
       const response = await fetch(raw);
@@ -110,6 +152,14 @@ export async function downloadImageBlob(source: string): Promise<Blob | null> {
 
 /** Remove a Storage object. Database rows must be updated separately. */
 export async function deleteImageObject(source: string): Promise<void> {
+  const raw = String(source || '').trim();
+  const privateQuotePath = privateQuoteImagePath(raw)
+    ?? (!/^(https?:|blob:|data:)/i.test(raw) && raw.startsWith('quotes/') ? raw : null);
+  if (privateQuotePath) {
+    const { error } = await supabase.storage.from(QUOTE_IMAGE_BUCKET).remove([privateQuotePath]);
+    if (error) throw new Error(error.message);
+    return;
+  }
   const path = storagePathFromPublicUrl(source);
   if (!path) return;
   const { error } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove([path]);

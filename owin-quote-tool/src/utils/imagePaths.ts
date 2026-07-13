@@ -1,11 +1,13 @@
 import {
   downloadImageBlob,
+  privateQuoteImageReference,
+  privateQuoteImagePath,
   publicUrl as storagePublicUrl,
   storagePathFromPublicUrl,
 } from '@/features/supabase/imagesRepo';
 
 export const DEFAULT_LOGO_PATH = 'owin-user-assets/logo/logo.webp';
-const STATIC_PUBLIC_PREFIXES = ['owin-user-assets/', 'imported-assets/'];
+const STATIC_PUBLIC_PREFIXES = ['owin-user-assets/'];
 
 function appBase(): string {
   const base = import.meta.env.BASE_URL || '/';
@@ -33,11 +35,10 @@ export function normalizeImagePath(path: string | null | undefined): string | nu
 export function imageStoreKeyFromPath(path: string | null | undefined): string | null {
   const normalized = normalizeImagePath(path);
   if (!normalized) return null;
+  if (privateQuoteImagePath(normalized)) return normalized;
   const storagePath = storagePathFromPublicUrl(normalized);
   if (/^https?:/i.test(normalized)) return storagePath;
   if (/^(data:|blob:)/i.test(normalized)) return null;
-  const legacyPrefix = 'legacy-images/';
-  if (normalized.startsWith(legacyPrefix)) return normalized.slice(legacyPrefix.length);
   if (normalized.startsWith(appBase())) return null;
   return storagePath || normalized;
 }
@@ -59,7 +60,7 @@ export function quoteItemImagePath(quoteId: string, itemCode: string, extension 
   const safeQuote = quoteId.trim().replace(/[^a-zA-Z0-9_-]+/g, '-') || 'draft';
   const safeItem = itemCode.trim().replace(/[^a-zA-Z0-9_-]+/g, '-') || 'item';
   const safeExt = extension.replace(/^\./, '').replace(/[^a-zA-Z0-9]+/g, '') || 'webp';
-  return `quotes/${safeQuote}/items/${safeItem}/cover.${safeExt}`;
+  return privateQuoteImageReference(`quotes/${safeQuote}/items/${safeItem}/cover.${safeExt}`);
 }
 
 export async function resolveImageUrl(path: string | null | undefined): Promise<{
@@ -70,6 +71,12 @@ export async function resolveImageUrl(path: string | null | undefined): Promise<
   if (!normalized) return { url: withBasePath(DEFAULT_LOGO_PATH), revoke: false };
   if (/^(https?:|data:|blob:)/i.test(normalized) || normalized.startsWith(appBase())) {
     return { url: normalized, revoke: false };
+  }
+  if (privateQuoteImagePath(normalized)) {
+    const blob = await downloadImageBlob(normalized);
+    return blob
+      ? { url: URL.createObjectURL(blob), revoke: true }
+      : { url: withBasePath(DEFAULT_LOGO_PATH), revoke: false };
   }
 
   const key = imageStoreKeyFromPath(normalized);

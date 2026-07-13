@@ -9,6 +9,12 @@ vi.mock('@/features/supabase/quotesRepo', () => ({
   ),
   listQuotesRaw: vi.fn(async () => Array.from(quoteDb.values())),
   getQuoteById: vi.fn(async (id: string) => quoteDb.get(id) ?? null),
+  compareAndSwapQuote: vi.fn(async (quote: QuoteRecord) => {
+    const revision = (quoteDb.get(quote.id)?.revision ?? 0) + 1;
+    const record = { ...quote, revision };
+    quoteDb.set(quote.id, record);
+    return { status: 'applied' as const, record };
+  }),
   upsertQuote: vi.fn(async (quote: QuoteRecord) => {
     quoteDb.set(quote.id, quote);
   }),

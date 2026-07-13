@@ -23,6 +23,11 @@ export type ResolvedItemImage = {
   revoke: boolean;
 };
 
+export type ResolveItemImageOptions = {
+  /** Exporters need image bytes; normal UI thumbnails can keep the CDN URL. */
+  loadBlob?: boolean;
+};
+
 const EMPTY: ResolvedItemImage = { url: null, blob: null, path: null, source: 'missing', revoke: false };
 
 function candidates(item: ImageItem, products: ProductRecord[]): Array<{ path: string; source: ResolvedItemImage['source'] }> {
@@ -54,17 +59,35 @@ async function blobForPath(path: string): Promise<Blob | null> {
   if (!normalized || /^(https?:|data:|blob:)/i.test(normalized)) return null;
   const key = imageStoreKeyFromPath(normalized);
   if (!key) return null;
-  return normalized.startsWith('quotes/') ? getQuoteImage(key) : getImage(key);
+  return normalized.startsWith('quotes/') || normalized.startsWith('quote-private:')
+    ? getQuoteImage(key)
+    : getImage(key);
 }
 
 /** Single image lookup used by quote/catalogue UI and all binary exporters. */
-export async function resolveItemImage(item: ImageItem, products: ProductRecord[] = []): Promise<ResolvedItemImage> {
+export async function resolveItemImage(
+  item: ImageItem,
+  products: ProductRecord[] = [],
+  options: ResolveItemImageOptions = {},
+): Promise<ResolvedItemImage> {
   for (const candidate of candidates(item, products)) {
     const normalized = normalizeImagePath(candidate.path);
     if (!normalized) continue;
-    if (/^data:/i.test(normalized)) return { url: normalized, blob: null, path: normalized, source: candidate.source, revoke: false };
+    if (/^data:/i.test(normalized)) {
+      const blob = options.loadBlob ? await getImage(normalized) : null;
+      return { url: normalized, blob, path: normalized, source: candidate.source, revoke: false };
+    }
     if (/^(https?:|blob:)/i.test(normalized) || normalized.startsWith((import.meta.env.BASE_URL || '/').replace(/\/$/, '/'))) {
-      return { url: normalized, blob: null, path: normalized, source: 'static', revoke: false };
+      let blob: Blob | null = null;
+      if (options.loadBlob) {
+        try {
+          const response = await fetch(normalized);
+          if (response.ok) blob = await response.blob();
+        } catch {
+          // Keep the URL fallback for UI/Word even if binary embedding fails.
+        }
+      }
+      return { url: normalized, blob, path: normalized, source: candidate.source, revoke: false };
     }
     const blob = await blobForPath(normalized);
     if (blob) return { url: URL.createObjectURL(blob), blob, path: normalized, source: candidate.source, revoke: true };

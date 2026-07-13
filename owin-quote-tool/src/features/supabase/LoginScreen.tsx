@@ -3,7 +3,7 @@ import { signInWithPassword } from './auth';
 
 /** Màn đăng nhập admin. Đăng nhập 1 lần, phiên tự nhớ. */
 export function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -13,9 +13,9 @@ export function LoginScreen() {
     setBusy(true);
     setError('');
     try {
-      await signInWithPassword(email, password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đăng nhập thất bại');
+      await signInWithPassword(identifier, password);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Không thể đăng nhập lúc này. Vui lòng thử lại.');
     } finally {
       setBusy(false);
     }
@@ -30,14 +30,33 @@ export function LoginScreen() {
           <p className="muted" style={{ fontSize: 13, margin: 0 }}>Đăng nhập để tiếp tục</p>
         </div>
         <label style={{ display: 'grid', gap: 4 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Email</span>
-          <input className="input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <span className="muted" style={{ fontSize: 12 }}>Tên đăng nhập hoặc email</span>
+          <input
+            className="input"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="Nhập tên đăng nhập hoặc email"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            required
+            autoFocus
+          />
         </label>
         <label style={{ display: 'grid', gap: 4 }}>
           <span className="muted" style={{ fontSize: 12 }}>Mật khẩu</span>
-          <input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input
+            className="input"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Nhập mật khẩu"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
         </label>
-        {error && <div style={{ color: 'var(--ios-red, #d00)', fontSize: 13 }}>{error}</div>}
+        {error && <div role="alert" style={{ color: 'var(--ios-red, #d00)', fontSize: 13 }}>{error}</div>}
         <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Đang đăng nhập…' : 'Đăng nhập'}</button>
       </form>
     </div>

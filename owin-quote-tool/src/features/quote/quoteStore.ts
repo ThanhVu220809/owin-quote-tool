@@ -6,6 +6,7 @@ import type {
 } from '@/types/models';
 import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
 import {
+  compareAndSwapQuote,
   getQuoteById,
   listQuotes,
   listQuotesRaw,
@@ -13,6 +14,11 @@ import {
   upsertQuote,
   upsertQuotesBatch,
 } from '@/features/supabase/quotesRepo';
+import {
+  documentsEqual,
+  mergeAppendOnlyById,
+  mergeTopLevel,
+} from '@/features/supabase/threeWayMerge';
 
 type QuoteInput = Partial<QuoteRecord>;
 
@@ -181,6 +187,7 @@ export function normalizeQuoteRecord(input: QuoteInput): QuoteRecord {
   const depositVnd = safeNumber(input.depositVnd, snapshot.depositVnd);
   const balanceVnd = safeNumber(input.balanceVnd, Math.max(0, roundedTotalVnd - depositVnd));
 
+  const revision = Number(input.revision);
   return {
     id,
     code,
@@ -214,6 +221,7 @@ export function normalizeQuoteRecord(input: QuoteInput): QuoteRecord {
     deleted: Boolean(input.deleted) || undefined,
     createdAt,
     updatedAt,
+    revision: Number.isSafeInteger(revision) && revision > 0 ? revision : undefined,
   };
 }
 
@@ -241,32 +249,149 @@ export async function getQuote(id: string): Promise<QuoteRecord | null> {
   return value ? normalizeQuoteRecord(value) : null;
 }
 
-export async function saveQuoteRecord(input: QuoteInput): Promise<QuoteRecord> {
-  const existing = input.id ? await getQuote(input.id) : null;
+export interface SaveQuoteOptions {
+  /** Document acknowledged when this editor opened or after its previous save. */
+  baseRecord?: QuoteRecord | null;
+}
+
+const MAX_CAS_ATTEMPTS = 6;
+
+function quoteSnapshotForMergedDocument(
+  base: QuoteRecord | null,
+  local: QuoteRecord,
+  remote: QuoteRecord,
+  merged: QuoteRecord,
+): QuoteRecord['snapshot'] {
+  const localChangedItems = base === null || !documentsEqual(local.items, base.items);
+  const itemSnapshot = localChangedItems ? local.snapshot : remote.snapshot;
+  return {
+    ...itemSnapshot,
+    quoteCode: merged.code,
+    createdAt: merged.createdAt,
+    customerId: merged.customerId,
+    customerName: merged.customerName,
+    customerPhone: merged.customerPhone,
+    customerEmail: merged.customerEmail,
+    customerAddress: merged.customerAddress,
+    quoteDate: merged.quoteDate ?? merged.createdAt,
+    depositVnd: merged.depositVnd,
+    summary: {
+      ...itemSnapshot.summary,
+      subtotalProductVnd: merged.subtotalProductVnd,
+      subtotalAccessoryVnd: merged.subtotalAccessoryVnd,
+      totalVnd: merged.totalVnd,
+      roundedTotalVnd: merged.roundedTotalVnd,
+      depositVnd: merged.depositVnd,
+      balanceVnd: merged.balanceVnd,
+    },
+  };
+}
+
+/** Merge independent quote fields and retain every append-only export audit entry. */
+export function mergeQuoteDocuments(
+  base: QuoteRecord | null,
+  local: QuoteRecord,
+  remote: QuoteRecord,
+): QuoteRecord {
+  const merged = mergeTopLevel(
+    base as unknown as Record<string, unknown> | null,
+    local as unknown as Record<string, unknown>,
+    remote as unknown as Record<string, unknown>,
+    { remoteWins: ['id', 'revision', 'createdAt', 'deleted', 'deletedAt'] },
+  ) as unknown as QuoteRecord;
+  const localChangedExports = base === null || !documentsEqual(local.exports, base.exports);
+  if (localChangedExports) {
+    merged.exports = mergeAppendOnlyById(remote.exports ?? [], local.exports ?? []);
+  }
+  merged.id = remote.id;
+  merged.createdAt = remote.createdAt;
+  merged.deleted = undefined;
+  merged.deletedAt = null;
+  merged.revision = remote.revision;
+  merged.updatedAt = nowIso();
+  merged.snapshot = quoteSnapshotForMergedDocument(base, local, remote, merged);
+  merged.snapshotJson = JSON.stringify(merged.snapshot);
+  return merged;
+}
+
+async function persistQuoteCas(
+  initialLocal: QuoteRecord,
+  initialBase: QuoteRecord | null,
+): Promise<QuoteRecord> {
+  let local = initialLocal;
+  let base = initialBase;
+  let expectedRevision = base?.revision ?? null;
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
+    const result = await compareAndSwapQuote(local, expectedRevision);
+    if (result.status === 'applied' && result.record) return result.record;
+    if (result.status === 'deleted') {
+      throw new Error('Báo giá đã bị xoá trên một máy khác và không thể khôi phục từ bản cũ.');
+    }
+    if (result.status === 'missing') throw new Error('Báo giá không còn tồn tại trên Supabase.');
+    if (!result.record?.revision) {
+      throw new Error('Không nhận được phiên bản báo giá mới nhất từ Supabase.');
+    }
+    local = mergeQuoteDocuments(base, local, result.record);
+    base = result.record;
+    expectedRevision = result.record.revision;
+  }
+  throw new Error('Báo giá được sửa liên tục trên máy khác. Vui lòng thử lưu lại.');
+}
+
+export async function saveQuoteRecord(
+  input: QuoteInput,
+  options: SaveQuoteOptions = {},
+): Promise<QuoteRecord> {
+  const currentValue = input.id ? await getQuoteById(input.id) : null;
+  const current = currentValue ? normalizeQuoteRecord(currentValue) : null;
+  if (current?.deleted || current?.deletedAt) {
+    throw new Error('Báo giá đã bị xoá trên một máy khác và không thể khôi phục từ bản cũ.');
+  }
+  const hasExplicitBase = Object.prototype.hasOwnProperty.call(options, 'baseRecord');
+  const base = hasExplicitBase
+    ? (options.baseRecord ? normalizeQuoteRecord(options.baseRecord) : null)
+    : current;
   const updatedAt = nowIso();
   const record = normalizeQuoteRecord({
-    ...existing,
+    ...(base ?? current ?? {}),
     ...input,
-    id: input.id || existing?.id || crypto.randomUUID(),
-    createdAt: input.createdAt || existing?.createdAt || updatedAt,
+    id: input.id || base?.id || current?.id || crypto.randomUUID(),
+    createdAt: current?.createdAt || base?.createdAt || input.createdAt || updatedAt,
     updatedAt,
   });
-  await upsertQuote(record);
+  const saved = await persistQuoteCas(record, base);
   notifyQuotesChanged();
-  return record;
+  return saved;
 }
 
 export async function deleteQuote(id: string): Promise<void> {
   const existing = await getQuote(id);
   if (!existing) return;
+  if (existing.deleted || existing.deletedAt) return;
   const deletedAt = existing.deletedAt || nowIso();
-  await upsertQuote({
+  let proposal: QuoteRecord = {
     ...existing,
     deletedAt,
     deleted: true,
     updatedAt: deletedAt,
-  } satisfies QuoteRecord);
-  notifyQuotesChanged();
+  };
+  let expectedRevision = existing.revision ?? null;
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt += 1) {
+    const result = await compareAndSwapQuote(proposal, expectedRevision);
+    if (result.status === 'applied' || result.status === 'deleted' || result.status === 'missing') {
+      notifyQuotesChanged();
+      return;
+    }
+    if (!result.record?.revision) throw new Error('Không nhận được phiên bản báo giá mới nhất.');
+    proposal = {
+      ...result.record,
+      deletedAt,
+      deleted: true,
+      updatedAt: deletedAt,
+    };
+    expectedRevision = result.record.revision;
+  }
+  throw new Error('Báo giá được sửa liên tục trên máy khác. Vui lòng thử xoá lại.');
 }
 
 export async function bulkPutQuotes(quotes: QuoteRecord[]): Promise<void> {

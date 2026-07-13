@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local QA captures/exports may contain customer data; never commit them.
+review-screenshots/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

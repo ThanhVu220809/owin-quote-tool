@@ -25,4 +25,14 @@ describe('shared item image resolver', () => {
     expect(resolved.url).toContain('data:image/png');
     expect(resolved.revoke).toBe(false);
   });
+
+  it('loads public/data URL bytes when a binary exporter requests them', async () => {
+    const resolved = await resolveItemImage(
+      { imagePath: 'data:image/png;base64,iVBORw0KGgo=' },
+      [],
+      { loadBlob: true },
+    );
+    expect(resolved.blob).toBeInstanceOf(Blob);
+    expect(resolved.revoke).toBe(false);
+  });
 });

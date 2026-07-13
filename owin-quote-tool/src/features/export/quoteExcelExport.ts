@@ -329,7 +329,7 @@ export async function exportQuoteExcel(quote: CalculatedQuote, quoteCode: string
       ? quote.items.find((candidate) => candidate.quoteItemCode === row.productCode || candidate.productCode === row.productCode)
       : undefined;
     if (item && row.imageLabel) {
-      const resolved = await resolveItemImage(item, products);
+      const resolved = await resolveItemImage(item, products, { loadBlob: true });
       if (resolved.blob) {
         const image = await toExcelImage(resolved.blob);
         const imageId = workbook.addImage(image);

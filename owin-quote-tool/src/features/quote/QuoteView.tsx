@@ -33,7 +33,7 @@ import { exportQuotePDF } from '@/features/export/pdfExport';
 import { ProductThumb, OWIN_LOGO } from '@/features/products/ProductThumb';
 import { ImageLightbox } from '@/components/ImageLightbox';
 import { resolveImageUrl } from '@/utils/imagePaths';
-import { compressAndUpload, ImageError } from '@/utils/imageStorage';
+import { compressAndUploadQuoteImage, ImageError } from '@/utils/imageStorage';
 import {
   createEmptyFixedAccessoryDraft,
   parseExtraAccessoriesJson,
@@ -43,6 +43,7 @@ import {
 } from '@/lib/quote/accessoryDrafts';
 import { deleteQuote, getAllQuotes, saveQuoteRecord } from './quoteStore';
 import { subscribeToQuotes } from '@/features/supabase/quotesRepo';
+import { documentsEqual } from '@/features/supabase/threeWayMerge';
 
 const QUOTE_SUGGESTION_TYPES = [
   'customer_name',
@@ -75,6 +76,37 @@ const QUOTE_SUGGESTION_TYPES = [
 
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
 
+type SaveUiState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+
+interface DraftIdentity {
+  generation: number;
+  id: string;
+  code: string;
+}
+
+interface PersistQuoteOptions {
+  code?: string;
+  exportFileName?: string;
+  exportType?: QuoteExportRecord['type'];
+  learnSuggestions?: boolean;
+  quiet?: boolean;
+  successMessage?: string;
+}
+
+type PersistQuote = (
+  nextStatus?: 'DRAFT' | 'SAVED' | 'EXPORTED',
+  options?: PersistQuoteOptions,
+) => Promise<QuoteRecord>;
+
+function operationError(prefix: string, error: unknown): string {
+  const detail = error instanceof Error ? error.message.trim() : '';
+  return detail ? `${prefix}: ${detail}` : prefix;
+}
+
+function pdfExportFileName(code: string): string {
+  return `Bao_gia_${code}.pdf`;
+}
+
 function makeItemCode(index: number): string {
   return `HM-${String(index + 1).padStart(2, '0')}`;
 }
@@ -84,6 +116,57 @@ function makeItemUiKey(): string {
     return crypto.randomUUID();
   }
   return `qi-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function changedQuoteSaveInput(
+  previousForm: QuoteInput | null,
+  currentForm: QuoteInput,
+  candidate: Partial<QuoteRecord>,
+  includeExports: boolean,
+): Partial<QuoteRecord> {
+  if (!previousForm) return candidate;
+  const patch: Partial<QuoteRecord> = {
+    id: candidate.id,
+    code: candidate.code,
+    status: candidate.status,
+  };
+  const changed = <K extends keyof QuoteInput>(key: K) =>
+    !documentsEqual(currentForm[key], previousForm[key]);
+
+  if (changed('customerId')) patch.customerId = candidate.customerId;
+  if (changed('customerName')) patch.customerName = candidate.customerName;
+  if (changed('customerPhone')) patch.customerPhone = candidate.customerPhone;
+  if (changed('customerEmail')) patch.customerEmail = candidate.customerEmail;
+  if (changed('customerAddress')) patch.customerAddress = candidate.customerAddress;
+  if (changed('quoteDate')) patch.quoteDate = candidate.quoteDate;
+
+  const depositChanged = changed('depositVnd');
+  const itemsChanged = changed('items');
+  if (depositChanged || itemsChanged) {
+    patch.depositVnd = candidate.depositVnd;
+    patch.subtotalProductVnd = candidate.subtotalProductVnd;
+    patch.subtotalAccessoryVnd = candidate.subtotalAccessoryVnd;
+    patch.totalVnd = candidate.totalVnd;
+    patch.roundedTotalVnd = candidate.roundedTotalVnd;
+    patch.balanceVnd = candidate.balanceVnd;
+  }
+  if (itemsChanged) patch.items = candidate.items;
+
+  const visibleFormChanged =
+    changed('customerId') ||
+    changed('customerName') ||
+    changed('customerPhone') ||
+    changed('customerEmail') ||
+    changed('customerAddress') ||
+    changed('quoteDate') ||
+    depositChanged ||
+    itemsChanged;
+  if (visibleFormChanged) {
+    patch.snapshot = candidate.snapshot;
+    patch.snapshotJson = candidate.snapshotJson;
+  }
+  if (includeExports) patch.exports = candidate.exports;
+  return patch;
 }
 
 /** Normalize a quote item for lock/save: drop blank draft rows, keep empty-value specs. */
@@ -226,6 +309,8 @@ export function QuoteView() {
   const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
   const [detailQuote, setDetailQuote] = useState<QuoteRecord | null>(null);
   const [history, setHistory] = useState<QuoteRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [quoteCode, setQuoteCode] = useState<string>('');
   const [status, setStatus] = useState<'DRAFT' | 'SAVED' | 'EXPORTED'>('DRAFT');
@@ -243,17 +328,107 @@ export function QuoteView() {
   const [quoteStatusFilter, setQuoteStatusFilter] = useState<QuoteRecord['status'] | ''>('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveUiState, setSaveUiState] = useState<SaveUiState>('idle');
+  const [saveError, setSaveError] = useState('');
+  const draftIdentityRef = useRef<DraftIdentity | null>(null);
+  const formGenerationRef = useRef(0);
+  const suppressNextAutosaveRef = useRef(false);
+  const lastSavedSignatureRef = useRef<string | null>(null);
+  const acknowledgedQuoteRef = useRef<QuoteRecord | null>(null);
+  const acknowledgedFormRef = useRef<QuoteInput | null>(null);
+  const currentSignatureRef = useRef('');
+  const currentHasItemsRef = useRef(false);
+  const persistQuoteRef = useRef<PersistQuote | null>(null);
+  const autosaveTimerRef = useRef<number | null>(null);
+  const followupAutosaveTimerRef = useRef<number | null>(null);
+  const retrySaveRef = useRef<{
+    status: 'DRAFT' | 'SAVED' | 'EXPORTED';
+    options: PersistQuoteOptions;
+  } | null>(null);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const busyCountRef = useRef(0);
+  const historyRequestIdRef = useRef(0);
   /** Stable UI keys parallel to items — used for expand/collapse without data loss. */
   const [itemUiKeys, setItemUiKeys] = useState<string[]>([]);
   /** Expanded (editing) item keys. Missing key = locked compact card. */
   const [expandedItemKeys, setExpandedItemKeys] = useState<Set<string>>(() => new Set());
 
-  const refreshHistory = async () => setHistory(await getAllQuotes());
+  const beginBusy = () => {
+    busyCountRef.current += 1;
+    setSaving(true);
+  };
+
+  const endBusy = () => {
+    busyCountRef.current = Math.max(0, busyCountRef.current - 1);
+    if (busyCountRef.current === 0) setSaving(false);
+  };
+
+  const cancelPendingAutosave = () => {
+    if (autosaveTimerRef.current !== null) {
+      window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (followupAutosaveTimerRef.current !== null) {
+      window.clearTimeout(followupAutosaveTimerRef.current);
+      followupAutosaveTimerRef.current = null;
+    }
+  };
+
+  const refreshHistory = async (): Promise<boolean> => {
+    const requestId = ++historyRequestIdRef.current;
+    const quotes = await getAllQuotes();
+    if (requestId !== historyRequestIdRef.current) return false;
+    setHistory(quotes);
+    return true;
+  };
 
   useEffect(() => {
-    void refreshHistory();
-    const unsubscribe = subscribeToQuotes(() => void refreshHistory());
-    return unsubscribe;
+    let active = true;
+    const retryTimers = new Set<number>();
+    const reload = (attempt = 0) => {
+      if (attempt === 0) setHistoryLoading(true);
+      void refreshHistory()
+        .then((applied) => {
+          if (!active || !applied) return;
+          setHistoryError('');
+          setHistoryLoading(false);
+        })
+        .catch((error) => {
+          if (!active) return;
+          if (attempt < 2 && navigator.onLine) {
+            const timer = window.setTimeout(() => {
+              retryTimers.delete(timer);
+              reload(attempt + 1);
+            }, (attempt + 1) * 1_000);
+            retryTimers.add(timer);
+            return;
+          }
+          setHistoryLoading(false);
+          setHistoryError(operationError('Không thể tải danh sách báo giá từ Supabase', error));
+        });
+    };
+    const reloadWhenVisible = () => {
+      if (document.visibilityState === 'visible') reload();
+    };
+    reload();
+    const reloadNow = () => reload(0);
+    const unsubscribe = subscribeToQuotes(reloadNow, (status) => {
+      // The first SUBSCRIBED closes the REST/socket race; later ones repair
+      // anything missed while Realtime was reconnecting.
+      if (status === 'SUBSCRIBED') reloadNow();
+    });
+    window.addEventListener('online', reloadNow);
+    window.addEventListener('focus', reloadNow);
+    document.addEventListener('visibilitychange', reloadWhenVisible);
+    return () => {
+      active = false;
+      historyRequestIdRef.current += 1;
+      retryTimers.forEach((timer) => window.clearTimeout(timer));
+      unsubscribe();
+      window.removeEventListener('online', reloadNow);
+      window.removeEventListener('focus', reloadNow);
+      document.removeEventListener('visibilitychange', reloadWhenVisible);
+    };
   }, []);
 
   const categories = useMemo(
@@ -303,8 +478,17 @@ export function QuoteView() {
     [customerAddress, customerEmail, customerName, customerPhone, depositVnd, items, quoteDate],
   );
   const calculated = useMemo(() => calculateQuote(quoteInput), [quoteInput]);
+  const autosaveSignature = useMemo(() => JSON.stringify(quoteInput), [quoteInput]);
 
   const resetForm = () => {
+    cancelPendingAutosave();
+    formGenerationRef.current += 1;
+    draftIdentityRef.current = null;
+    acknowledgedQuoteRef.current = null;
+    acknowledgedFormRef.current = null;
+    suppressNextAutosaveRef.current = false;
+    lastSavedSignatureRef.current = null;
+    retrySaveRef.current = null;
     setQuoteId(null);
     setQuoteCode('');
     setStatus('DRAFT');
@@ -318,6 +502,8 @@ export function QuoteView() {
     setItemUiKeys([]);
     setExpandedItemKeys(new Set());
     setMessage('');
+    setSaveError('');
+    setSaveUiState('idle');
   };
 
   const openNewQuote = () => {
@@ -429,202 +615,513 @@ export function QuoteView() {
       ),
     );
 
-  const persistQuote = async (
-    nextStatus: 'DRAFT' | 'SAVED' | 'EXPORTED' = 'SAVED',
-    options: { code?: string; exportFileName?: string; exportType?: QuoteExportRecord['type'] } = {},
-  ): Promise<QuoteRecord> => {
-    setSaving(true);
-    setMessage('');
-    try {
-      const existing = await getAllQuotes();
-      const existingRecord = quoteId ? existing.find((quote) => quote.id === quoteId) ?? null : null;
-      const code = options.code || quoteCode || generateQuoteCode(existing);
-      const snapshot = generateSnapshot({ ...calculated, quoteCode: code }, code, new Date());
-      const saved = await saveQuoteRecord({
-        id: quoteId || undefined,
-        code,
-        customerId: null,
-        customerName,
-        customerPhone,
-        customerEmail: customerEmail || null,
-        customerAddress,
-        quoteDate,
-        depositVnd: calculated.summary.depositVnd,
-        subtotalProductVnd: calculated.summary.subtotalProductVnd,
-        subtotalAccessoryVnd: calculated.summary.subtotalAccessoryVnd,
-        totalVnd: calculated.summary.totalVnd,
-        roundedTotalVnd: calculated.summary.roundedTotalVnd,
-        balanceVnd: calculated.summary.balanceVnd,
-        status: nextStatus,
-        snapshot,
-        snapshotJson: JSON.stringify(snapshot),
-        items: calculated.items.map((item, index) => ({
-          id: `${item.quoteItemCode}-${index}`,
-          sourceType: item.sourceType,
-          productId: item.productId || null,
-          sourceProductId: item.sourceProductId || item.productId || null,
-          productCode: item.quoteItemCode || item.productCode,
-          itemName: item.itemName,
-          category: item.category || null,
-          imagePath: item.image || item.coverImagePath || null,
-          imageReference: item.imageReference || item.coverImagePath || item.image || null,
-          imageOverridePath: item.imageOverridePath || null,
-          unit: item.unit,
-          description: item.description || null,
-          unitPriceVnd: item.unitPriceVnd,
-          productSubtotalVnd: item.productSubtotalVnd,
-          accessorySubtotalVnd: item.accessorySubtotalVnd,
-          itemTotalVnd: item.itemTotalVnd,
-          fixedAccessoryPackage: item.fixedAccessoryPackage || null,
-          extraAccessories: item.extraAccessories || null,
-          snapshotJson: JSON.stringify(item),
-          dimensions: item.dimensions.map((line, sortOrder) => ({
-            unit: line.unit,
-            widthM: line.widthM ?? 0,
-            heightM: line.heightM ?? 0,
-            quantity: line.quantity,
-            calculatedQty: line.calculatedQty,
-            unitPriceVnd: line.unitPriceVnd,
-            lineTotalVnd: line.lineTotalVnd,
-            description: line.description || null,
-            sortOrder,
-          })),
-          accessories: item.accessories.map((accessory, sortOrder) => ({
-            name: accessory.name,
-            quantityPerSet: accessory.quantityPerSet,
-            totalSet: accessory.totalSet,
-            unitPriceVnd: accessory.unitPriceVnd,
-            lineTotalVnd: accessory.lineTotalVnd,
-            note: accessory.note || null,
-            sortOrder,
-          })),
-          sortOrder: index,
-        })),
-        exports: options.exportFileName
-          ? [
-              ...(existingRecord?.exports ?? []),
-              {
-                id: crypto.randomUUID(),
-                type: options.exportType ?? 'docx',
-                fileName: options.exportFileName,
-                filePath: null,
-                createdAt: new Date().toISOString(),
-              },
-            ]
-          : existingRecord?.exports ?? [],
-        folderPath: null,
-        deletedAt: null,
-      });
-      setQuoteId(saved.id);
-      setQuoteCode(saved.code);
-      setStatus(saved.status);
-      setMessage(`Đã lưu ${saved.code}`);
-      await rememberQuoteSuggestions(quoteInput);
-      await refreshSuggestions();
-      await refreshHistory();
-      return saved;
-    } finally {
-      setSaving(false);
+  const ensureDraftIdentity = (preferredCode?: string): DraftIdentity => {
+    const generation = formGenerationRef.current;
+    const current = draftIdentityRef.current;
+    if (current?.generation === generation) {
+      if (!preferredCode || preferredCode === current.code) return current;
+      const updated = { ...current, code: preferredCode };
+      draftIdentityRef.current = updated;
+      return updated;
     }
+    const identity: DraftIdentity = {
+      generation,
+      id: quoteId || crypto.randomUUID(),
+      code: preferredCode || quoteCode || generateQuoteCode(history),
+    };
+    draftIdentityRef.current = identity;
+    return identity;
+  };
+
+  const showOperationError = (prefix: string, error: unknown) => {
+    const text = operationError(prefix, error);
+    setSaveUiState('error');
+    setSaveError(text);
+    setMessage(text);
+  };
+
+  const persistQuote: PersistQuote = (
+    nextStatus = 'SAVED',
+    options = {},
+  ) => {
+    if (!options.quiet) cancelPendingAutosave();
+    const identity = ensureDraftIdentity(options.code);
+    const generation = identity.generation;
+    const inputSignature = autosaveSignature;
+    const retryRequest = { status: nextStatus, options };
+    if (formGenerationRef.current === generation) retrySaveRef.current = retryRequest;
+    beginBusy();
+    if (formGenerationRef.current === generation) {
+      setSaveUiState('saving');
+      setSaveError('');
+      if (!options.quiet) setMessage('');
+    }
+
+    const run = async (): Promise<QuoteRecord> => {
+      try {
+        const existing = await getAllQuotes();
+        const existingRecord = existing.find((quote) => quote.id === identity.id) ?? null;
+        const snapshot = generateSnapshot(
+          { ...calculated, quoteCode: identity.code },
+          identity.code,
+          new Date(),
+        );
+        const candidate: Partial<QuoteRecord> = {
+          id: identity.id,
+          code: identity.code,
+          customerId: null,
+          customerName,
+          customerPhone,
+          customerEmail: customerEmail || null,
+          customerAddress,
+          quoteDate,
+          depositVnd: calculated.summary.depositVnd,
+          subtotalProductVnd: calculated.summary.subtotalProductVnd,
+          subtotalAccessoryVnd: calculated.summary.subtotalAccessoryVnd,
+          totalVnd: calculated.summary.totalVnd,
+          roundedTotalVnd: calculated.summary.roundedTotalVnd,
+          balanceVnd: calculated.summary.balanceVnd,
+          status: nextStatus,
+          snapshot,
+          snapshotJson: JSON.stringify(snapshot),
+          items: calculated.items.map((item, index) => ({
+            id: `${item.quoteItemCode}-${index}`,
+            sourceType: item.sourceType,
+            productId: item.productId || null,
+            sourceProductId: item.sourceProductId || item.productId || null,
+            productCode: item.quoteItemCode || item.productCode,
+            itemName: item.itemName,
+            category: item.category || null,
+            imagePath: item.image || item.coverImagePath || null,
+            imageReference: item.imageReference || item.coverImagePath || item.image || null,
+            imageOverridePath: item.imageOverridePath || null,
+            unit: item.unit,
+            description: item.description || null,
+            unitPriceVnd: item.unitPriceVnd,
+            productSubtotalVnd: item.productSubtotalVnd,
+            accessorySubtotalVnd: item.accessorySubtotalVnd,
+            itemTotalVnd: item.itemTotalVnd,
+            fixedAccessoryPackage: item.fixedAccessoryPackage || null,
+            extraAccessories: item.extraAccessories || null,
+            snapshotJson: JSON.stringify(item),
+            dimensions: item.dimensions.map((line, sortOrder) => ({
+              unit: line.unit,
+              widthM: line.widthM ?? 0,
+              heightM: line.heightM ?? 0,
+              quantity: line.quantity,
+              calculatedQty: line.calculatedQty,
+              unitPriceVnd: line.unitPriceVnd,
+              lineTotalVnd: line.lineTotalVnd,
+              description: line.description || null,
+              sortOrder,
+            })),
+            accessories: item.accessories.map((accessory, sortOrder) => ({
+              name: accessory.name,
+              quantityPerSet: accessory.quantityPerSet,
+              totalSet: accessory.totalSet,
+              unitPriceVnd: accessory.unitPriceVnd,
+              lineTotalVnd: accessory.lineTotalVnd,
+              note: accessory.note || null,
+              sortOrder,
+            })),
+            sortOrder: index,
+          })),
+          exports: options.exportFileName
+            ? [
+                ...(existingRecord?.exports ?? []),
+                {
+                  id: crypto.randomUUID(),
+                  type: options.exportType ?? 'docx',
+                  fileName: options.exportFileName,
+                  filePath: null,
+                  createdAt: new Date().toISOString(),
+                },
+              ]
+            : existingRecord?.exports ?? [],
+          folderPath: null,
+          deletedAt: null,
+        };
+        const saveInput = changedQuoteSaveInput(
+          acknowledgedFormRef.current,
+          quoteInput,
+          candidate,
+          Boolean(options.exportFileName),
+        );
+        const saved = await saveQuoteRecord(saveInput, {
+          baseRecord: acknowledgedQuoteRef.current,
+        });
+
+        if (formGenerationRef.current === generation) {
+          acknowledgedQuoteRef.current = saved;
+          acknowledgedFormRef.current = quoteInput;
+          const isLatestInput = currentSignatureRef.current === inputSignature;
+          setQuoteId(saved.id);
+          setQuoteCode(saved.code);
+          setStatus(saved.status);
+          setSaveError('');
+          if (retrySaveRef.current === retryRequest) retrySaveRef.current = null;
+          if (isLatestInput) {
+            lastSavedSignatureRef.current = inputSignature;
+            setSaveUiState('saved');
+            if (!options.quiet) {
+              setMessage(options.successMessage || `Đã lưu ${saved.code} lên Supabase`);
+            }
+          } else {
+            setSaveUiState('pending');
+            if (currentHasItemsRef.current && followupAutosaveTimerRef.current === null) {
+              if (autosaveTimerRef.current !== null) {
+                window.clearTimeout(autosaveTimerRef.current);
+                autosaveTimerRef.current = null;
+              }
+              followupAutosaveTimerRef.current = window.setTimeout(() => {
+                followupAutosaveTimerRef.current = null;
+                if (formGenerationRef.current !== generation) return;
+                void persistQuoteRef.current?.('DRAFT', {
+                  learnSuggestions: false,
+                  quiet: true,
+                }).catch(() => undefined);
+              }, 0);
+            }
+          }
+        }
+
+        if (options.learnSuggestions !== false) {
+          try {
+            await rememberQuoteSuggestions(quoteInput);
+            if (formGenerationRef.current === generation) await refreshSuggestions();
+          } catch {
+            // Suggestions are secondary metadata; the quote itself is already safely saved.
+          }
+        }
+        try {
+          await refreshHistory();
+        } catch {
+          // Realtime will refresh the list again; never report a completed save as failed.
+        }
+        return saved;
+      } catch (error) {
+        if (formGenerationRef.current === generation) {
+          const text = operationError('Không thể lưu lên Supabase', error);
+          setSaveUiState('error');
+          setSaveError(text);
+          if (!options.quiet) setMessage(text);
+        }
+        throw error;
+      } finally {
+        endBusy();
+      }
+    };
+
+    const queued = saveQueueRef.current.then(run, run);
+    saveQueueRef.current = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  };
+
+  useEffect(() => {
+    persistQuoteRef.current = persistQuote;
+  });
+
+  useEffect(() => {
+    currentSignatureRef.current = autosaveSignature;
+    currentHasItemsRef.current = items.length > 0;
+    if (view !== 'form' || items.length === 0) {
+      if (view === 'form') {
+        if (suppressNextAutosaveRef.current) {
+          suppressNextAutosaveRef.current = false;
+          lastSavedSignatureRef.current = autosaveSignature;
+        }
+        setSaveUiState('idle');
+      }
+      return undefined;
+    }
+    if (suppressNextAutosaveRef.current) {
+      suppressNextAutosaveRef.current = false;
+      lastSavedSignatureRef.current = autosaveSignature;
+      setSaveUiState('saved');
+      setSaveError('');
+      return undefined;
+    }
+    if (lastSavedSignatureRef.current === autosaveSignature) {
+      setSaveUiState('saved');
+      return undefined;
+    }
+
+    setSaveUiState('pending');
+    setSaveError('');
+    const timer = window.setTimeout(() => {
+      if (autosaveTimerRef.current === timer) autosaveTimerRef.current = null;
+      void persistQuoteRef.current?.('DRAFT', {
+        learnSuggestions: false,
+        quiet: true,
+      }).catch(() => undefined);
+    }, 1_000);
+    autosaveTimerRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      if (autosaveTimerRef.current === timer) autosaveTimerRef.current = null;
+    };
+  }, [autosaveSignature, items.length, view]);
+
+  useEffect(() => {
+    if (view !== 'form' || items.length === 0) return undefined;
+    const retryUnsavedDraft = () => {
+      if (!navigator.onLine || busyCountRef.current > 0) return;
+      if (lastSavedSignatureRef.current === currentSignatureRef.current) return;
+      cancelPendingAutosave();
+      void persistQuoteRef.current?.('DRAFT', {
+        learnSuggestions: false,
+        quiet: true,
+      }).catch(() => undefined);
+    };
+    const retryWhenVisible = () => {
+      if (document.visibilityState === 'visible') retryUnsavedDraft();
+    };
+    window.addEventListener('online', retryUnsavedDraft);
+    window.addEventListener('focus', retryUnsavedDraft);
+    document.addEventListener('visibilitychange', retryWhenVisible);
+    return () => {
+      window.removeEventListener('online', retryUnsavedDraft);
+      window.removeEventListener('focus', retryUnsavedDraft);
+      document.removeEventListener('visibilitychange', retryWhenVisible);
+    };
+  }, [items.length, view]);
+
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (view !== 'form' || items.length === 0) return;
+      if (lastSavedSignatureRef.current === currentSignatureRef.current && busyCountRef.current === 0) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [items.length, view]);
+
+  const retryLastSave = () => {
+    const retry = retrySaveRef.current ?? {
+      status: 'DRAFT' as const,
+      options: { learnSuggestions: false, quiet: true },
+    };
+    void persistQuoteRef.current?.(retry.status, retry.options).catch(() => undefined);
+  };
+
+  const saveManually = async () => {
+    if (items.length === 0) return;
+    try {
+      await persistQuote('SAVED', { learnSuggestions: true });
+    } catch {
+      // persistQuote renders an actionable error and keeps the draft ready for retry.
+    }
+  };
+
+  const flushDraftBeforeLeaving = async (): Promise<boolean> => {
+    cancelPendingAutosave();
+    if (items.length === 0 || lastSavedSignatureRef.current === currentSignatureRef.current) {
+      return true;
+    }
+    try {
+      await persistQuote('DRAFT', { learnSuggestions: false, quiet: true });
+      return lastSavedSignatureRef.current === currentSignatureRef.current;
+    } catch {
+      return false;
+    }
+  };
+
+  const backToQuoteList = async () => {
+    if (await flushDraftBeforeLeaving()) setView('list');
+  };
+
+  const startNewQuote = async () => {
+    if (await flushDraftBeforeLeaving()) openNewQuote();
   };
 
   const exportWord = async () => {
     if (items.length === 0) return;
-    setSaving(true);
+    cancelPendingAutosave();
+    beginBusy();
     setMessage('');
+    setSaveError('');
     try {
-      const existing = await getAllQuotes();
-      const code = quoteCode || generateQuoteCode(existing);
+      const { code } = ensureDraftIdentity();
+      await persistQuote('SAVED', {
+        code,
+        learnSuggestions: false,
+        quiet: true,
+      });
       const { exportQuoteWord } = await import('@/features/export/wordExport');
       const fileName = await exportQuoteWord({ ...calculated, quoteCode: code }, code, productRecords);
-      await persistQuote('EXPORTED', { code, exportFileName: fileName, exportType: 'docx' });
+      await persistQuote('EXPORTED', {
+        code,
+        exportFileName: fileName,
+        exportType: 'docx',
+        learnSuggestions: true,
+        successMessage: `Đã xuất Word và lưu ${code}`,
+      });
+    } catch (error) {
+      showOperationError('Không thể hoàn tất xuất Word', error);
     } finally {
-      setSaving(false);
+      endBusy();
     }
   };
 
   const exportExcel = async () => {
     if (items.length === 0) return;
-    setSaving(true);
+    cancelPendingAutosave();
+    beginBusy();
     setMessage('');
+    setSaveError('');
     try {
-      const existing = await getAllQuotes();
-      const code = quoteCode || generateQuoteCode(existing);
+      const { code } = ensureDraftIdentity();
+      await persistQuote('SAVED', {
+        code,
+        learnSuggestions: false,
+        quiet: true,
+      });
       const { exportQuoteExcel } = await import('@/features/export/quoteExcelExport');
       const fileName = await exportQuoteExcel({ ...calculated, quoteCode: code }, code, productRecords);
-      await persistQuote('EXPORTED', { code, exportFileName: fileName, exportType: 'xlsx' });
+      await persistQuote('EXPORTED', {
+        code,
+        exportFileName: fileName,
+        exportType: 'xlsx',
+        learnSuggestions: true,
+        successMessage: `Đã xuất Excel và lưu ${code}`,
+      });
+    } catch (error) {
+      showOperationError('Không thể hoàn tất xuất Excel', error);
     } finally {
-      setSaving(false);
+      endBusy();
     }
   };
 
-  const exportSavedQuote = async (quote: QuoteRecord) => {
-    setSaving(true);
+  const printCurrentQuote = async () => {
+    if (items.length === 0) return;
+    cancelPendingAutosave();
+    beginBusy();
     setMessage('');
+    setSaveError('');
+    try {
+      const { code } = ensureDraftIdentity();
+      await persistQuote('EXPORTED', {
+        code,
+        exportFileName: pdfExportFileName(code),
+        exportType: 'pdf',
+        learnSuggestions: true,
+        successMessage: `Đã lưu ${code} trước khi mở In/PDF`,
+      });
+      await exportQuotePDF();
+    } catch (error) {
+      showOperationError('Không thể lưu báo giá để In/PDF', error);
+    } finally {
+      endBusy();
+    }
+  };
+
+  const recordSavedQuoteExport = async (
+    quote: QuoteRecord,
+    type: QuoteExportRecord['type'],
+    fileName: string,
+  ): Promise<QuoteRecord> => {
+    const latest = (await getAllQuotes()).find((item) => item.id === quote.id) ?? quote;
+    return saveQuoteRecord({
+      ...latest,
+      status: 'EXPORTED',
+      exports: [
+        ...(latest.exports ?? []),
+        {
+          id: crypto.randomUUID(),
+          type,
+          fileName,
+          filePath: null,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+  };
+
+  const exportSavedQuote = async (quote: QuoteRecord) => {
+    beginBusy();
+    setMessage('');
+    setSaveError('');
     try {
       const { exportQuoteWord } = await import('@/features/export/wordExport');
       const fileName = await exportQuoteWord(quote.snapshot, quote.code, productRecords);
-      const saved = await saveQuoteRecord({
-        ...quote,
-        status: 'EXPORTED',
-        exports: [
-          ...(quote.exports ?? []),
-          {
-            id: crypto.randomUUID(),
-            type: 'docx',
-            fileName,
-            filePath: null,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      });
+      const saved = await recordSavedQuoteExport(quote, 'docx', fileName);
       if (detailQuote?.id === saved.id) setDetailQuote(saved);
-      setMessage(`Đã xuất ${quote.code}`);
-      await refreshHistory();
+      setMessage(`Đã xuất Word và ghi lịch sử ${quote.code}`);
+      try { await refreshHistory(); } catch { /* Realtime retries list refresh. */ }
+    } catch (error) {
+      showOperationError('Không thể hoàn tất xuất Word', error);
     } finally {
-      setSaving(false);
+      endBusy();
     }
   };
 
   const exportSavedQuoteExcel = async (quote: QuoteRecord) => {
-    setSaving(true);
+    beginBusy();
     setMessage('');
+    setSaveError('');
     try {
       const { exportQuoteExcel } = await import('@/features/export/quoteExcelExport');
       const fileName = await exportQuoteExcel(quote.snapshot, quote.code, productRecords);
-      const saved = await saveQuoteRecord({
-        ...quote,
-        status: 'EXPORTED',
-        exports: [
-          ...(quote.exports ?? []),
-          {
-            id: crypto.randomUUID(),
-            type: 'xlsx',
-            fileName,
-            filePath: null,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      });
+      const saved = await recordSavedQuoteExport(quote, 'xlsx', fileName);
       if (detailQuote?.id === saved.id) setDetailQuote(saved);
-      setMessage(`Đã xuất Excel ${quote.code}`);
-      await refreshHistory();
+      setMessage(`Đã xuất Excel và ghi lịch sử ${quote.code}`);
+      try { await refreshHistory(); } catch { /* Realtime retries list refresh. */ }
+    } catch (error) {
+      showOperationError('Không thể hoàn tất xuất Excel', error);
     } finally {
-      setSaving(false);
+      endBusy();
+    }
+  };
+
+  const printSavedQuote = async (quote: QuoteRecord) => {
+    beginBusy();
+    setMessage('');
+    setSaveError('');
+    try {
+      const saved = await recordSavedQuoteExport(quote, 'pdf', pdfExportFileName(quote.code));
+      if (detailQuote?.id === saved.id) setDetailQuote(saved);
+      setMessage(`Đã ghi lịch sử In/PDF ${quote.code}`);
+      try { await refreshHistory(); } catch { /* Realtime retries list refresh. */ }
+      await exportQuotePDF();
+    } catch (error) {
+      showOperationError('Không thể lưu lịch sử In/PDF', error);
+    } finally {
+      endBusy();
     }
   };
 
   const deleteSavedQuote = async (quote: QuoteRecord) => {
     if (!window.confirm(`Xoá báo giá "${quote.code}"?`)) return;
-    await deleteQuote(quote.id);
-    if (quoteId === quote.id) resetForm();
-    if (detailQuote?.id === quote.id) setDetailQuote(null);
-    setView('list');
-    await refreshHistory();
-    setMessage(`Đã xoá ${quote.code}`);
+    beginBusy();
+    setSaveError('');
+    try {
+      await deleteQuote(quote.id);
+      if (quoteId === quote.id) resetForm();
+      if (detailQuote?.id === quote.id) setDetailQuote(null);
+      setView('list');
+      await refreshHistory();
+      setMessage(`Đã xoá ${quote.code}`);
+    } catch (error) {
+      showOperationError('Không thể xoá báo giá', error);
+    } finally {
+      endBusy();
+    }
   };
 
   const loadQuote = (quote: QuoteRecord, duplicate = false) => {
+    cancelPendingAutosave();
+    formGenerationRef.current += 1;
+    draftIdentityRef.current = duplicate
+      ? null
+      : { generation: formGenerationRef.current, id: quote.id, code: quote.code };
+    suppressNextAutosaveRef.current = !duplicate;
+    lastSavedSignatureRef.current = null;
+    setSaveError('');
+    setSaveUiState(duplicate ? 'pending' : 'saved');
     setQuoteId(duplicate ? null : quote.id);
     setQuoteCode(duplicate ? '' : quote.code);
     setStatus(duplicate ? 'DRAFT' : quote.status);
@@ -635,6 +1132,19 @@ export function QuoteView() {
     setQuoteDate((quote.quoteDate || quote.createdAt).slice(0, 10));
     setDepositVnd(quote.depositVnd);
     const loaded = snapshotToInputs(quote).map((item) => confirmNormalizeItem(item));
+    acknowledgedQuoteRef.current = duplicate ? null : quote;
+    acknowledgedFormRef.current = duplicate
+      ? null
+      : {
+          customerId: null,
+          customerName: quote.customerName,
+          customerPhone: quote.customerPhone,
+          customerEmail: quote.customerEmail || null,
+          customerAddress: quote.customerAddress,
+          quoteDate: (quote.quoteDate || quote.createdAt).slice(0, 10),
+          depositVnd: quote.depositVnd,
+          items: loaded.map(cleanItemAccessoriesForPersist),
+        };
     setItems(loaded);
     // Loaded items start locked (compact). User taps Sửa/Mở rộng to edit.
     setItemUiKeys(loaded.map(() => makeItemUiKey()));
@@ -646,6 +1156,8 @@ export function QuoteView() {
   };
 
   const openDetail = (quote: QuoteRecord) => {
+    setMessage('');
+    setSaveError('');
     setDetailQuote(quote);
     setView('detail');
     scrollPageTop();
@@ -659,6 +1171,8 @@ export function QuoteView() {
         quoteSearch={quoteSearch}
         quoteStatusFilter={quoteStatusFilter}
         message={message}
+        loading={historyLoading}
+        error={historyError}
         onSearch={setQuoteSearch}
         onStatusFilter={setQuoteStatusFilter}
         onCreate={openNewQuote}
@@ -666,6 +1180,16 @@ export function QuoteView() {
         onEdit={loadQuote}
         onDuplicate={(quote) => loadQuote(quote, true)}
         onDelete={(quote) => void deleteSavedQuote(quote)}
+        onRetry={() => {
+          setHistoryError('');
+          setHistoryLoading(true);
+          void refreshHistory()
+            .then(() => setHistoryLoading(false))
+            .catch((error) => {
+              setHistoryLoading(false);
+              setHistoryError(operationError('Không thể tải danh sách báo giá từ Supabase', error));
+            });
+        }}
       />
     );
   }
@@ -676,12 +1200,15 @@ export function QuoteView() {
         quote={detailQuote}
         products={productRecords}
         saving={saving}
+        message={message}
+        error={saveError}
         onBack={() => setView('list')}
         onEdit={() => loadQuote(detailQuote)}
         onDuplicate={() => loadQuote(detailQuote, true)}
         onDelete={() => void deleteSavedQuote(detailQuote)}
         onExport={() => void exportSavedQuote(detailQuote)}
         onExportExcel={() => void exportSavedQuoteExcel(detailQuote)}
+        onPrint={() => void printSavedQuote(detailQuote)}
       />
     );
   }
@@ -689,7 +1216,7 @@ export function QuoteView() {
   return (
     <section className="admin-page quote-workflow-page">
       <div className="toolbar quote-form-heading">
-        <button className="admin-back-button" onClick={() => setView('list')} aria-label="Quay lại danh sách báo giá">
+        <button className="admin-back-button" onClick={() => void backToQuoteList()} aria-label="Quay lại danh sách báo giá">
           <ArrowLeft size={20} />
         </button>
         <div>
@@ -699,8 +1226,8 @@ export function QuoteView() {
           </p>
         </div>
         <div className="spacer" />
-        <button className="btn btn-ghost" onClick={openNewQuote}>Báo giá mới</button>
-        <button className="btn btn-primary" disabled={items.length === 0 || saving} onClick={() => void persistQuote('SAVED')}>
+        <button className="btn btn-ghost" disabled={saving} onClick={() => void startNewQuote()}>Báo giá mới</button>
+        <button className="btn btn-primary" disabled={items.length === 0 || saving} onClick={() => void saveManually()}>
           <Save size={17} style={{ verticalAlign: '-3px' }} /> {saving ? 'Đang lưu…' : 'Lưu báo giá'}
         </button>
         <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportWord()}>
@@ -709,7 +1236,7 @@ export function QuoteView() {
         <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportExcel()}>
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Excel
         </button>
-        <button className="btn btn-ghost" disabled={items.length === 0} onClick={exportQuotePDF}>
+        <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void printCurrentQuote()}>
           <Printer size={17} style={{ verticalAlign: '-3px' }} /> In/PDF
         </button>
       </div>
@@ -734,7 +1261,12 @@ export function QuoteView() {
           <div className="product-sub">
             {quoteCode || 'Chưa có mã'} · Trạng thái: {status}
           </div>
-          {message && <div className="product-sub" style={{ color: 'var(--ios-green)' }}>{message}</div>}
+          <SaveFeedback
+            state={saveUiState}
+            error={saveError}
+            onRetry={retryLastSave}
+          />
+          {message && !saveError && <div className="product-sub" style={{ color: 'var(--ios-green)' }}>{message}</div>}
         </div>
 
         <div className="card">
@@ -998,6 +1530,8 @@ function QuoteListPanel({
   quoteSearch,
   quoteStatusFilter,
   message,
+  loading,
+  error,
   onSearch,
   onStatusFilter,
   onCreate,
@@ -1005,12 +1539,15 @@ function QuoteListPanel({
   onEdit,
   onDuplicate,
   onDelete,
+  onRetry,
 }: {
   history: QuoteRecord[];
   filteredHistory: QuoteRecord[];
   quoteSearch: string;
   quoteStatusFilter: QuoteRecord['status'] | '';
   message: string;
+  loading: boolean;
+  error: string;
   onSearch: (value: string) => void;
   onStatusFilter: (value: QuoteRecord['status'] | '') => void;
   onCreate: () => void;
@@ -1018,6 +1555,7 @@ function QuoteListPanel({
   onEdit: (quote: QuoteRecord) => void;
   onDuplicate: (quote: QuoteRecord) => void;
   onDelete: (quote: QuoteRecord) => void;
+  onRetry: () => void;
 }) {
   return (
     <section className="admin-page quote-list-page">
@@ -1032,6 +1570,12 @@ function QuoteListPanel({
       </div>
 
       {message && <div className="product-toast">{message}</div>}
+      {error && (
+        <div className="product-data-error" role="alert">
+          <span>{error}</span>
+          <button type="button" className="btn btn-ghost" onClick={onRetry}>Thử tải lại</button>
+        </div>
+      )}
 
       <div className="product-filter-card">
         <div className="field product-filter-search">
@@ -1059,7 +1603,9 @@ function QuoteListPanel({
       </div>
 
       <div className="quote-history-table-wrap quote-list-table-card">
-        {history.length === 0 ? (
+        {loading ? (
+          <div className="product-empty-card"><LoaderCircle className="spin" size={32} /><p>Đang tải báo giá từ Supabase…</p></div>
+        ) : history.length === 0 ? (
           <div className="product-empty-card">
             <FileDown size={44} />
             <h3>Chưa có báo giá</h3>
@@ -1130,22 +1676,28 @@ function QuoteDetailPanel({
   quote,
   products,
   saving,
+  message,
+  error,
   onBack,
   onEdit,
   onDuplicate,
   onDelete,
   onExport,
   onExportExcel,
+  onPrint,
 }: {
   quote: QuoteRecord;
   products: ProductRecord[];
   saving: boolean;
+  message: string;
+  error: string;
   onBack: () => void;
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onExport: () => void;
   onExportExcel: () => void;
+  onPrint: () => void;
 }) {
   return (
     <section className="admin-page quote-detail-page">
@@ -1170,12 +1722,18 @@ function QuoteDetailPanel({
           <button className="btn btn-ghost" disabled={saving} onClick={onExportExcel}>
             <FileDown size={16} style={{ verticalAlign: '-3px' }} /> Excel
           </button>
-          <button className="btn btn-ghost" onClick={exportQuotePDF}>
+          <button className="btn btn-ghost" disabled={saving} onClick={onPrint}>
             <Printer size={16} style={{ verticalAlign: '-3px' }} /> In/PDF
           </button>
           <button className="btn btn-danger" onClick={onDelete}>Xóa</button>
         </div>
       </div>
+
+      {message && (
+        <div className="product-toast" style={error ? { color: 'var(--ios-red)' } : undefined}>
+          {message}
+        </div>
+      )}
 
       <div className="quote-detail-grid">
         <section className="card">
@@ -1221,6 +1779,39 @@ function QuoteDetailPanel({
       <QuotePrintDocument quote={quote.snapshot} products={products} />
     </section>
   );
+}
+
+function SaveFeedback({
+  state,
+  error,
+  onRetry,
+}: {
+  state: SaveUiState;
+  error: string;
+  onRetry: () => void;
+}) {
+  if (state === 'idle') {
+    return <div className="product-sub">Thêm ít nhất một hạng mục để bật tự động lưu.</div>;
+  }
+  if (state === 'pending') {
+    return <div className="product-sub">Có thay đổi · sẽ tự lưu lên Supabase sau 1 giây…</div>;
+  }
+  if (state === 'saving') {
+    return (
+      <div className="product-sub">
+        <LoaderCircle className="spin" size={14} style={{ verticalAlign: '-2px' }} /> Đang lưu lên Supabase…
+      </div>
+    );
+  }
+  if (state === 'error') {
+    return (
+      <div className="product-sub" style={{ color: 'var(--ios-red)' }} role="alert">
+        {error || 'Không thể tự động lưu.'}{' '}
+        <button type="button" className="btn btn-ghost" onClick={onRetry}>Thử lưu lại</button>
+      </div>
+    );
+  }
+  return <div className="product-sub" style={{ color: 'var(--ios-green)' }}>Đã tự động lưu trên Supabase.</div>;
 }
 
 function Field({
@@ -1577,7 +2168,7 @@ function QuoteItemCard({
     setImageError(null);
     setImageBusy(true);
     try {
-      const { url } = await compressAndUpload(file);
+      const { url } = await compressAndUploadQuoteImage(file);
       onUpdate({ coverImagePath: url, image: url, imageReference: url, imageOverridePath: url });
     } catch (error) {
       setImageError(error instanceof ImageError ? error.message : 'Không thể tải ảnh lên Supabase.');

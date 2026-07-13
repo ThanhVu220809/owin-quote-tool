@@ -2,22 +2,23 @@
  * Generate current-tool Bảng giá / Báo giá DOCX into template-audit folder.
  * Run: npx vitest run scripts/generate-template-audit-output.mts
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { describe, it, expect } from 'vitest';
+import { afterAll, describe, it, expect } from 'vitest';
 import PizZip from 'pizzip';
 import type { ProductRecord } from '@/types/models';
 import { calculateQuote } from '@/lib/quote/quoteCalculator';
 import { renderBangGiaDocumentXml, renderQuoteDocumentXml } from '@/features/export/wordExport';
 
 const ROOT = resolve(__dirname, '../../..');
-const OUT = resolve(ROOT, 'review-screenshots/template-audit/current-output-before');
+const OUT = mkdtempSync(resolve(tmpdir(), 'owin-template-audit-'));
 const TPL = resolve(ROOT, 'src/assets/templates');
+
+afterAll(() => rmSync(OUT, { recursive: true, force: true }));
 
 describe('generate template audit outputs', () => {
   it('writes bang-gia and bao-gia docx from current tool pipeline', async () => {
-    mkdirSync(OUT, { recursive: true });
-
     const fixedPackage = JSON.stringify({
       name: 'Bộ phụ kiện Kinlong',
       items: [
@@ -74,10 +75,10 @@ describe('generate template audit outputs', () => {
     };
 
     const quote = calculateQuote({
-      customerName: 'Anh Tú',
-      customerPhone: '0909123456',
+      customerName: 'KHÁCH HÀNG KIỂM THỬ',
+      customerPhone: '0000000000',
       customerEmail: '',
-      customerAddress: '12 Lê Lợi, Q1',
+      customerAddress: 'DỮ LIỆU MẪU - KHÔNG PHẢI KHÁCH THẬT',
       depositVnd: 1000000,
       items: [
         {
@@ -122,7 +123,7 @@ describe('generate template audit outputs', () => {
       },
       baoGia: {
         path: 'bao-gia-current.docx',
-        hasCustomer: baoXml.includes('Anh Tú'),
+        hasCustomer: baoXml.includes('KHÁCH HÀNG KIỂM THỬ'),
         noBlankEmailToken: !baoXml.includes('{email}'),
         leftoverTokens: [...baoXml.matchAll(/\{[a-zA-Z0-9_./%-]+\}/g)].map((m) => m[0]),
         orphanX: />\s*x\s*</.test(baoXml),

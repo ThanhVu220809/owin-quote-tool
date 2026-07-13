@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardCopy, Download, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import {
   calculateAluminumEstimatorRow,
@@ -35,15 +35,17 @@ import {
 import { subscribeToAppData } from '@/features/supabase/sharedDataRepo';
 import {
   ALUMINUM_ESTIMATOR_STORAGE_KEY,
+  aluminumEstimatorStateContentEquals,
   clearAluminumEstimatorStorage,
   createDefaultAluminumEstimatorState,
   getAluminumEstimatorInput,
-  isAluminumEstimatorDirty,
   loadAluminumEstimatorStorage,
+  mergeAluminumEstimatorStates,
   saveAluminumEstimatorStorage,
   touchAluminumEstimatorState,
   type AluminumEstimatorInputState,
   type AluminumEstimatorPageState,
+  type AluminumEstimatorStorageSnapshot,
   type AluminumEstimatorRowPatch,
 } from './aluminumEstimatorStorage';
 
@@ -58,6 +60,8 @@ interface AluminumEstimatorSystemTotals {
   systemName: string;
   totals: AluminumEstimatorTotals;
 }
+
+type AutosavePhase = 'loading' | 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 function normalizeInput(input: AluminumEstimatorInputState) {
   return {
@@ -169,53 +173,178 @@ export function TinhTamNhomView() {
   const [hydrated, setHydrated] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [printScope, setPrintScope] = useState<AluminumPrintScope>('all-systems');
-  const applyingRemoteUpdate = useRef(false);
+  const [autosavePhase, setAutosavePhase] = useState<AutosavePhase>('loading');
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [autosaveRetry, setAutosaveRetry] = useState(0);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [initialLoadFailed, setInitialLoadFailed] = useState(false);
+  const [serverBaseVersion, setServerBaseVersion] = useState(0);
+  const latestState = useRef(pageState);
+  const serverBase = useRef<AluminumEstimatorPageState>(createDefaultAluminumEstimatorState());
+  const serverSnapshot = useRef<AluminumEstimatorStorageSnapshot>({ state: null, revision: 0, createdAt: null });
+  const serverObservation = useRef(0);
+  const scheduleRemoteRefresh = useRef<() => void>(() => undefined);
+
+  const updatePageState = useCallback((
+    update: (current: AluminumEstimatorPageState) => AluminumEstimatorPageState,
+  ) => {
+    setPageState((current) => {
+      const next = update(current);
+      latestState.current = next;
+      return next;
+    });
+  }, []);
+
+  const applyHostedState = useCallback((snapshot: AluminumEstimatorStorageSnapshot) => {
+    const remote = snapshot.state ?? createDefaultAluminumEstimatorState();
+    const previousBase = serverBase.current;
+    serverSnapshot.current = snapshot;
+    serverBase.current = remote;
+    serverObservation.current += 1;
+    setLastSavedAt(remote.updatedAt);
+    setInitialLoadFailed(false);
+    updatePageState((current) => mergeAluminumEstimatorStates(previousBase, current, remote));
+    setServerBaseVersion((value) => value + 1);
+    setHydrated(true);
+  }, [updatePageState]);
+
+  useEffect(() => {
+    latestState.current = pageState;
+  }, [pageState]);
 
   useEffect(() => {
     let mounted = true;
-    void loadAluminumEstimatorStorage().then((stored) => {
-      if (!mounted) return;
-      if (stored) setPageState(stored);
-      setHydrated(true);
-    });
+    const observationAtStart = serverObservation.current;
+    void loadAluminumEstimatorStorage()
+      .then((stored) => {
+        if (!mounted || serverObservation.current !== observationAtStart) return;
+        applyHostedState(stored);
+      })
+      .catch(() => {
+        if (!mounted || serverObservation.current !== observationAtStart) return;
+        // Never save the blank fallback until a hosted read has succeeded. A
+        // temporary load failure must not overwrite another machine's data.
+        setInitialLoadFailed(true);
+        setAutosavePhase('error');
+      });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [applyHostedState, loadAttempt]);
 
   useEffect(() => {
     if (!hydrated) return;
-    if (applyingRemoteUpdate.current) {
-      applyingRemoteUpdate.current = false;
+    const confirmedBase = serverBase.current;
+    if (aluminumEstimatorStateContentEquals(pageState, confirmedBase)) {
+      setLastSavedAt(confirmedBase.updatedAt);
+      setAutosavePhase(confirmedBase.updatedAt ? 'saved' : 'idle');
       return;
     }
-    void saveAluminumEstimatorStorage(pageState);
-  }, [hydrated, pageState]);
 
-  useEffect(() => subscribeToAppData(ALUMINUM_ESTIMATOR_STORAGE_KEY, () => {
-    void loadAluminumEstimatorStorage().then((stored) => {
-      if (!stored) return;
-      setPageState((current) => {
-        const currentUpdatedAt = current.updatedAt ?? '';
-        const remoteUpdatedAt = stored.updatedAt ?? '';
-        // Ignore our own echo and older in-flight writes; only a newer browser edit wins.
-        if (remoteUpdatedAt <= currentUpdatedAt) return current;
-        applyingRemoteUpdate.current = true;
-        return stored;
-      });
-    });
-  }), []);
+    const snapshot = pageState;
+    setAutosavePhase('pending');
+    const timer = window.setTimeout(() => {
+      const observationAtStart = serverObservation.current;
+      setAutosavePhase('saving');
+      void saveAluminumEstimatorStorage(serverSnapshot.current, snapshot)
+        .then((saved) => {
+          const observedWhileSaving = serverObservation.current !== observationAtStart;
+          const savedState = saved.state ?? snapshot;
+          serverSnapshot.current = saved;
+          serverBase.current = savedState;
+          serverObservation.current += 1;
+          setServerBaseVersion((value) => value + 1);
+          setLastSavedAt(savedState.updatedAt);
+          if (observedWhileSaving) scheduleRemoteRefresh.current();
+          if (aluminumEstimatorStateContentEquals(latestState.current, savedState)) {
+            setAutosavePhase('saved');
+          }
+        })
+        .catch(() => {
+          if (aluminumEstimatorStateContentEquals(latestState.current, snapshot)) {
+            setAutosavePhase('error');
+          }
+        });
+    }, 850);
+    return () => window.clearTimeout(timer);
+  }, [autosaveRetry, hydrated, pageState, serverBaseVersion]);
+
+  useEffect(() => {
+    let active = true;
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    let refreshInFlight = false;
+    let refreshAgain = false;
+
+    const runRefresh = () => {
+      if (refreshInFlight) {
+        refreshAgain = true;
+        return;
+      }
+      refreshInFlight = true;
+      void loadAluminumEstimatorStorage()
+        .then((stored) => {
+          if (active) applyHostedState(stored);
+        })
+        .catch(() => {
+          if (active) setAutosavePhase('error');
+        })
+        .finally(() => {
+          refreshInFlight = false;
+          if (!active || !refreshAgain) return;
+          refreshAgain = false;
+          scheduleRefresh();
+        });
+    };
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        refreshTimer = undefined;
+        runRefresh();
+      }, 80);
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') scheduleRefresh();
+    };
+
+    scheduleRemoteRefresh.current = scheduleRefresh;
+    window.addEventListener('online', scheduleRefresh);
+    window.addEventListener('focus', scheduleRefresh);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    const unsubscribe = subscribeToAppData(
+      ALUMINUM_ESTIMATOR_STORAGE_KEY,
+      scheduleRefresh,
+      (status) => {
+        // The first subscription closes the REST/subscription race; every later
+        // SUBSCRIBED status repairs any events missed during a reconnect.
+        if (status === 'SUBSCRIBED') scheduleRefresh();
+      },
+    );
+
+    return () => {
+      active = false;
+      if (refreshTimer) clearTimeout(refreshTimer);
+      window.removeEventListener('online', scheduleRefresh);
+      window.removeEventListener('focus', scheduleRefresh);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      unsubscribe();
+      if (scheduleRemoteRefresh.current === scheduleRefresh) {
+        scheduleRemoteRefresh.current = () => undefined;
+      }
+    };
+  }, [applyHostedState]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!isAluminumEstimatorDirty(pageState)) return;
+      if (!hydrated || !['pending', 'saving', 'error'].includes(autosavePhase)) return;
       event.preventDefault();
       event.returnValue = '';
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [pageState]);
+  }, [autosavePhase, hydrated]);
 
   const selectedSystem = getAluminumSystemById(pageState.selectedSystemId) ?? ALUMINUM_SYSTEMS[0];
   const rowViewModels = useMemo(
@@ -267,7 +396,7 @@ export function TinhTamNhomView() {
 
   const updateRow = (rowId: string, patch: AluminumEstimatorRowPatch) => {
     if (!selectedSystem) return;
-    setPageState((current) => {
+    updatePageState((current) => {
       const currentSystemRows = current.inputRows[selectedSystem.id] ?? {};
       const currentInput = currentSystemRows[rowId] ?? { quantity: '', unitPrice: '', note: '' };
 
@@ -291,7 +420,7 @@ export function TinhTamNhomView() {
     if (!selectedSystem) return;
     if (!window.confirm('Xóa số liệu tạm của hệ này?')) return;
 
-    setPageState((current) => {
+    updatePageState((current) => {
       const nextInputRows = { ...current.inputRows };
       delete nextInputRows[selectedSystem.id];
 
@@ -304,8 +433,8 @@ export function TinhTamNhomView() {
 
   const clearAll = () => {
     if (!window.confirm('Xóa toàn bộ số liệu tạm?')) return;
-    void clearAluminumEstimatorStorage();
-    setPageState(createDefaultAluminumEstimatorState());
+    void clearAluminumEstimatorStorage().catch(() => setAutosavePhase('error'));
+    updatePageState(() => touchAluminumEstimatorState(createDefaultAluminumEstimatorState()));
     setCopyStatus(null);
   };
 
@@ -380,7 +509,7 @@ export function TinhTamNhomView() {
       <AluminumSystemTabs
         selectedSystemId={selectedSystem?.id ?? ''}
         rowCountsBySystem={rowCountsBySystem}
-        onSelect={(systemId) => setPageState((current) => touchAluminumEstimatorState({
+        onSelect={(systemId) => updatePageState((current) => touchAluminumEstimatorState({
           ...current,
           selectedSystemId: systemId,
         }))}
@@ -394,7 +523,33 @@ export function TinhTamNhomView() {
             <span>Số dòng: <strong>{rowViewModels.length}</strong></span>
             {selectedSystem.customerName && <span>Khách: <strong>{selectedSystem.customerName}</strong></span>}
           </div>
-          <span>Dữ liệu lưu trực tiếp trên Supabase.</span>
+          <span className={`aluminum-autosave aluminum-autosave-${autosavePhase}`}>
+            {autosavePhase === 'loading' && 'Đang tải dữ liệu Supabase…'}
+            {autosavePhase === 'idle' && 'Sẵn sàng tự lưu lên Supabase.'}
+            {autosavePhase === 'pending' && 'Sắp tự lưu…'}
+            {autosavePhase === 'saving' && 'Đang tự lưu lên Supabase…'}
+            {autosavePhase === 'saved' && `Đã tự lưu ${formatUpdatedAt(lastSavedAt)}`}
+            {autosavePhase === 'error' && (
+              <>
+                Tự lưu thất bại.{' '}
+                <button
+                  type="button"
+                  className="btn-link"
+                  onClick={() => {
+                    if (initialLoadFailed) {
+                      setHydrated(false);
+                      setAutosavePhase('loading');
+                      setLoadAttempt((value) => value + 1);
+                    } else {
+                      setAutosaveRetry((value) => value + 1);
+                    }
+                  }}
+                >
+                  Thử lại
+                </button>
+              </>
+            )}
+          </span>
         </section>
       )}
 
@@ -403,7 +558,7 @@ export function TinhTamNhomView() {
         currentTotals={currentTotals}
         allTotals={allTotals}
         activeSystemCount={activeSystemCount}
-        updatedAt={pageState.updatedAt}
+        updatedAt={lastSavedAt}
       />
       <AluminumTable rows={rowViewModels} onRowChange={updateRow} />
 

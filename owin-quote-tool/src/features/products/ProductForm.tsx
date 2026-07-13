@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type {
   ProductAccessoryRecord,
@@ -22,6 +22,7 @@ import {
 import { DEFAULT_SPEC_KEYS, suggestionTypesForSpecKey } from '@/lib/suggestions';
 import { generateProductCode } from '@/lib/products/productCode';
 import { DragHandle, reorderList, useDragReorder } from '@/components/DragReorder';
+import { SerialTaskQueue } from './serialTaskQueue';
 
 type SpecDraft = ProductSpecRecord & { id: string };
 
@@ -31,6 +32,12 @@ function newRowId(): string {
 }
 
 type SaveProductInput = Parameters<typeof import('@/features/products/productStore').saveProduct>[0];
+type SavedProduct = Awaited<ReturnType<typeof import('@/features/products/productStore').saveProduct>>;
+
+export interface ProductFormSaveOptions {
+  learnSuggestions?: boolean;
+  baseRecord?: ProductRecord | null;
+}
 
 interface Suggestions {
   category: string[];
@@ -53,9 +60,14 @@ interface Suggestions {
 interface Props {
   editing: ProductRecord | null;
   suggestions: Suggestions;
-  onSave: (p: SaveProductInput) => Promise<unknown>;
+  onSave: (p: SaveProductInput, options?: ProductFormSaveOptions) => Promise<SavedProduct>;
   onCancel: () => void;
+  registerCloseHandler?: (handler: (() => Promise<void>) | null) => void;
 }
+
+type AutosaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+
+const AUTOSAVE_DELAY_MS = 900;
 
 const UNIT_OPTIONS: { label: string; value: ProductUnit }[] = [
   { label: 'm²', value: 'M2' },
@@ -109,8 +121,39 @@ function calculateSampleQuantity(unit: ProductUnit, width: string, height: strin
   return 1;
 }
 
-export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
+function newDraftId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `product-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return 'Không thể kết nối Supabase. Vui lòng thử lại.';
+}
+
+function changedProductFields(
+  acknowledged: SaveProductInput | null,
+  current: SaveProductInput,
+): SaveProductInput {
+  if (!acknowledged) return current;
+  const patch: SaveProductInput = { id: current.id, code: current.code };
+  for (const key of Object.keys(current) as (keyof SaveProductInput)[]) {
+    if (key === 'id' || key === 'code') continue;
+    if (JSON.stringify(current[key]) !== JSON.stringify(acknowledged[key])) {
+      // TypeScript cannot correlate a dynamic key with its value, but both come
+      // from the same ProductInput object and remain JSON-compatible.
+      Object.assign(patch, { [key]: current[key] });
+    }
+  }
+  return patch;
+}
+
+export function ProductForm({ editing, suggestions, onSave, onCancel, registerCloseHandler }: Props) {
   const initialSize = parseRawSizeText(editing?.rawSizeText);
+  const [draftIdentity] = useState(() => ({
+    id: editing?.id ?? newDraftId(),
+    code: (editing?.code ?? generateProductCode(true)).toUpperCase(),
+  }));
   const [name, setName] = useState(editing?.name ?? '');
   const [category, setCategory] = useState(editing?.category ?? 'Khác');
   const [unit, setUnit] = useState<ProductUnit>(editing?.unit ?? 'M2');
@@ -129,6 +172,14 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
     parseExtraAccessoriesJson(editing?.extraAccessories),
   );
   const [saving, setSaving] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>(editing ? 'saved' : 'idle');
+  const [autosaveError, setAutosaveError] = useState<{ fingerprint: string; message: string } | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveQueueRef = useRef(new SerialTaskQueue());
+  const mountedRef = useRef(true);
+  const closingRef = useRef(false);
+  const onSaveRef = useRef(onSave);
+  const onCancelRef = useRef(onCancel);
 
   const canSave = name.trim() !== '';
   const sampleQuantity = calculateSampleQuantity(unit, widthM, heightM);
@@ -138,6 +189,14 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const estimatedTotal = sampleProductTotal + fixedPackageTotal + extraAccessoriesTotal;
   const sampleUnitLabel = unit === 'BO' ? 'bộ' : unit === 'METER' ? 'md' : 'm²';
   const strictSpecKeys = useMemo(() => [...DEFAULT_SPEC_KEYS], []);
+
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
 
   const updateSpec = (index: number, patch: Partial<ProductSpecRecord>) =>
     setSpecs((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -165,62 +224,212 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
     return `spec-value:${types[0] || 'spec_value'}`;
   };
 
-  const save = async () => {
-    if (!canSave) return;
-    setSaving(true);
-    try {
-      // Keep keys even when value is empty (e.g. Song Nhôm Bảo Vệ with no value).
-      const cleanSpecs = specs
-        .map((spec, sortOrder) => ({
-          key: spec.key.trim(),
-          value: spec.value.trim(),
-          sortOrder,
-        }))
-        .filter((spec) => spec.key);
-      const cleanAccessories = accessories
-        .map((item, sortOrder) => ({
-          name: item.name.trim(),
-          quantityPerSet: Number(item.quantityPerSet || 0),
-          unitPriceVnd: Number(item.unitPriceVnd || 0),
-          note: item.note?.trim() || null,
-          sortOrder,
-        }))
-        .filter((item) => item.name);
-      const fixedAccessoryPackage = serializeFixedAccessoriesJson(fixedPackage);
-      const extraAccessoriesJson = serializeExtraAccessoriesJson(extraAccessories) ?? '[]';
-      const rawSizeText = buildRawSizeText(widthM, heightM) ?? editing?.rawSizeText ?? null;
+  const draftInput = useMemo<SaveProductInput>(() => {
+    // Keep keys even when value is empty (e.g. Song Nhôm Bảo Vệ with no value).
+    const cleanSpecs = specs
+      .map((spec, sortOrder) => ({
+        key: spec.key.trim(),
+        value: spec.value.trim(),
+        sortOrder,
+      }))
+      .filter((spec) => spec.key);
+    const cleanAccessories = accessories
+      .map((item, sortOrder) => ({
+        name: item.name.trim(),
+        quantityPerSet: Number(item.quantityPerSet || 0),
+        unitPriceVnd: Number(item.unitPriceVnd || 0),
+        note: item.note?.trim() || null,
+        sortOrder,
+      }))
+      .filter((item) => item.name);
+    const fixedAccessoryPackage = serializeFixedAccessoriesJson(fixedPackage);
+    const extraAccessoriesJson = serializeExtraAccessoriesJson(extraAccessories) ?? '[]';
+    const rawSizeText = buildRawSizeText(widthM, heightM) ?? editing?.rawSizeText ?? null;
 
-      const normalizedCode = (editing?.code || generateProductCode()).toUpperCase();
-      const normalizedName = name.trim();
-      await onSave({
-        id: editing?.id,
-        numericId: editing?.numericId,
-        code: normalizedCode,
-        name: normalizedName,
-        category: category.trim() || 'Khác',
-        unit,
-        unitPriceVnd: Number(unitPriceVnd || 0),
-        shortDesc: editing?.shortDesc ?? null,
-        // ImageDropzone already uploaded the bytes; only persist its CDN URL.
-        coverImagePath,
-        gallery: editing?.gallery ?? [],
-        rawSizeText,
-        rawPriceText: editing?.rawPriceText ?? null,
-        specs: cleanSpecs,
-        accessories: cleanAccessories,
-        fixedAccessoryPackage,
-        extraAccessories: extraAccessoriesJson,
-        isFeatured: editing?.isFeatured ?? false,
-        isPublic: editing?.isPublic ?? true,
-        sortOrder: editing?.sortOrder,
-        folderPath: editing?.folderPath ?? null,
-        createdAt: editing?.createdAt,
-      });
-      onCancel();
-    } finally {
-      setSaving(false);
+    return {
+      id: draftIdentity.id,
+      numericId: editing?.numericId,
+      code: draftIdentity.code,
+      name: name.trim(),
+      category: category.trim() || 'Khác',
+      unit,
+      unitPriceVnd: Number(unitPriceVnd || 0),
+      shortDesc: editing?.shortDesc ?? null,
+      // ImageDropzone already uploaded the bytes; only persist its CDN URL.
+      coverImagePath,
+      gallery: editing?.gallery ?? [],
+      rawSizeText,
+      rawPriceText: editing?.rawPriceText ?? null,
+      specs: cleanSpecs,
+      accessories: cleanAccessories,
+      fixedAccessoryPackage,
+      extraAccessories: extraAccessoriesJson,
+      isFeatured: editing?.isFeatured ?? false,
+      isPublic: editing?.isPublic ?? true,
+      sortOrder: editing?.sortOrder,
+      folderPath: editing?.folderPath ?? null,
+      createdAt: editing?.createdAt,
+    };
+  }, [
+    accessories,
+    category,
+    coverImagePath,
+    draftIdentity.code,
+    draftIdentity.id,
+    editing,
+    extraAccessories,
+    fixedPackage,
+    heightM,
+    name,
+    specs,
+    unit,
+    unitPriceVnd,
+    widthM,
+  ]);
+  const draftFingerprint = useMemo(() => JSON.stringify(draftInput), [draftInput]);
+  const [lastSavedFingerprint, setLastSavedFingerprint] = useState(draftFingerprint);
+  const lastSavedFingerprintRef = useRef(draftFingerprint);
+  const acknowledgedBaseRef = useRef<ProductRecord | null>(editing);
+  const acknowledgedDraftRef = useRef<SaveProductInput | null>(editing ? draftInput : null);
+  const latestDraftRef = useRef({ input: draftInput, fingerprint: draftFingerprint });
+
+  useEffect(() => {
+    latestDraftRef.current = { input: draftInput, fingerprint: draftFingerprint };
+  }, [draftFingerprint, draftInput]);
+
+  const clearSaveTimer = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
     }
+  }, []);
+
+  const persistDraft = useCallback(async (
+    input: SaveProductInput,
+    fingerprint: string,
+    learnSuggestions: boolean,
+  ): Promise<boolean> => {
+    try {
+      const saved = await saveQueueRef.current.run(async () => {
+        if (mountedRef.current) {
+          setAutosaveStatus('saving');
+          setAutosaveError(null);
+        }
+        const patch = changedProductFields(acknowledgedDraftRef.current, input);
+        return onSaveRef.current(patch, {
+          learnSuggestions,
+          baseRecord: acknowledgedBaseRef.current,
+        });
+      });
+      acknowledgedBaseRef.current = saved.record;
+      acknowledgedDraftRef.current = input;
+      lastSavedFingerprintRef.current = fingerprint;
+      if (mountedRef.current) {
+        setLastSavedFingerprint(fingerprint);
+        setAutosaveStatus('saved');
+      }
+      return true;
+    } catch (error) {
+      if (mountedRef.current) {
+        setAutosaveStatus('error');
+        setAutosaveError({ fingerprint, message: errorMessage(error) });
+      }
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    clearSaveTimer();
+    if (closingRef.current || !canSave || draftFingerprint === lastSavedFingerprint) return;
+
+    const input = draftInput;
+    const fingerprint = draftFingerprint;
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      void persistDraft(input, fingerprint, false);
+    }, AUTOSAVE_DELAY_MS);
+
+    return clearSaveTimer;
+  }, [canSave, clearSaveTimer, draftFingerprint, draftInput, lastSavedFingerprint, persistDraft]);
+
+  const retryAutosave = useCallback(() => {
+    clearSaveTimer();
+    const latest = latestDraftRef.current;
+    if (!latest.input.name?.trim()) return;
+    void persistDraft(latest.input, latest.fingerprint, false);
+  }, [clearSaveTimer, persistDraft]);
+
+  const flushLatestDraft = useCallback(async (learnSuggestions: boolean): Promise<boolean> => {
+    let shouldLearnSuggestions = learnSuggestions;
+    for (;;) {
+      const latest = latestDraftRef.current;
+      if (!latest.input.name?.trim()) return false;
+      if (!shouldLearnSuggestions && latest.fingerprint === lastSavedFingerprintRef.current) return true;
+
+      const saved = await persistDraft(latest.input, latest.fingerprint, shouldLearnSuggestions);
+      if (!saved) return false;
+      shouldLearnSuggestions = false;
+      if (latestDraftRef.current.fingerprint === lastSavedFingerprintRef.current) return true;
+    }
+  }, [persistDraft]);
+
+  const save = async () => {
+    if (!canSave || saving) return;
+    clearSaveTimer();
+    closingRef.current = true;
+    setSaving(true);
+    const saved = await flushLatestDraft(true);
+    closingRef.current = false;
+    if (mountedRef.current) setSaving(false);
+    if (saved) onCancelRef.current();
   };
+
+  const requestClose = useCallback(async () => {
+    if (closingRef.current) return;
+    clearSaveTimer();
+    closingRef.current = true;
+    await saveQueueRef.current.waitForIdle();
+    const latest = latestDraftRef.current;
+    const saved = !latest.input.name?.trim()
+      ? true
+      : await flushLatestDraft(false);
+    closingRef.current = false;
+    if (saved) onCancelRef.current();
+  }, [clearSaveTimer, flushLatestDraft]);
+
+  useEffect(() => {
+    registerCloseHandler?.(requestClose);
+    return () => registerCloseHandler?.(null);
+  }, [registerCloseHandler, requestClose]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      clearSaveTimer();
+    };
+  }, [clearSaveTimer]);
+
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      const latest = latestDraftRef.current;
+      if (!latest.input.name?.trim() || latest.fingerprint === lastSavedFingerprintRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, []);
+
+  const displayedAutosaveStatus: AutosaveStatus = !canSave
+    ? 'idle'
+    : draftFingerprint === lastSavedFingerprint
+      ? 'saved'
+      : autosaveStatus === 'error' && autosaveError?.fingerprint === draftFingerprint
+        ? 'error'
+        : autosaveStatus === 'saving'
+          ? 'saving'
+          : 'pending';
 
   return (
     <div className="card product-editor-card">
@@ -372,10 +581,25 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
       </div>
 
       <div className="toolbar product-editor-actions">
+        <div
+          className={`product-autosave-status is-${displayedAutosaveStatus}`}
+          role={displayedAutosaveStatus === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
+          {displayedAutosaveStatus === 'idle' && 'Nhập tên sản phẩm để bật tự lưu.'}
+          {(displayedAutosaveStatus === 'pending' || displayedAutosaveStatus === 'saving') && 'Đang tự lưu…'}
+          {displayedAutosaveStatus === 'saved' && 'Đã lưu trên Supabase.'}
+          {displayedAutosaveStatus === 'error' && (
+            <>
+              <span>Lỗi tự lưu: {autosaveError?.message}</span>
+              <button type="button" className="btn-link" onClick={retryAutosave}>Thử lại</button>
+            </>
+          )}
+        </div>
         <div className="spacer" />
-        <button type="button" className="btn btn-ghost" onClick={onCancel}>Huỷ</button>
+        <button type="button" className="btn btn-ghost" onClick={() => void requestClose()}>Quay lại</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={!canSave || saving}>
-          {saving ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : 'Thêm sản phẩm'}
+          {saving ? 'Đang lưu…' : 'Lưu ngay'}
         </button>
       </div>
     </div>

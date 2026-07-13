@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ImagePlus, LoaderCircle } from 'lucide-react';
 import { compressAndUpload, ImageError } from '@/utils/imageStorage';
 import { resolveImageUrl } from '@/utils/imagePaths';
+import { trackPendingWork, type PendingWorkScope } from '@/lib/pendingWork';
 
 const OWIN_LOGO = `${import.meta.env.BASE_URL}owin-user-assets/logo/logo.webp`;
 
@@ -20,6 +21,8 @@ interface Props {
    * - "form": when parent product/quote form is open (clipboard image → cover)
    */
   pasteScope?: 'dropzone' | 'form';
+  /** Navigation/logout scope that must wait for this upload. */
+  pendingWorkScope?: PendingWorkScope;
 }
 
 function isImageFile(file: File | null | undefined): file is File {
@@ -56,6 +59,7 @@ export function ImageDropzone({
   onImageStored,
   className,
   pasteScope = 'dropzone',
+  pendingWorkScope = 'products',
 }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,6 +68,7 @@ export function ImageDropzone({
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     let revoked: string | null = null;
@@ -74,7 +79,7 @@ export function ImageDropzone({
         setUrl(null);
         return;
       }
-      const load = resolveImageUrl(imagePath || (imageId ? `legacy-images/${imageId}` : null));
+      const load = resolveImageUrl(imagePath || imageId || null);
       load.then((resolved) => {
         if (active && resolved.url) {
           if (resolved.revoke) revoked = resolved.url;
@@ -90,19 +95,26 @@ export function ImageDropzone({
 
   const handleFile = useCallback(
     async (file: File) => {
+      // Disable/ignore overlapping picks. This keeps an older, slower upload
+      // from overwriting a newer choice and avoids creating unused objects.
+      if (busyRef.current) return;
+      busyRef.current = true;
       setError(null);
       setBusy(true);
       try {
-        const { url: uploadedUrl } = await compressAndUpload(file);
-        setUrl(uploadedUrl);
-        onImageStored(uploadedUrl);
+        await trackPendingWork(pendingWorkScope, (async () => {
+          const { url: uploadedUrl } = await compressAndUpload(file);
+          setUrl(uploadedUrl);
+          onImageStored(uploadedUrl);
+        })());
       } catch (e) {
         setError(e instanceof ImageError ? e.message : 'Lỗi nén hoặc tải ảnh lên Supabase');
       } finally {
+        busyRef.current = false;
         setBusy(false);
       }
     },
-    [onImageStored],
+    [onImageStored, pendingWorkScope],
   );
 
   useEffect(() => {
@@ -110,6 +122,7 @@ export function ImageDropzone({
       const imageFile = clipboardHasImage(event);
       // No image file → never intercept (normal text paste works everywhere).
       if (!imageFile) return;
+      if (busyRef.current) return;
 
       const root = rootRef.current;
       if (!root) return;
@@ -140,17 +153,22 @@ export function ImageDropzone({
       ref={rootRef}
       className={`dropzone image-fit-frame ${dragover ? 'dragover' : ''} ${className || ''}`.trim()}
       tabIndex={0}
+      aria-busy={busy}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => {
+        if (!busyRef.current) inputRef.current?.click();
+      }}
       onDragOver={(e) => {
         e.preventDefault();
+        if (busyRef.current) return;
         setDragover(true);
       }}
       onDragLeave={() => setDragover(false)}
       onDrop={(e) => {
         e.preventDefault();
         setDragover(false);
+        if (busyRef.current) return;
         const f = e.dataTransfer.files?.[0];
         if (f && isImageFile(f)) void handleFile(f);
       }}
@@ -159,6 +177,7 @@ export function ImageDropzone({
         ref={inputRef}
         type="file"
         accept="image/png,image/jpeg,image/webp,image/*"
+        disabled={busy}
         style={{ display: 'none' }}
         onChange={(e) => {
           const f = e.target.files?.[0];

@@ -15,21 +15,25 @@ export async function printPreviewDocument(): Promise<void> {
   };
   window.addEventListener('afterprint', cleanup);
 
-  const images = Array.from(document.querySelectorAll<HTMLImageElement>('.preview-doc img'));
-  await Promise.race([
-    Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
-      image.addEventListener('load', () => resolve(), { once: true });
-      image.addEventListener('error', () => resolve(), { once: true });
-    }))),
-    new Promise<void>((resolve) => window.setTimeout(resolve, 5000)),
-  ]);
-  setTimeout(() => {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 5_000) {
+    const images = Array.from(document.querySelectorAll<HTMLImageElement>('.preview-doc img'));
+    const ready = images.every((image) => image.dataset.imageLoading !== 'true' && image.complete);
+    if (ready) break;
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+  }
+
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+  try {
     window.print();
-    // Dự phòng nếu trình duyệt không bắn afterprint; để lâu để Chrome kịp dựng preview.
-    setTimeout(cleanup, 30000);
-  }, 50);
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+  // Dự phòng nếu trình duyệt không bắn afterprint; để lâu để Chrome kịp dựng preview.
+  window.setTimeout(cleanup, 30_000);
 }
 
-export function exportQuotePDF(): void {
-  void printPreviewDocument();
+export function exportQuotePDF(): Promise<void> {
+  return printPreviewDocument();
 }

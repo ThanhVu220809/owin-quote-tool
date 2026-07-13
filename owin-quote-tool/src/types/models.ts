@@ -1,9 +1,8 @@
 /**
  * NGUỒN CHÂN LÝ KIỂU DỮ LIỆU — Owin Quote Tool.
  *
- * ProductRecord / QuoteRecord mirror the browser-safe subset of the REFERENCE
- * catalogue, quote, and history tables. Product / QuoteLine remain temporary
- * compatibility views for the old TARGET screens until later phases replace them.
+ * ProductRecord / QuoteRecord are the complete documents persisted in Supabase.
+ * Product / QuoteLine remain compatibility views used by a few UI/export helpers.
  */
 
 /** Hệ đơn vị tính legacy trong TARGET cũ. */
@@ -14,11 +13,13 @@ export type ProductUnit = 'BO' | 'M2' | 'METER';
 
 export type QuoteStatus = 'DRAFT' | 'SAVED' | 'EXPORTED';
 
-/** Mọi entity tham gia sync mang updatedAt để LWW per-entity. */
+/** Mọi document nghiệp vụ mang updatedAt để hiển thị và xử lý phiên bản. */
 export interface SyncEntity {
   id: string;
   updatedAt: string;
-  /** Tombstone legacy vẫn giữ để sync không hồi sinh bản xoá. */
+  /** Server-side optimistic concurrency token. Never supplied by user input. */
+  revision?: number;
+  /** Cờ tương thích; cột deleted_at của Supabase là trạng thái xóa chính thức. */
   deleted?: boolean;
   /** Tombstone mới dùng được cho quote/product history. */
   deletedAt?: string | null;
@@ -73,7 +74,7 @@ export interface Accessory {
   enabled: boolean;
 }
 
-/** Sản phẩm legacy compatibility view. Không dùng shape này làm sync/source-of-truth. */
+/** Sản phẩm compatibility view. ProductRecord trong Supabase là nguồn dữ liệu chính. */
 export interface Product extends SyncEntity {
   dvt: DVT;
   ten: string;
@@ -392,7 +393,7 @@ export interface AluminumCalculationRecord extends SyncEntity {
   createdAt: string;
 }
 
-/** Toàn bộ DB local/sync metadata; bytes ảnh luôn nằm ở store/file riêng. */
+/** Aggregate tương thích; dữ liệu bền vững và metadata nằm trong Supabase. */
 export interface OwinDB {
   schemaVersion: number;
   systems: ProductSystem[];
