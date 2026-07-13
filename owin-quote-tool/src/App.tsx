@@ -5,10 +5,8 @@ import { ProductsView } from '@/features/products/ProductsView';
 import { QuoteView } from '@/features/quote/QuoteView';
 import { BangGiaView } from '@/features/catalogue/BangGiaView';
 import { TinhTamNhomView } from '@/features/aluminum/TinhTamNhomView';
-import { SyncBar } from '@/features/sync/SyncBar';
 import { SupabaseGate } from '@/features/supabase/SupabaseGate';
 import { SupabaseSyncBar } from '@/features/supabase/SupabaseSyncBar';
-import { isSupabaseConfigured } from '@/features/supabase/supabaseClient';
 
 type Tab = 'products' | 'quotes' | 'catalogue' | 'aluminum';
 
@@ -57,7 +55,7 @@ function App() {
         </nav>
 
         <div className="tool-topnav-actions">
-          {isSupabaseConfigured ? <SupabaseSyncBar compact /> : <SyncBar compact />}
+          <SupabaseSyncBar compact />
         </div>
       </header>
 
