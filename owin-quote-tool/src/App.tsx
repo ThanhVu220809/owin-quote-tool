@@ -6,6 +6,9 @@ import { QuoteView } from '@/features/quote/QuoteView';
 import { BangGiaView } from '@/features/catalogue/BangGiaView';
 import { TinhTamNhomView } from '@/features/aluminum/TinhTamNhomView';
 import { SyncBar } from '@/features/sync/SyncBar';
+import { SupabaseGate } from '@/features/supabase/SupabaseGate';
+import { SupabaseSyncBar } from '@/features/supabase/SupabaseSyncBar';
+import { isSupabaseConfigured } from '@/features/supabase/supabaseClient';
 
 type Tab = 'products' | 'quotes' | 'catalogue' | 'aluminum';
 
@@ -24,6 +27,7 @@ function App() {
   const [tab, setTab] = useState<Tab>('products');
 
   return (
+    <SupabaseGate>
     <div className="tool-shell">
       <header className="tool-topnav no-print">
         <button type="button" className="tool-brand" onClick={() => setTab('products')}>
@@ -53,7 +57,7 @@ function App() {
         </nav>
 
         <div className="tool-topnav-actions">
-          <SyncBar compact />
+          {isSupabaseConfigured ? <SupabaseSyncBar compact /> : <SyncBar compact />}
         </div>
       </header>
 
@@ -72,6 +76,7 @@ function App() {
         </div>
       </main>
     </div>
+    </SupabaseGate>
   );
 }
 
