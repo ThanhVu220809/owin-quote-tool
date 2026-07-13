@@ -80,10 +80,13 @@ async function migrateProductImages(
 
 export async function countLegacyData(): Promise<{ products: number; quotes: number }> {
   const [products, quotes] = await Promise.all([
-    valuesFromStore<unknown>(legacyProducts),
-    valuesFromStore<unknown>(legacyQuotes),
+    valuesFromStore<Record<string, unknown>>(legacyProducts),
+    valuesFromStore<Record<string, unknown>>(legacyQuotes),
   ]);
-  return { products: products.length, quotes: quotes.length };
+  return {
+    products: products.filter((product) => product.deleted !== true && !product.deletedAt).length,
+    quotes: quotes.filter((quote) => quote.deleted !== true && !quote.deletedAt).length,
+  };
 }
 
 export async function migrateToSupabase(
@@ -97,7 +100,8 @@ export async function migrateToSupabase(
     quotes: 0,
     suggestions: 0,
   };
-  const rawProducts = await valuesFromStore<Record<string, unknown>>(legacyProducts);
+  const rawProducts = (await valuesFromStore<Record<string, unknown>>(legacyProducts))
+    .filter((product) => product.deleted !== true && !product.deletedAt);
   const seen = new Set<string>();
   const products: ProductRecord[] = [];
 
@@ -113,7 +117,8 @@ export async function migrateToSupabase(
   await upsertProductsBatch(products);
   report.products = products.length;
 
-  const rawQuotes = await valuesFromStore<Partial<QuoteRecord>>(legacyQuotes);
+  const rawQuotes = (await valuesFromStore<Partial<QuoteRecord>>(legacyQuotes))
+    .filter((quote) => quote.deleted !== true && !quote.deletedAt);
   const quotes = rawQuotes.map((quote) => normalizeQuoteRecord(quote));
   opts.onProgress?.(`Khôi phục ${quotes.length} báo giá`);
   await upsertQuotesBatch(quotes);
@@ -133,7 +138,7 @@ export async function migrateToSupabase(
   }
 
   const suggestions = (await valuesFromStore<SuggestionRecord>(legacySuggestions))
-    .filter((record) => record.id && record.type && record.value);
+    .filter((record) => record.id && record.type && record.value && !record.deleted && !record.deletedAt);
   await upsertHostedSuggestions(suggestions, { ignoreExisting: true });
   report.suggestions = suggestions.length;
 
