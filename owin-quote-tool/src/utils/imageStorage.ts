@@ -4,7 +4,7 @@
  * Images are compressed in the browser (including EXIF orientation handling),
  * then uploaded directly to the public `product-images` bucket. Only the CDN
  * URL is persisted in product/quote records. The small Maps below are transient
- * runtime caches and are never written to IndexedDB/localStorage.
+ * runtime caches and are never written to browser storage.
  */
 import imageCompression from 'browser-image-compression';
 import {
@@ -234,7 +234,7 @@ function transientStore(cache: Map<string, Blob>): TransientStore {
   };
 }
 
-/** Deprecated localforage-shaped exports retained for older tests/importers. */
+/** Small in-memory store facades retained for test compatibility. */
 const productImageStore = transientStore(productCache);
 const quoteImageStore = transientStore(quoteCache);
 const legacyImageStore = transientStore(legacyCache);

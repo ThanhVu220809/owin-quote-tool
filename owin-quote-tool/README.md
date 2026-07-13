@@ -10,7 +10,7 @@ Công cụ nội bộ React/Vite được deploy bằng GitHub Pages tại `saig
 - Supabase Realtime: trình duyệt đang mở tự cập nhật khi máy khác sửa dữ liệu.
 - GitHub Actions/Pages: test, lint, build và deploy từ nhánh `main`.
 
-App không lưu dữ liệu nghiệp vụ mới vào IndexedDB/localStorage. Menu có công cụ chỉ-đọc một lần để cứu dữ liệu IndexedDB từ phiên bản cũ lên Supabase.
+App không lưu dữ liệu nghiệp vụ vào IndexedDB/localStorage; dữ liệu cũ đã được chuyển xong lên Supabase.
 
 ## Chạy local
 

@@ -437,7 +437,7 @@ export async function bulkPutSuggestions(records: SuggestionRecord[]): Promise<v
   await upsertHostedSuggestions(records);
 }
 
-/** LocalForage-compatible surface retained for callers while storage is hosted. */
+/** Supabase-backed compatibility surface retained for older callers. */
 export const suggestionStore = {
   async getItem<T>(key: string): Promise<T | null> {
     return await getHostedSuggestion(key) as T | null;

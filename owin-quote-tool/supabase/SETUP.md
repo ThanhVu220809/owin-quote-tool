@@ -23,6 +23,6 @@ Repository Settings → Secrets and variables → Actions cần hai secret:
 
 Push vào `main` chạy CI rồi workflow Deploy GitHub Pages. Domain production là `saigonfox.online` và file `public/CNAME` giữ custom domain.
 
-## Chuyển dữ liệu cũ
+## Trạng thái migration
 
-Trên đúng trình duyệt từng chứa dữ liệu cũ: đăng nhập → menu dấu ba chấm → **Khôi phục dữ liệu trình duyệt cũ (một lần)**. Công cụ chỉ đọc LocalForage cũ và upsert lên Supabase; mọi thao tác mới vẫn ghi trực tiếp Supabase.
+Dữ liệu trình duyệt cũ đã được chuyển lên Supabase. Bản production không còn importer hoặc browser database.

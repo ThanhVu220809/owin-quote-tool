@@ -289,7 +289,7 @@ export function subscribeToQuoteChanges(onChange?: () => void): () => void {
 
 /**
  * @deprecated Compatibility facade for older imports. It is Supabase-backed
- * and never creates IndexedDB/localforage stores.
+ * and never creates browser-side database stores.
  */
 export const quoteStore = {
   async getItem<T>(id: string): Promise<T | null> {

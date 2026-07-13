@@ -1,4 +1,3 @@
-import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProductRecord } from '@/types/models';
 import { saveImage, imageStore } from '@/utils/imageStorage';

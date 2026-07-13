@@ -198,7 +198,7 @@ export async function bulkPutAluminumCalculations(records: AluminumCalculationRe
   });
 }
 
-/** LocalForage-compatible surface retained for callers while storage is hosted. */
+/** Supabase-backed compatibility surface retained for older callers. */
 export const aluminumEstimatorStore = {
   getItem<T>(key: string): Promise<T | null> {
     return getHostedAppData<T>(key);

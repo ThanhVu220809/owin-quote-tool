@@ -7,4 +7,4 @@
 - Workflow chạy lint, test và production build trước khi deploy.
 - `service_role`, PAT và mật khẩu người dùng không được đưa vào repository hoặc bundle.
 
-Dữ liệu nghiệp vụ nằm trên Supabase. Chỉ khi cứu dữ liệu từ bản cũ mới cần mở menu trên đúng trình duyệt còn IndexedDB và chạy công cụ khôi phục một lần.
+Dữ liệu nghiệp vụ nằm hoàn toàn trên Supabase; bản production không dùng browser database.

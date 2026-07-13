@@ -36,7 +36,7 @@ export async function markMigrated(): Promise<AppMeta> {
   });
 }
 
-/** LocalForage-compatible surface retained for callers while storage is hosted. */
+/** Supabase-backed compatibility surface retained for older callers. */
 export const appMetaStore = {
   getItem<T>(key: string): Promise<T | null> {
     return getHostedAppData<T>(key);
