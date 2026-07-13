@@ -38,6 +38,8 @@ interface BackendResponse {
   expires_in?: number | null;
   error?: string | null;
   need_relogin?: boolean;
+  /** URL của Google Sheet mirror (action:'mirror'). */
+  url?: string | null;
 }
 
 interface GooglePopupError {
@@ -59,7 +61,7 @@ function popupErrorMessage(error: GooglePopupError): string {
  * (mẹo bắt buộc — JSON content-type sẽ bị preflight chặn). VERIFY: xác nhận lại
  * khi deploy thật rằng Apps Script vẫn nhận được body text/plain.
  */
-async function callBackend(payload: Record<string, unknown>): Promise<BackendResponse> {
+export async function callBackend(payload: Record<string, unknown>): Promise<BackendResponse> {
   const res = await fetch(BACKEND_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },

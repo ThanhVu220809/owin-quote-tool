@@ -25,6 +25,7 @@ import {
 import { mergeEntities, type Conflict } from './merge';
 import { downloadDB, getDBMetadata, uploadDB } from './driveSync';
 import { isSyncConfigured } from './publicConfig';
+import { mirrorToSheet } from './sheetMirror';
 import { clearQueue } from './syncQueue';
 import { notifyProductsChanged } from '@/features/products/productEvents';
 import { syncReferencedImages } from './imageSync';
@@ -231,6 +232,8 @@ export async function syncNow(
     await metaStore.setItem(LAST_SUCCESS_KEY, new Date().toISOString());
     await metaStore.setItem(BOOTSTRAP_STATE_KEY, 'ready');
     await clearQueue();
+    // Best-effort: chiếu data ra Google Sheet (backup dễ tìm). KHÔNG chặn/hỏng sync.
+    void mirrorToSheet(finalProducts, finalQuotes).catch(() => undefined);
     return {
       state: 'done',
       pushed: finalProducts.length + finalQuotes.length + finalSuggestions.length + finalAluminum.length,

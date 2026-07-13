@@ -32,6 +32,8 @@ function doPost(e) {
       return handleExchange(body.code, props);
     } else if (body.action === 'refresh') {
       return handleRefresh(props);
+    } else if (body.action === 'mirror') {
+      return handleMirror(body, props);
     } else {
       return jsonOut({ error: 'unknown_action' });
     }
@@ -92,6 +94,66 @@ function handleRefresh(props) {
     expires_in: data.expires_in || null,
     error: data.error || null
   });
+}
+
+/**
+ * MIRROR: chiếu products + quotes (client gửi sẵn dạng lưới) ra 1 Google Sheet
+ * trong Drive tài khoản xưởng. Sheet này = backup dễ tìm, dễ xem/sửa, chia sẻ link.
+ * Chạy bằng tài khoản chủ (Execute as = Me) nên KHÔNG cần scope Sheet phía client.
+ */
+function handleMirror(body, props) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000); // Chống 2 thiết bị ghi Sheet cùng lúc.
+  } catch (e) {
+    return jsonOut({ error: 'busy' });
+  }
+  try {
+    var ss = getOrCreateMirrorSheet(props);
+    writeGrid(ss, 'Sản phẩm', body.products);
+    writeGrid(ss, 'Báo giá', body.quotes);
+    // Xoá tab mặc định 'Sheet1' còn sót sau khi tạo mới.
+    var def = ss.getSheetByName('Sheet1') || ss.getSheetByName('Trang tính1');
+    if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
+    return jsonOut({ url: ss.getUrl() });
+  } catch (err) {
+    return jsonOut({ error: 'mirror_failed', detail: String(err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Mở Sheet mirror theo ID đã lưu; nếu chưa có / bị xoá thì tạo mới và nhớ ID. */
+function getOrCreateMirrorSheet(props) {
+  var id = props.getProperty('MIRROR_SHEET_ID');
+  if (id) {
+    try {
+      return SpreadsheetApp.openById(id);
+    } catch (e) {
+      // Sheet bị xoá/không mở được → rơi xuống tạo mới.
+    }
+  }
+  var ss = SpreadsheetApp.create('OWIN - Dữ liệu (backup)');
+  props.setProperty('MIRROR_SHEET_ID', ss.getId());
+  return ss;
+}
+
+/** Ghi 1 lưới (mảng 2 chiều) vào tab tên `name`, ghi đè sạch nội dung cũ. */
+function writeGrid(ss, name, grid) {
+  if (!grid || !grid.length) grid = [['(trống)']];
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  sheet.clearContents();
+  // Chuẩn hoá: mọi hàng cùng số cột để setValues không ném lỗi.
+  var cols = 0;
+  for (var i = 0; i < grid.length; i++) {
+    if (grid[i].length > cols) cols = grid[i].length;
+  }
+  for (var j = 0; j < grid.length; j++) {
+    while (grid[j].length < cols) grid[j].push('');
+  }
+  sheet.getRange(1, 1, grid.length, cols).setValues(grid);
+  sheet.setFrozenRows(1);
 }
 
 function postForm(url, payloadObj) {
