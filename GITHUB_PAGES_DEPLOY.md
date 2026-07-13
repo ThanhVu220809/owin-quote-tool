@@ -1,9 +1,10 @@
 # GitHub Pages deployment
 
-- In GitHub Settings → Pages, set Source to **GitHub Actions**.
-- Set the Pages custom domain to `saigonfox.online`.
-- In Namecheap, create a CNAME record with Host `@` and Value `thanhvu220809.github.io`.
-- Add `https://saigonfox.online` as an Authorized JavaScript Origin in Google OAuth.
-- IndexedDB data from the old domain does not move automatically to the new domain. Sign in with the same Google account and pull the Drive data into the new origin.
+- Source: GitHub Actions.
+- Production domain: `saigonfox.online`.
+- Build root: `owin-quote-tool`.
+- Required Actions secrets: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+- Workflow chạy lint, test và production build trước khi deploy.
+- `service_role`, PAT và mật khẩu người dùng không được đưa vào repository hoặc bundle.
 
-The workflow builds with `BASE_PATH=/` for the root custom domain. `VITE_SHARED_SECRET` is public in the JavaScript bundle and is only a temporary client-side value, not a real security secret.
+Dữ liệu nghiệp vụ nằm trên Supabase. Chỉ khi cứu dữ liệu từ bản cũ mới cần mở menu trên đúng trình duyệt còn IndexedDB và chạy công cụ khôi phục một lần.

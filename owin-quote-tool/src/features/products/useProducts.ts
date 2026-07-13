@@ -2,23 +2,25 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Product, ProductRecord } from '@/types/models';
 import {
   seedIfEmpty,
-  getAllProducts,
   getAllProductsRaw,
+  toLegacyProduct,
   saveProduct as saveProductStore,
   deleteProduct as deleteProductStore,
 } from '@/features/products/productStore';
 import { PRODUCTS_CHANGED_EVENT } from '@/features/products/productEvents';
+import { subscribeToProducts } from '@/features/supabase/productsRepo';
 
-/** Quản lý danh sách sản phẩm gốc (sống) từ IndexedDB. */
+/** Live product catalogue backed directly by Supabase. */
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productRecords, setProductRecords] = useState<ProductRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const [legacy, raw] = await Promise.all([getAllProducts(), getAllProductsRaw()]);
-    setProducts(legacy);
-    setProductRecords(raw.filter((product) => !product.deleted && !product.deletedAt));
+    const raw = await getAllProductsRaw();
+    const active = raw.filter((product) => !product.deleted && !product.deletedAt);
+    setProducts(active.map(toLegacyProduct).sort((a, b) => a.ma.localeCompare(b.ma)));
+    setProductRecords(active);
   }, []);
 
   useEffect(() => {
@@ -30,11 +32,19 @@ export function useProducts() {
   }, [refresh]);
 
   useEffect(() => {
-    const onProductsChanged = () => {
-      void refresh();
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => void refresh(), 80);
     };
-    window.addEventListener(PRODUCTS_CHANGED_EVENT, onProductsChanged);
-    return () => window.removeEventListener(PRODUCTS_CHANGED_EVENT, onProductsChanged);
+
+    window.addEventListener(PRODUCTS_CHANGED_EVENT, scheduleRefresh);
+    const unsubscribe = subscribeToProducts(scheduleRefresh);
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      window.removeEventListener(PRODUCTS_CHANGED_EVENT, scheduleRefresh);
+      unsubscribe();
+    };
   }, [refresh]);
 
   const saveProduct = useCallback(

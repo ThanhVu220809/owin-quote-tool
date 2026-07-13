@@ -34,6 +34,9 @@ jobs:
       - name: Test
         working-directory: owin-quote-tool
         run: npm test
+      - name: Lint
+        working-directory: owin-quote-tool
+        run: npm run lint
       - name: Build
         working-directory: owin-quote-tool
         env:

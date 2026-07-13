@@ -23,6 +23,8 @@ export function ImageLightbox({ src, alt = 'Ảnh sản phẩm', open, onClose }
 
   // Reset zoom whenever the viewer opens or the image changes.
   useEffect(() => {
+    // Resetting local viewer state is intentional when the viewed resource changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setZoom(MIN_ZOOM);
   }, [open, src]);
 

@@ -1,4 +1,4 @@
-import localforage from 'localforage';
+import { getHostedAppData, upsertHostedAppData } from '@/features/supabase/sharedDataRepo';
 
 export const APP_SCHEMA_VERSION = 2;
 
@@ -8,18 +8,11 @@ export interface AppMeta {
   migratedAt?: string;
 }
 
-const appMetaStore = localforage.createInstance({
-  name: 'owin-quote-tool',
-  storeName: 'app_meta',
-  driver: localforage.INDEXEDDB,
-  description: 'Schema/migration metadata for the browser-only app',
-});
-
 const APP_META_KEY = 'app';
 
 export async function getAppMeta(): Promise<AppMeta> {
   return (
-    (await appMetaStore.getItem<AppMeta>(APP_META_KEY)) ?? {
+    (await getHostedAppData<AppMeta>(APP_META_KEY)) ?? {
       schemaVersion: APP_SCHEMA_VERSION,
     }
   );
@@ -32,7 +25,7 @@ export async function saveAppMeta(meta: Partial<AppMeta>): Promise<AppMeta> {
     ...meta,
     schemaVersion: meta.schemaVersion ?? current.schemaVersion ?? APP_SCHEMA_VERSION,
   };
-  await appMetaStore.setItem(APP_META_KEY, saved);
+  await upsertHostedAppData(APP_META_KEY, saved);
   return saved;
 }
 
@@ -43,4 +36,13 @@ export async function markMigrated(): Promise<AppMeta> {
   });
 }
 
-export { appMetaStore };
+/** LocalForage-compatible surface retained for callers while storage is hosted. */
+export const appMetaStore = {
+  getItem<T>(key: string): Promise<T | null> {
+    return getHostedAppData<T>(key);
+  },
+  async setItem<T>(key: string, value: T): Promise<T> {
+    await upsertHostedAppData(key, value);
+    return value;
+  },
+};

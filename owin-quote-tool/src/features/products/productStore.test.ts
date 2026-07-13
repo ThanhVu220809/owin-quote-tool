@@ -1,9 +1,22 @@
-/**
- * Test tầng KHO SẢN PHẨM (logic tombstone BR-8 + updatedAt) — node + fake-indexeddb.
- * Phần UI (animation ẩn/hiện Rộng/Cao, auto-suggest, dropzone) verify ở browser thật.
- */
-import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProductRecord } from '@/types/models';
+
+const productDb = vi.hoisted(() => new Map<string, ProductRecord>());
+
+vi.mock('@/features/supabase/productsRepo', () => ({
+  listProducts: vi.fn(async () =>
+    Array.from(productDb.values()).filter((product) => !product.deleted && !product.deletedAt),
+  ),
+  listProductsRaw: vi.fn(async () => Array.from(productDb.values())),
+  getProductById: vi.fn(async (id: string) => productDb.get(id) ?? null),
+  upsertProduct: vi.fn(async (product: ProductRecord) => {
+    productDb.set(product.id, product);
+  }),
+  upsertProductsBatch: vi.fn(async (products: ProductRecord[]) => {
+    for (const product of products) productDb.set(product.id, product);
+  }),
+}));
+
 import {
   seedIfEmpty,
   getAllProducts,
@@ -12,68 +25,52 @@ import {
   saveProduct,
   deleteProduct,
   bulkAdjustProductPrices,
-  _clearAll,
 } from '@/features/products/productStore';
 
-beforeEach(async () => {
-  await _clearAll();
+beforeEach(() => {
+  productDb.clear();
 });
 
-describe('seed dữ liệu mẫu', () => {
-  it('seedIfEmpty nạp bộ sản phẩm reference, chỉ chạy 1 lần', async () => {
+describe('Supabase-only catalogue', () => {
+  it('does not repopulate an intentionally empty remote catalogue', async () => {
     await seedIfEmpty();
-    expect((await getAllProducts()).length).toBe(19);
-    expect((await getAllProductsRaw())[0]).toEqual(
-      expect.objectContaining({
-        code: expect.any(String),
-        name: expect.any(String),
-        unit: expect.stringMatching(/^(BO|M2|METER)$/),
-        unitPriceVnd: expect.any(Number),
-        category: expect.any(String),
-        rawSizeText: expect.any(String),
-        fixedAccessoryPackage: expect.any(String),
-      }),
-    );
-    // gọi lần 2 không nhân đôi
-    await seedIfEmpty();
-    expect((await getAllProducts()).length).toBe(19);
+    expect(await getAllProducts()).toEqual([]);
+    expect(await getAllProductsRaw()).toEqual([]);
   });
-});
 
-describe('TEST 3.3 — xoá tombstone + sửa giá đổi updatedAt (BR-8)', () => {
-  it('mã tự uppercase khi lưu', async () => {
-    const p = await saveProduct({
+  it('normalizes and persists products through the remote repository', async () => {
+    const product = await saveProduct({
       dvt: 'm²', ten: 'Test', ma: 's9', donGiaGoc: 1000, accessories: [],
     });
-    expect(p.ma).toBe('S9');
-    expect((await getAllProductsRaw()).find((x) => x.id === p.id)?.code).toBe('S9');
-  });
 
-  it('xoá → biến mất khỏi getAllProducts nhưng còn deleted:true trong store', async () => {
-    const p = await saveProduct({
+    expect(product.ma).toBe('S9');
+    expect(productDb.get(product.id)).toEqual(expect.objectContaining({ code: 'S9' }));
+    expect((await getAllProductsRaw()).find((item) => item.id === product.id)?.code).toBe('S9');
+  });
+});
+
+describe('soft deletes and timestamps', () => {
+  it('hides a deleted product but retains its Supabase tombstone', async () => {
+    const product = await saveProduct({
       dvt: 'm²', ten: 'X', ma: 'X1', donGiaGoc: 1000, accessories: [],
     });
-    await deleteProduct(p.id);
-    // không còn trong danh sách sống
-    expect((await getAllProducts()).find((x) => x.id === p.id)).toBeUndefined();
-    // nhưng record vẫn tồn tại với deleted:true
-    const raw = await getProduct(p.id);
-    expect(raw).not.toBeNull();
-    expect(raw!.deleted).toBe(true);
-    // và xuất hiện trong raw (cho sync)
-    expect((await getAllProductsRaw()).find((x) => x.id === p.id)?.deleted).toBe(true);
+    await deleteProduct(product.id);
+
+    expect((await getAllProducts()).find((item) => item.id === product.id)).toBeUndefined();
+    expect((await getProduct(product.id))?.deleted).toBe(true);
+    expect((await getAllProductsRaw()).find((item) => item.id === product.id)?.deleted).toBe(true);
   });
 
-  it('sửa giá → updatedAt thay đổi (mới hơn)', async () => {
-    const p = await saveProduct({
-      dvt: 'm²', ten: 'Y', ma: 'Y1', donGiaGoc: 2000000, accessories: [],
+  it('moves updatedAt forward when editing a price', async () => {
+    const product = await saveProduct({
+      dvt: 'm²', ten: 'Y', ma: 'Y1', donGiaGoc: 2_000_000, accessories: [],
     });
-    const t1 = p.updatedAt;
-    await new Promise((r) => setTimeout(r, 5));
-    const p2 = await saveProduct({ ...p, donGiaGoc: 1900000 });
-    expect(p2.id).toBe(p.id); // cùng sản phẩm
-    expect(p2.donGiaGoc).toBe(1900000);
-    expect(new Date(p2.updatedAt).getTime()).toBeGreaterThan(new Date(t1).getTime());
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const edited = await saveProduct({ ...product, donGiaGoc: 1_900_000 });
+
+    expect(edited.id).toBe(product.id);
+    expect(edited.donGiaGoc).toBe(1_900_000);
+    expect(new Date(edited.updatedAt).getTime()).toBeGreaterThan(new Date(product.updatedAt).getTime());
   });
 });
 
@@ -83,9 +80,10 @@ describe('bulk price adjustment', () => {
     const deleted = await saveProduct({ code: 'DELETED', name: 'Deleted', category: 'Cửa', unit: 'M2', unitPriceVnd: 2_000_000 });
     await deleteProduct(deleted.id);
     await bulkAdjustProductPrices(10);
+
     const raw = await getAllProductsRaw();
-    expect(raw.find((p) => p.id === active.id)?.unitPriceVnd).toBe(1_100_000);
-    expect(raw.find((p) => p.id === deleted.id)?.unitPriceVnd).toBe(2_000_000);
-    expect(raw.find((p) => p.id === deleted.id)?.deleted).toBe(true);
+    expect(raw.find((product) => product.id === active.id)?.unitPriceVnd).toBe(1_100_000);
+    expect(raw.find((product) => product.id === deleted.id)?.unitPriceVnd).toBe(2_000_000);
+    expect(raw.find((product) => product.id === deleted.id)?.deleted).toBe(true);
   });
 });

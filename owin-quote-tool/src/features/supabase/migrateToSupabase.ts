@@ -1,22 +1,28 @@
 /**
- * MIGRATE 1 LẦN: dữ liệu cũ (IndexedDB) → Supabase. Chạy lại nhiều lần vẫn an toàn
- * (upsert theo id, KHÔNG xoá gì ở local).
- *
- * Nguyên tắc (theo yêu cầu tối ưu DB):
- *  - KHÔNG bỏ sản phẩm nào (kể cả trùng metadata — chúng có ảnh chi tiết khác nhau).
- *  - Mã chứa "COPY" → regen mã sạch (id giữ nguyên nên vẫn upsert đúng dòng).
- *  - Ảnh lưu 1 LẦN theo nội dung (hash) rồi trỏ chung → tiết kiệm, dùng ở list/bảng giá/chi tiết.
- *  - Backfill cover: nếu cover rỗng nhưng có ảnh trong gallery → lấy làm cover (list hết logo).
+ * One-time rescue import for browsers that still contain the pre-Supabase
+ * LocalForage database. Normal application reads/writes never use these stores.
  */
-import type { ProductRecord } from '@/types/models';
-import { getAllProductsRaw } from '@/features/products/productStore';
-import { getAllQuotesRaw } from '@/features/quote/quoteStore';
-import { getImage } from '@/utils/imageStorage';
+import localforage from 'localforage';
+import type { ProductRecord, QuoteRecord, SuggestionRecord } from '@/types/models';
+import { normalizeProductRecord } from '@/features/products/productStore';
+import { normalizeQuoteRecord } from '@/features/quote/quoteStore';
+import { normalizeAluminumCalculationRecord } from '@/features/aluminum/aluminumEstimatorStorage';
 import { imageStoreKeyFromPath } from '@/utils/imagePaths';
 import { generateProductCode } from '@/lib/products/productCode';
 import { upsertProductsBatch } from './productsRepo';
 import { upsertQuotesBatch } from './quotesRepo';
-import { uploadImageDedup } from './imagesRepo';
+import { uploadImageBlob, uploadImageDedup } from './imagesRepo';
+import { upsertHostedAppData, upsertHostedSuggestions } from './sharedDataRepo';
+
+const DB_NAME = 'owin-quote-tool';
+const legacyProducts = localforage.createInstance({ name: DB_NAME, storeName: 'products' });
+const legacyQuotes = localforage.createInstance({ name: DB_NAME, storeName: 'quotes' });
+const legacySuggestions = localforage.createInstance({ name: DB_NAME, storeName: 'suggestions' });
+const legacyAppMeta = localforage.createInstance({ name: DB_NAME, storeName: 'app_meta' });
+const legacyAluminum = localforage.createInstance({ name: DB_NAME, storeName: 'aluminum_calculations' });
+const legacyProductImages = localforage.createInstance({ name: DB_NAME, storeName: 'product_images' });
+const legacyImages = localforage.createInstance({ name: DB_NAME, storeName: 'images' });
+const legacyQuoteImages = localforage.createInstance({ name: DB_NAME, storeName: 'quote_images' });
 
 export interface MigrateReport {
   products: number;
@@ -24,75 +30,119 @@ export interface MigrateReport {
   images: number;
   imageErrors: number;
   quotes: number;
+  suggestions: number;
 }
 
-/** Mã mới sạch cho sp có "COPY" — cùng timestamp + số thứ tự để không đụng nhau. */
-function regenCode(index: number): string {
-  return `${generateProductCode()}${String(index).padStart(4, '0')}`;
+async function valuesFromStore<T>(store: LocalForage): Promise<T[]> {
+  const values: T[] = [];
+  await store.iterate<T, void>((value, key) => {
+    if (!key.startsWith('__') && value && typeof value !== 'boolean') values.push(value);
+  });
+  return values;
 }
 
-/**
- * Trả về path ảnh dùng cho cover:
- *  - path tĩnh/URL (imported-assets, http…) → dùng nguyên (đã hiển thị được).
- *  - path blob trong IndexedDB → upload dedup → URL CDN.
- * Ưu tiên cover, nếu không có ảnh thì thử lần lượt gallery (backfill).
- */
-async function resolveCover(
-  p: ProductRecord,
+async function getLegacyImage(key: string): Promise<Blob | null> {
+  return (await legacyProductImages.getItem<Blob>(key)) ?? legacyImages.getItem<Blob>(key);
+}
+
+async function migrateImagePath(
+  path: string,
   seen: Set<string>,
   report: MigrateReport,
-): Promise<string | null> {
-  const candidates = [p.coverImagePath, ...(Array.isArray(p.gallery) ? p.gallery : [])].filter(Boolean) as string[];
-  for (const path of candidates) {
-    const key = imageStoreKeyFromPath(path);
-    if (!key) return path; // ảnh tĩnh/URL → hiển thị được ở mọi nơi
-    try {
-      const blob = await getImage(key);
-      if (blob) { report.images += 1; return await uploadImageDedup(blob, seen); }
-    } catch { report.imageErrors += 1; }
+): Promise<string> {
+  const key = imageStoreKeyFromPath(path);
+  if (!key) return path;
+  try {
+    const blob = await getLegacyImage(key);
+    if (!blob) return path;
+    const url = await uploadImageDedup(blob, seen);
+    report.images += 1;
+    return url;
+  } catch {
+    report.imageErrors += 1;
+    return path;
   }
-  return p.coverImagePath ?? null; // không có ảnh → giữ nguyên (có thể null → logo, chấp nhận)
 }
 
-/** Upload các ảnh gallery (blob) lên dạng dedup; ảnh tĩnh/URL giữ nguyên. */
-async function resolveGallery(p: ProductRecord, seen: Set<string>, report: MigrateReport): Promise<string[]> {
-  const out: string[] = [];
-  for (const path of Array.isArray(p.gallery) ? p.gallery : []) {
-    if (!path) continue;
-    const key = imageStoreKeyFromPath(path);
-    if (!key) { out.push(path); continue; }
-    try {
-      const blob = await getImage(key);
-      if (blob) { report.images += 1; out.push(await uploadImageDedup(blob, seen)); }
-    } catch { report.imageErrors += 1; }
-  }
-  return out;
+async function migrateProductImages(
+  product: ProductRecord,
+  seen: Set<string>,
+  report: MigrateReport,
+): Promise<ProductRecord> {
+  const gallery: string[] = [];
+  for (const path of product.gallery ?? []) gallery.push(await migrateImagePath(path, seen, report));
+  let coverImagePath = product.coverImagePath
+    ? await migrateImagePath(product.coverImagePath, seen, report)
+    : null;
+  if (!coverImagePath && gallery.length > 0) coverImagePath = gallery[0];
+  return { ...product, coverImagePath, gallery };
+}
+
+export async function countLegacyData(): Promise<{ products: number; quotes: number }> {
+  const [products, quotes] = await Promise.all([
+    valuesFromStore<unknown>(legacyProducts),
+    valuesFromStore<unknown>(legacyQuotes),
+  ]);
+  return { products: products.length, quotes: quotes.length };
 }
 
 export async function migrateToSupabase(
-  opts: { onProgress?: (msg: string) => void } = {},
+  opts: { onProgress?: (message: string) => void } = {},
 ): Promise<MigrateReport> {
-  const report: MigrateReport = { products: 0, regeneratedCodes: 0, images: 0, imageErrors: 0, quotes: 0 };
-  const seen = new Set<string>(); // hash ảnh đã upload trong phiên này
+  const report: MigrateReport = {
+    products: 0,
+    regeneratedCodes: 0,
+    images: 0,
+    imageErrors: 0,
+    quotes: 0,
+    suggestions: 0,
+  };
+  const rawProducts = await valuesFromStore<Record<string, unknown>>(legacyProducts);
+  const seen = new Set<string>();
+  const products: ProductRecord[] = [];
 
-  const all = (await getAllProductsRaw()).filter((p) => !p.deletedAt);
-  const migrated: ProductRecord[] = [];
-  for (let i = 0; i < all.length; i += 1) {
-    const p = all[i];
-    opts.onProgress?.(`Ảnh & sản phẩm ${i + 1}/${all.length}`);
-    const cover = await resolveCover(p, seen, report);
-    const gallery = await resolveGallery(p, seen, report);
-    let code = p.code;
-    if (/copy/i.test(code)) { code = regenCode(i); report.regeneratedCodes += 1; }
-    migrated.push({ ...p, code, coverImagePath: cover, gallery });
+  for (let index = 0; index < rawProducts.length; index += 1) {
+    opts.onProgress?.(`Khôi phục sản phẩm ${index + 1}/${rawProducts.length}`);
+    let product = normalizeProductRecord(rawProducts[index], index + 1);
+    if (/copy/i.test(product.code)) {
+      product = { ...product, code: `${generateProductCode()}${String(index).padStart(4, '0')}` };
+      report.regeneratedCodes += 1;
+    }
+    products.push(await migrateProductImages(product, seen, report));
   }
-  await upsertProductsBatch(migrated);
-  report.products = migrated.length;
+  await upsertProductsBatch(products);
+  report.products = products.length;
 
-  const quotes = (await getAllQuotesRaw()).filter((q) => !q.deletedAt);
-  opts.onProgress?.(`Báo giá ${quotes.length}`);
+  const rawQuotes = await valuesFromStore<Partial<QuoteRecord>>(legacyQuotes);
+  const quotes = rawQuotes.map((quote) => normalizeQuoteRecord(quote));
+  opts.onProgress?.(`Khôi phục ${quotes.length} báo giá`);
   await upsertQuotesBatch(quotes);
   report.quotes = quotes.length;
+
+  const quoteImages: Array<[string, Blob]> = [];
+  await legacyQuoteImages.iterate<Blob, void>((blob, path) => {
+    if (blob instanceof Blob && path) quoteImages.push([path, blob]);
+  });
+  for (const [path, blob] of quoteImages) {
+    try {
+      await uploadImageBlob(path, blob);
+      report.images += 1;
+    } catch {
+      report.imageErrors += 1;
+    }
+  }
+
+  const suggestions = (await valuesFromStore<SuggestionRecord>(legacySuggestions))
+    .filter((record) => record.id && record.type && record.value);
+  await upsertHostedSuggestions(suggestions, { ignoreExisting: true });
+  report.suggestions = suggestions.length;
+
+  const appMeta = await legacyAppMeta.getItem<unknown>('app');
+  if (appMeta) await upsertHostedAppData('app', appMeta);
+  const aluminum = normalizeAluminumCalculationRecord(
+    await legacyAluminum.getItem('owin_aluminum_estimator_v2'),
+  );
+  if (aluminum) await upsertHostedAppData(aluminum.id, aluminum);
 
   return report;
 }

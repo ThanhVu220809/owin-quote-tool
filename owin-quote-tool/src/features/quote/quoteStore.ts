@@ -1,23 +1,22 @@
-import localforage from 'localforage';
 import type {
   CalculatedQuoteItem,
   QuoteRecord,
   QuoteSnapshotData,
   QuoteStatus,
 } from '@/types/models';
-import importedQuotes from '@/data/imported/quotes.json';
 import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
-import { notifyLocalDataChanged } from '@/lib/dataChangeEvents';
-
-const quoteStore = localforage.createInstance({
-  name: 'owin-quote-tool',
-  storeName: 'quotes',
-  driver: localforage.INDEXEDDB,
-  description: 'QuoteRecord history with calculated snapshot data',
-});
+import {
+  getQuoteById,
+  listQuotes,
+  listQuotesRaw,
+  subscribeToQuotes,
+  upsertQuote,
+  upsertQuotesBatch,
+} from '@/features/supabase/quotesRepo';
 
 type QuoteInput = Partial<QuoteRecord>;
-const REFERENCE_QUOTE_SEED_FLAG = '__reference_quotes_seed_v1__';
+
+export const QUOTES_CHANGED_EVENT = 'owin-quotes-changed';
 
 const COMPANY_DEFAULT = {
   name: 'HOÀNG ANH OWIN',
@@ -218,46 +217,27 @@ export function normalizeQuoteRecord(input: QuoteInput): QuoteRecord {
   };
 }
 
-export async function getAllQuotesRaw(): Promise<QuoteRecord[]> {
-  await seedImportedQuotesIfNeeded();
-  const out: QuoteRecord[] = [];
-  await quoteStore.iterate<QuoteInput | boolean, void>((value, key) => {
-    if (key === REFERENCE_QUOTE_SEED_FLAG || !value || typeof value === 'boolean') return;
-    out.push(normalizeQuoteRecord(value));
-  });
-  return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+function notifyQuotesChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(QUOTES_CHANGED_EVENT));
+  }
 }
 
-async function seedImportedQuotesIfNeeded(): Promise<void> {
-  if ((importedQuotes as QuoteInput[]).length === 0) return;
-
-  const existingCodes = new Set<string>();
-  const existingIds = new Set<string>();
-  await quoteStore.iterate<QuoteInput | boolean, void>((value, key) => {
-    if (key === REFERENCE_QUOTE_SEED_FLAG || !value || typeof value === 'boolean') return;
-    // Chỉ cần id/code để biết quote nào đã tồn tại — KHÔNG normalize (parse snapshot)
-    // ở vòng này, tránh parse lại TOÀN BỘ snapshot mỗi lần getAllQuotes (nguồn lag).
-    if (value.id) existingIds.add(String(value.id));
-    if (value.code) existingCodes.add(String(value.code));
-  });
-
-  for (const input of importedQuotes as QuoteInput[]) {
-    const record = normalizeQuoteRecord(input);
-    if (existingIds.has(record.id) || existingCodes.has(record.code)) continue;
-    await quoteStore.setItem(record.id, record);
-    existingIds.add(record.id);
-    existingCodes.add(record.code);
-  }
-
-  await quoteStore.setItem(REFERENCE_QUOTE_SEED_FLAG, true);
+export async function getAllQuotesRaw(): Promise<QuoteRecord[]> {
+  return (await listQuotesRaw())
+    .map((quote) => normalizeQuoteRecord(quote))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getAllQuotes(): Promise<QuoteRecord[]> {
-  return (await getAllQuotesRaw()).filter((quote) => !quote.deletedAt && !quote.deleted);
+  return (await listQuotes())
+    .map((quote) => normalizeQuoteRecord(quote))
+    .filter((quote) => !quote.deletedAt && !quote.deleted)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getQuote(id: string): Promise<QuoteRecord | null> {
-  const value = await quoteStore.getItem<QuoteInput>(id);
+  const value = await getQuoteById(id);
   return value ? normalizeQuoteRecord(value) : null;
 }
 
@@ -271,32 +251,64 @@ export async function saveQuoteRecord(input: QuoteInput): Promise<QuoteRecord> {
     createdAt: input.createdAt || existing?.createdAt || updatedAt,
     updatedAt,
   });
-  await quoteStore.setItem(record.id, record);
-  notifyLocalDataChanged();
+  await upsertQuote(record);
+  notifyQuotesChanged();
   return record;
 }
 
 export async function deleteQuote(id: string): Promise<void> {
   const existing = await getQuote(id);
   if (!existing) return;
-  await quoteStore.setItem(id, {
+  const deletedAt = existing.deletedAt || nowIso();
+  await upsertQuote({
     ...existing,
-    deletedAt: existing.deletedAt || nowIso(),
+    deletedAt,
     deleted: true,
-    updatedAt: nowIso(),
+    updatedAt: deletedAt,
   } satisfies QuoteRecord);
-  notifyLocalDataChanged();
+  notifyQuotesChanged();
 }
 
 export async function bulkPutQuotes(quotes: QuoteRecord[]): Promise<void> {
-  for (const quote of quotes) {
-    const record = normalizeQuoteRecord(quote);
-    await quoteStore.setItem(record.id, record);
-  }
+  await upsertQuotesBatch(quotes.map((quote) => normalizeQuoteRecord(quote)));
+  notifyQuotesChanged();
 }
 
+/** @deprecated Browser persistence no longer exists. */
 export async function _clearQuotes(): Promise<void> {
-  await quoteStore.clear();
+  return Promise.resolve();
 }
 
-export { quoteStore };
+/** Subscribe once and expose a DOM event that screens can use to refresh history. */
+export function subscribeToQuoteChanges(onChange?: () => void): () => void {
+  return subscribeToQuotes(() => {
+    notifyQuotesChanged();
+    onChange?.();
+  });
+}
+
+/**
+ * @deprecated Compatibility facade for older imports. It is Supabase-backed
+ * and never creates IndexedDB/localforage stores.
+ */
+export const quoteStore = {
+  async getItem<T>(id: string): Promise<T | null> {
+    return (await getQuoteById(id)) as T | null;
+  },
+  async setItem<T>(id: string, value: T): Promise<T> {
+    if (value && typeof value === 'object') {
+      await upsertQuote(normalizeQuoteRecord({ ...(value as QuoteInput), id }));
+    }
+    return value;
+  },
+  async iterate<T, U>(iterator: (value: T, key: string) => U | void): Promise<U | undefined> {
+    for (const record of await listQuotesRaw()) {
+      const result = iterator(record as T, record.id);
+      if (result !== undefined) return result;
+    }
+    return undefined;
+  },
+  async clear(): Promise<void> {
+    await _clearQuotes();
+  },
+};

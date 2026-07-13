@@ -1,7 +1,6 @@
-import localforage from 'localforage';
-import { notifyLocalDataChanged } from '@/lib/dataChangeEvents';
 import { ALUMINUM_SYSTEMS } from '@/lib/aluminum-estimator/aluminum-systems';
 import { parseEstimatorNumber } from '@/lib/aluminum-estimator/aluminum-estimator';
+import { getHostedAppData, upsertHostedAppData } from '@/features/supabase/sharedDataRepo';
 import type {
   AluminumCalculationRecord,
   AluminumEstimatorInputState,
@@ -19,20 +18,12 @@ export interface AluminumEstimatorPageState {
 export type AluminumEstimatorRowPatch = Partial<AluminumEstimatorInputState>;
 
 export const ALUMINUM_ESTIMATOR_STORAGE_KEY = 'owin_aluminum_estimator_v2';
-const LEGACY_ALUMINUM_ESTIMATOR_STORAGE_KEY = 'owin_aluminum_estimator_v1';
 
 export const EMPTY_ALUMINUM_ESTIMATOR_INPUT: AluminumEstimatorInputState = {
   quantity: '',
   unitPrice: '',
   note: '',
 };
-
-export const aluminumEstimatorStore = localforage.createInstance({
-  name: 'owin-quote-tool',
-  storeName: 'aluminum_calculations',
-  driver: localforage.INDEXEDDB,
-  description: 'Temporary aluminum estimator calculations',
-});
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -126,85 +117,105 @@ function toPageState(record: AluminumCalculationRecord): AluminumEstimatorPageSt
   };
 }
 
-function deserializeLegacyState(raw: string | null): AluminumEstimatorPageState | null {
-  if (!raw) return null;
-  try {
-    return normalizeAluminumEstimatorState(JSON.parse(raw));
-  } catch {
-    return null;
-  }
-}
-
 export function isAluminumEstimatorDirty(state: AluminumEstimatorPageState): boolean {
   return Object.values(state.inputRows).some((systemRows) =>
     Object.values(systemRows).some((input) => parseEstimatorNumber(input.quantity) > 0),
   );
 }
 
-export async function loadAluminumEstimatorStorage(): Promise<AluminumEstimatorPageState | null> {
-  const currentRecord = normalizeAluminumCalculationRecord(
-    await aluminumEstimatorStore.getItem(ALUMINUM_ESTIMATOR_STORAGE_KEY),
+let cachedRecord: AluminumCalculationRecord | null | undefined;
+let writeQueue: Promise<void> = Promise.resolve();
+
+async function readHostedRecord(force = false): Promise<AluminumCalculationRecord | null> {
+  if (!force && cachedRecord !== undefined) return cachedRecord;
+  cachedRecord = normalizeAluminumCalculationRecord(
+    await getHostedAppData<unknown>(ALUMINUM_ESTIMATOR_STORAGE_KEY),
   );
-  if (currentRecord) return toPageState(currentRecord);
+  return cachedRecord;
+}
 
-  if (typeof window === 'undefined') return null;
-  const legacy = deserializeLegacyState(window.localStorage.getItem(LEGACY_ALUMINUM_ESTIMATOR_STORAGE_KEY));
-  if (!legacy) return null;
+async function putHostedRecord(record: AluminumCalculationRecord): Promise<void> {
+  await upsertHostedAppData(record.id, record);
+  if (record.id === ALUMINUM_ESTIMATOR_STORAGE_KEY) cachedRecord = record;
+}
 
-  const migrated = touchAluminumEstimatorState(legacy);
-  await saveAluminumEstimatorStorage(migrated);
-  return migrated;
+function enqueueWrite(operation: () => Promise<void>): Promise<void> {
+  const pending = writeQueue.then(operation);
+  writeQueue = pending.catch(() => undefined);
+  return pending;
+}
+
+export async function loadAluminumEstimatorStorage(): Promise<AluminumEstimatorPageState | null> {
+  await writeQueue;
+  const currentRecord = await readHostedRecord(true);
+  return currentRecord ? toPageState(currentRecord) : null;
 }
 
 export async function saveAluminumEstimatorStorage(state: AluminumEstimatorPageState): Promise<void> {
-  const existing = normalizeAluminumCalculationRecord(
-    await aluminumEstimatorStore.getItem(ALUMINUM_ESTIMATOR_STORAGE_KEY),
-  );
-  const updatedAt = state.updatedAt || nowIso();
-  const record: AluminumCalculationRecord = {
-    id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
-    selectedSystemId: state.selectedSystemId,
-    inputRows: normalizeInputRows(state.inputRows),
-    createdAt: existing?.createdAt ?? updatedAt,
-    updatedAt,
-    deleted: undefined,
-    deletedAt: null,
-  };
-  await aluminumEstimatorStore.setItem(ALUMINUM_ESTIMATOR_STORAGE_KEY, record);
-  notifyLocalDataChanged();
+  await enqueueWrite(async () => {
+    const existing = await readHostedRecord();
+    const updatedAt = state.updatedAt || nowIso();
+    await putHostedRecord({
+      id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
+      selectedSystemId: state.selectedSystemId,
+      inputRows: normalizeInputRows(state.inputRows),
+      createdAt: existing?.createdAt ?? updatedAt,
+      updatedAt,
+      deleted: undefined,
+      deletedAt: null,
+    });
+  });
 }
 
 export async function clearAluminumEstimatorStorage(): Promise<void> {
-  const existing = normalizeAluminumCalculationRecord(
-    await aluminumEstimatorStore.getItem(ALUMINUM_ESTIMATOR_STORAGE_KEY),
-  );
-  const updatedAt = nowIso();
-  await aluminumEstimatorStore.setItem(ALUMINUM_ESTIMATOR_STORAGE_KEY, {
-    id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
-    selectedSystemId: existing?.selectedSystemId ?? ALUMINUM_SYSTEMS[0]?.id ?? '',
-    inputRows: {},
-    createdAt: existing?.createdAt ?? updatedAt,
-    updatedAt,
-    deleted: true,
-    deletedAt: updatedAt,
-  } satisfies AluminumCalculationRecord);
-  notifyLocalDataChanged();
+  await enqueueWrite(async () => {
+    const existing = await readHostedRecord();
+    const updatedAt = nowIso();
+    await putHostedRecord({
+      id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
+      selectedSystemId: existing?.selectedSystemId ?? ALUMINUM_SYSTEMS[0]?.id ?? '',
+      inputRows: {},
+      createdAt: existing?.createdAt ?? updatedAt,
+      updatedAt,
+      deleted: true,
+      deletedAt: updatedAt,
+    });
+  });
 }
 
 export async function getAllAluminumCalculationsRaw(): Promise<AluminumCalculationRecord[]> {
-  const out: AluminumCalculationRecord[] = [];
-  await aluminumEstimatorStore.iterate<unknown, void>((value, key) => {
-    if (key !== ALUMINUM_ESTIMATOR_STORAGE_KEY) return;
-    const record = normalizeAluminumCalculationRecord(value);
-    if (record) out.push(record);
-  });
-  return out;
+  await writeQueue;
+  const record = await readHostedRecord(true);
+  return record ? [record] : [];
 }
 
 export async function bulkPutAluminumCalculations(records: AluminumCalculationRecord[]): Promise<void> {
-  for (const record of records) {
-    const normalized = normalizeAluminumCalculationRecord(record);
-    if (!normalized) continue;
-    await aluminumEstimatorStore.setItem(normalized.id, normalized);
-  }
+  await enqueueWrite(async () => {
+    for (const record of records) {
+      const normalized = normalizeAluminumCalculationRecord(record);
+      if (normalized) await putHostedRecord(normalized);
+    }
+  });
 }
+
+/** LocalForage-compatible surface retained for callers while storage is hosted. */
+export const aluminumEstimatorStore = {
+  getItem<T>(key: string): Promise<T | null> {
+    return getHostedAppData<T>(key);
+  },
+  async setItem<T>(key: string, value: T): Promise<T> {
+    await enqueueWrite(async () => {
+      await upsertHostedAppData(key, value);
+      cachedRecord = key === ALUMINUM_ESTIMATOR_STORAGE_KEY
+        ? normalizeAluminumCalculationRecord(value)
+        : cachedRecord;
+    });
+    return value;
+  },
+  async iterate<T, U>(
+    iterator: (value: T, key: string, iterationNumber: number) => U,
+  ): Promise<U | undefined> {
+    const value = await getHostedAppData<T>(ALUMINUM_ESTIMATOR_STORAGE_KEY);
+    return value === null ? undefined : iterator(value, ALUMINUM_ESTIMATOR_STORAGE_KEY, 1);
+  },
+};

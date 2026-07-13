@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ImagePlus, LoaderCircle } from 'lucide-react';
-import { compressAndStore, getImageUrl, ImageError } from '@/utils/imageStorage';
+import { compressAndUpload, ImageError } from '@/utils/imageStorage';
 import { resolveImageUrl } from '@/utils/imagePaths';
 
 const OWIN_LOGO = `${import.meta.env.BASE_URL}owin-user-assets/logo/logo.webp`;
 
 interface Props {
-  /** id ảnh hiện tại (đã lưu IndexedDB). */
+  /** Legacy image identifier; new callers should pass imagePath (the CDN URL). */
   imageId?: string;
-  /** Logical image path, e.g. products/<folder>/images/cover.webp. */
+  /** Current Supabase CDN URL or a legacy logical Storage path. */
   imagePath?: string | null;
-  /** Gọi khi nén+lưu xong, trả id mới để form gắn vào sản phẩm. */
-  onImageStored: (id: string) => void;
+  /** Called after compression + Storage upload; receives the public CDN URL. */
+  onImageStored: (url: string) => void;
   /** Optional class for layout variants. */
   className?: string;
   /**
@@ -47,7 +47,7 @@ function clipboardHasImage(event: ClipboardEvent): File | null {
 }
 
 /**
- * Image dropzone: click / drag-drop / Ctrl+V image → compress → IndexedDB → onImageStored.
+ * Image dropzone: click / drag-drop / Ctrl+V image → compress → Supabase Storage.
  * Text paste in inputs is never broken: we only intercept when clipboard contains image files.
  */
 export function ImageDropzone({
@@ -74,9 +74,7 @@ export function ImageDropzone({
         setUrl(null);
         return;
       }
-      const load = imageId
-        ? getImageUrl(imageId).then((u) => ({ url: u, revoke: Boolean(u) }))
-        : resolveImageUrl(imagePath);
+      const load = resolveImageUrl(imagePath || (imageId ? `legacy-images/${imageId}` : null));
       load.then((resolved) => {
         if (active && resolved.url) {
           if (resolved.revoke) revoked = resolved.url;
@@ -95,10 +93,11 @@ export function ImageDropzone({
       setError(null);
       setBusy(true);
       try {
-        const { id } = await compressAndStore(file);
-        onImageStored(id);
+        const { url: uploadedUrl } = await compressAndUpload(file);
+        setUrl(uploadedUrl);
+        onImageStored(uploadedUrl);
       } catch (e) {
-        setError(e instanceof ImageError ? e.message : 'Lỗi xử lý ảnh');
+        setError(e instanceof ImageError ? e.message : 'Lỗi nén hoặc tải ảnh lên Supabase');
       } finally {
         setBusy(false);
       }
@@ -169,7 +168,7 @@ export function ImageDropzone({
       />
       {busy ? (
         <div className="hint">
-          <LoaderCircle size={22} className="spin" /> Đang nén ảnh…
+          <LoaderCircle size={22} className="spin" /> Đang nén và tải ảnh…
         </div>
       ) : url ? (
         <img className="image-fit-contain" src={url} alt="Ảnh sản phẩm" />

@@ -11,8 +11,6 @@ import { CurrencyInput } from '@/components/CurrencyInput';
 import { ExtraAccessoriesEditor, FixedAccessoryPackageEditor } from '@/components/AccessoryEditors';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { SegmentedControl } from '@/components/SegmentedControl';
-import { getImage, saveImage } from '@/utils/imageStorage';
-import { productCoverPath } from '@/utils/imagePaths';
 import { formatVND } from '@/utils/format';
 import {
   calculateFixedAccessoryDraftTotal,
@@ -64,29 +62,6 @@ const UNIT_OPTIONS: { label: string; value: ProductUnit }[] = [
   { label: 'Bộ', value: 'BO' },
   { label: 'md', value: 'METER' },
 ];
-
-function legacyImageId(path: string | null): string | undefined {
-  const prefix = 'legacy-images/';
-  return path?.startsWith(prefix) ? path.slice(prefix.length) : undefined;
-}
-
-async function coverPathFromImageId(
-  imageId: string | undefined,
-  code: string,
-  name: string,
-  existingPath: string | null,
-): Promise<string | null> {
-  if (imageId) {
-    const blob = await getImage(imageId);
-    const nextPath = productCoverPath(code, name);
-    if (blob) {
-      await saveImage(nextPath, blob);
-      return nextPath;
-    }
-    return `legacy-images/${imageId}`;
-  }
-  return existingPath || null;
-}
 
 function normalizeSpecs(editing: ProductRecord | null): SpecDraft[] {
   if (editing?.specs?.length) {
@@ -142,9 +117,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
   const [unitPriceVnd, setUnitPriceVnd] = useState(editing?.unitPriceVnd ?? 0);
   const [widthM, setWidthM] = useState(initialSize.width);
   const [heightM, setHeightM] = useState(initialSize.height);
-  const [coverImageId, setCoverImageId] = useState<string | undefined>(() =>
-    legacyImageId(editing?.coverImagePath ?? null),
-  );
+  const [coverImagePath, setCoverImagePath] = useState<string | null>(editing?.coverImagePath ?? null);
   const [specs, setSpecs] = useState<SpecDraft[]>(() => normalizeSpecs(editing));
   const [accessories] = useState<ProductAccessoryRecord[]>(() =>
     editing?.accessories?.map((item) => ({ ...item })) ?? [],
@@ -228,12 +201,8 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
         unit,
         unitPriceVnd: Number(unitPriceVnd || 0),
         shortDesc: editing?.shortDesc ?? null,
-        coverImagePath: await coverPathFromImageId(
-          coverImageId,
-          normalizedCode,
-          normalizedName,
-          editing?.coverImagePath ?? null,
-        ),
+        // ImageDropzone already uploaded the bytes; only persist its CDN URL.
+        coverImagePath,
         gallery: editing?.gallery ?? [],
         rawSizeText,
         rawPriceText: editing?.rawPriceText ?? null,
@@ -259,9 +228,8 @@ export function ProductForm({ editing, suggestions, onSave, onCancel }: Props) {
         <div className="product-image-panel">
           <label>Hình ảnh</label>
           <ImageDropzone
-            imageId={coverImageId}
-            imagePath={editing?.coverImagePath ?? null}
-            onImageStored={setCoverImageId}
+            imagePath={coverImagePath}
+            onImageStored={setCoverImagePath}
             pasteScope="form"
           />
         </div>

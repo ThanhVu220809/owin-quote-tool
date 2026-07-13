@@ -1,12 +1,10 @@
 /**
- * KHO SẢN PHẨM GỐC — IndexedDB/localforage metadata only.
+ * Product service backed directly by Supabase.
  *
- * The persisted shape is ProductRecord, matching the REFERENCE catalogue/price
- * table structure. Legacy TARGET fields are migrated at read/write boundaries
- * until later phases replace the old UI.
+ * ProductRecord remains the canonical shape and legacy fields are normalized at
+ * the UI boundary, but no catalogue data is persisted in browser storage.
  */
 
-import localforage from 'localforage';
 import type {
   Accessory,
   DVT,
@@ -16,21 +14,16 @@ import type {
   ProductSpecRecord,
   ProductUnit,
 } from '@/types/models';
-import initialData from '@/data/initialData.json';
-import importedProducts from '@/data/imported/products.json';
 import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
 import { notifyProductsChanged } from './productEvents';
-import { notifyLocalDataChanged } from '@/lib/dataChangeEvents';
+import {
+  getProductById,
+  listProducts,
+  listProductsRaw,
+  upsertProduct,
+  upsertProductsBatch,
+} from '@/features/supabase/productsRepo';
 
-const productStore = localforage.createInstance({
-  name: 'owin-quote-tool',
-  storeName: 'products',
-  driver: localforage.INDEXEDDB,
-  description: 'Sản phẩm gốc ProductRecord — ảnh nằm ở store riêng',
-});
-
-const SEED_FLAG = '__seeded__';
-const REFERENCE_SEED_FLAG = '__reference_products_seed_v1__';
 const DEFAULT_CATEGORY = 'Khác';
 
 type ProductInput = {
@@ -292,42 +285,19 @@ async function getNextNumericId(): Promise<number> {
   return records.reduce((max, item) => Math.max(max, item.numericId || 0), 0) + 1;
 }
 
-/** Nạp dữ liệu mẫu lần đầu (chỉ chạy 1 lần), migrate từ schema cũ sang ProductRecord. */
+/**
+ * Kept for old callers. Seeding is intentionally disabled: an empty Supabase
+ * catalogue is a valid state and must not be silently repopulated by a browser.
+ */
 export async function seedIfEmpty(): Promise<void> {
-  const seeded = await productStore.getItem<boolean>(SEED_FLAG);
-  if (!seeded) {
-    let numericId = 1;
-    const seedProducts = (importedProducts as ProductInput[]).length > 0
-      ? (importedProducts as ProductInput[])
-      : (initialData.products as ProductInput[]);
-    for (const p of seedProducts) {
-      const record = normalizeProductRecord(p, numericId++);
-      await productStore.setItem(record.id, record);
-    }
-    await productStore.setItem(SEED_FLAG, true);
-  }
-  await importReferenceProductsIfNeeded();
-}
-
-async function importReferenceProductsIfNeeded(): Promise<void> {
-  if ((importedProducts as ProductInput[]).length === 0) return;
-
-  const existing = await getAllProductsRaw();
-  const existingIds = new Set(existing.map((product) => product.id));
-  const existingCodes = new Set(existing.map((product) => product.code));
-  for (const input of importedProducts as ProductInput[]) {
-    const record = normalizeProductRecord(input, existing.length + 1);
-    if (existingIds.has(record.id) || existingCodes.has(record.code)) continue;
-    await productStore.setItem(record.id, record);
-    existingIds.add(record.id);
-    existingCodes.add(record.code);
-  }
-  await productStore.setItem(REFERENCE_SEED_FLAG, true);
+  return Promise.resolve();
 }
 
 /** Tất cả sản phẩm CÒN SỐNG, compatibility view cho UI cũ. */
 export async function getAllProducts(): Promise<Product[]> {
-  const records = await getAllProductsRaw();
+  const records = (await listProducts()).map((value, index) =>
+    normalizeProductRecord(value as ProductInput, index + 1),
+  );
   return records
     .filter((value) => !value.deleted && !value.deletedAt)
     .map(toLegacyProduct)
@@ -342,14 +312,11 @@ function byManualOrder(a: ProductRecord, b: ProductRecord): number {
   return a.code.localeCompare(b.code);
 }
 
-/** Tất cả ProductRecord kể cả tombstone — dùng cho sync/migration/test. */
+/** Tất cả ProductRecord kể cả tombstone — compatibility cho migration/admin. */
 export async function getAllProductsRaw(): Promise<ProductRecord[]> {
-  const out: ProductRecord[] = [];
-  await productStore.iterate<ProductRecord | ProductInput | boolean, void>((value, key) => {
-    if (key === SEED_FLAG || key === REFERENCE_SEED_FLAG || !value || typeof value === 'boolean') return;
-    out.push(normalizeProductRecord(value as ProductInput, out.length + 1));
-  });
-  return out.sort(byManualOrder);
+  return (await listProductsRaw())
+    .map((value, index) => normalizeProductRecord(value as ProductInput, index + 1))
+    .sort(byManualOrder);
 }
 
 /**
@@ -358,21 +325,17 @@ export async function getAllProductsRaw(): Promise<ProductRecord[]> {
  */
 export async function reorderProducts(orderedIds: string[]): Promise<void> {
   const stamp = nowIso();
-  await Promise.all(
-    orderedIds.map(async (id, index) => {
-      const value = await productStore.getItem<ProductRecord | ProductInput | boolean>(id);
-      if (!value || typeof value === 'boolean') return;
-      const record = normalizeProductRecord(value as ProductInput);
-      await productStore.setItem(id, { ...record, sortOrder: index, updatedAt: stamp });
-    }),
-  );
+  const byId = new Map((await listProducts()).map((product) => [product.id, product]));
+  const reordered = orderedIds.flatMap((id, index) => {
+    const value = byId.get(id);
+    return value ? [{ ...normalizeProductRecord(value as ProductInput), sortOrder: index, updatedAt: stamp }] : [];
+  });
+  await upsertProductsBatch(reordered);
   notifyProductsChanged();
-  notifyLocalDataChanged();
 }
 
 export async function getProductRecord(id: string): Promise<ProductRecord | null> {
-  if (id === SEED_FLAG) return null;
-  const value = await productStore.getItem<ProductRecord | ProductInput>(id);
+  const value = await getProductById(id);
   return value ? normalizeProductRecord(value as ProductInput) : null;
 }
 
@@ -386,7 +349,7 @@ export async function saveProduct(
   p: ProductInput & { id?: string; updatedAt?: string },
 ): Promise<Product> {
   const id = normalizeString(p.id, crypto.randomUUID());
-  const existing = await productStore.getItem<ProductRecord | ProductInput>(id);
+  const existing = await getProductById(id);
   const numericId = existing
     ? normalizeProductRecord(existing as ProductInput).numericId
     : await getNextNumericId();
@@ -399,28 +362,27 @@ export async function saveProduct(
     },
     numericId,
   );
-  await productStore.setItem(id, saved);
+  await upsertProduct(saved);
   notifyProductsChanged();
-  notifyLocalDataChanged();
   return toLegacyProduct(saved);
 }
 
-/** Xoá mềm: giữ tombstone để sync không hồi sinh. */
+/** Xoá mềm trực tiếp trên Supabase. */
 export async function deleteProduct(id: string): Promise<void> {
   const existing = await getProductRecord(id);
   if (!existing) return;
-  await productStore.setItem(id, {
+  const deletedAt = existing.deletedAt ?? nowIso();
+  await upsertProduct({
     ...existing,
     deleted: true,
-    deletedAt: existing.deletedAt ?? nowIso(),
-    updatedAt: nowIso(),
+    deletedAt,
+    updatedAt: deletedAt,
   } satisfies ProductRecord);
   notifyProductsChanged();
-  notifyLocalDataChanged();
 }
 
 /**
- * Adjust active product prices in one atomic-looking store pass.
+ * Adjust active product prices in one batched Supabase operation.
  * Tombstones are deliberately skipped so deleted products are never revived
  * or mutated by a catalogue-wide price operation.
  */
@@ -433,24 +395,49 @@ export async function bulkAdjustProductPrices(percent: number): Promise<ProductR
     unitPriceVnd: Math.max(0, Math.round(product.unitPriceVnd * (1 + percent / 100))),
     updatedAt: nowIso(),
   }));
-  for (const product of updated) await productStore.setItem(product.id, product);
+  await upsertProductsBatch(updated);
   notifyProductsChanged();
-  notifyLocalDataChanged();
   return updated;
 }
 
-/** Ghi hàng loạt ProductRecord sau merge sync. */
+/** Compatibility bulk write; persists directly to Supabase. */
 export async function bulkPut(products: ProductRecord[]): Promise<void> {
   let fallback = 1;
-  for (const p of products) {
-    const record = normalizeProductRecord(p as ProductInput, p.numericId || fallback++);
-    await productStore.setItem(record.id, record);
-  }
+  const records = products.map((product) =>
+    normalizeProductRecord(product as ProductInput, product.numericId || fallback++),
+  );
+  await upsertProductsBatch(records);
+  notifyProductsChanged();
 }
 
-/** Dùng cho test: xoá sạch store (kể cả seed flag). */
+/** @deprecated Browser persistence no longer exists. */
 export async function _clearAll(): Promise<void> {
-  await productStore.clear();
+  return Promise.resolve();
 }
 
-export { productStore };
+/**
+ * @deprecated Compatibility facade for older imports. It talks to Supabase and
+ * never creates browser storage. New code should use the functions above.
+ */
+export const productStore = {
+  async getItem<T>(id: string): Promise<T | null> {
+    return (await getProductById(id)) as T | null;
+  },
+  async setItem<T>(id: string, value: T): Promise<T> {
+    if (value && typeof value === 'object') {
+      const record = normalizeProductRecord({ ...(value as ProductInput), id });
+      await upsertProduct(record);
+    }
+    return value;
+  },
+  async iterate<T, U>(iterator: (value: T, key: string) => U | void): Promise<U | undefined> {
+    for (const record of await listProductsRaw()) {
+      const result = iterator(record as T, record.id);
+      if (result !== undefined) return result;
+    }
+    return undefined;
+  },
+  async clear(): Promise<void> {
+    await _clearAll();
+  },
+};

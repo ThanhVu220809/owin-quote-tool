@@ -33,7 +33,7 @@ import { exportQuotePDF } from '@/features/export/pdfExport';
 import { ProductThumb, OWIN_LOGO } from '@/features/products/ProductThumb';
 import { ImageLightbox } from '@/components/ImageLightbox';
 import { resolveImageUrl } from '@/utils/imagePaths';
-import { compressAndStore } from '@/utils/imageStorage';
+import { compressAndUpload, ImageError } from '@/utils/imageStorage';
 import {
   createEmptyFixedAccessoryDraft,
   parseExtraAccessoriesJson,
@@ -42,6 +42,7 @@ import {
   serializeFixedAccessoriesJson,
 } from '@/lib/quote/accessoryDrafts';
 import { deleteQuote, getAllQuotes, saveQuoteRecord } from './quoteStore';
+import { subscribeToQuotes } from '@/features/supabase/quotesRepo';
 
 const QUOTE_SUGGESTION_TYPES = [
   'customer_name',
@@ -251,6 +252,8 @@ export function QuoteView() {
 
   useEffect(() => {
     void refreshHistory();
+    const unsubscribe = subscribeToQuotes(() => void refreshHistory());
+    return unsubscribe;
   }, []);
 
   const categories = useMemo(
@@ -1567,13 +1570,17 @@ function QuoteItemCard({
   const imagePath = item.coverImagePath || item.image || null;
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
-  /** Expanded card: pick an image file from disk → compress → attach to this item. */
+  /** Pick an image → compress/upload → persist only its Supabase CDN URL. */
   const chooseImageFromFile = async (file: File) => {
+    setImageError(null);
     setImageBusy(true);
     try {
-      const { id } = await compressAndStore(file);
-      onUpdate({ coverImagePath: `legacy-images/${id}`, image: `legacy-images/${id}`, imageOverridePath: `legacy-images/${id}` });
+      const { url } = await compressAndUpload(file);
+      onUpdate({ coverImagePath: url, image: url, imageReference: url, imageOverridePath: url });
+    } catch (error) {
+      setImageError(error instanceof ImageError ? error.message : 'Không thể tải ảnh lên Supabase.');
     } finally {
       setImageBusy(false);
     }
@@ -1693,6 +1700,8 @@ function QuoteItemCard({
               <button className="icon-btn danger" onClick={onDelete} aria-label="Xóa hạng mục"><Trash2 size={16} /></button>
             </div>
           </div>
+
+          {imageError && <div className="hint" style={{ color: 'var(--ios-red)' }}>{imageError}</div>}
 
           {/* Chỉ cần Tên hạng mục — ĐVT lấy theo từng dòng kích thước (cột DV). */}
           <div className="quote-item-basic-grid quote-item-basic-grid-name-only">

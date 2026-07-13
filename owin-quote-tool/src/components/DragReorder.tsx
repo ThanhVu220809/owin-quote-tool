@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- hook, helper and handle form one small drag API */
 import { useState } from 'react';
 import type { DragEvent } from 'react';
 import { GripVertical } from 'lucide-react';

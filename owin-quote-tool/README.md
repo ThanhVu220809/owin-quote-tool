@@ -1,73 +1,40 @@
-# React + TypeScript + Vite
+# OWIN Quote Tool
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Công cụ nội bộ React/Vite được deploy bằng GitHub Pages tại `saigonfox.online`.
 
-Currently, two official plugins are available:
+## Kiến trúc
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Supabase Auth: đăng nhập người dùng.
+- Supabase Postgres: nguồn dữ liệu duy nhất cho sản phẩm, báo giá, suggestions, meta và tính nhôm.
+- Supabase Storage: ảnh sản phẩm/báo giá; app chỉ lưu URL CDN trong record.
+- Supabase Realtime: trình duyệt đang mở tự cập nhật khi máy khác sửa dữ liệu.
+- GitHub Actions/Pages: test, lint, build và deploy từ nhánh `main`.
 
-## React Compiler
+App không lưu dữ liệu nghiệp vụ mới vào IndexedDB/localStorage. Menu có công cụ chỉ-đọc một lần để cứu dữ liệu IndexedDB từ phiên bản cũ lên Supabase.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Chạy local
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cp .env.example .env
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Hai biến bắt buộc:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<public-anon-key>
 ```
+
+Không đặt `service_role`, Supabase PAT hoặc mật khẩu người dùng vào source/frontend.
+
+## Kiểm tra
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+Schema idempotent nằm tại `supabase/schema.sql`.

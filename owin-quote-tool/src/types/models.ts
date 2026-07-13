@@ -38,7 +38,7 @@ export interface ProductAccessoryRecord {
   sortOrder?: number;
 }
 
-/** Sản phẩm gốc trong IndexedDB/Drive, theo REFERENCE catalogue/price-table shape. */
+/** Sản phẩm gốc lưu trong Supabase, theo REFERENCE catalogue/price-table shape. */
 export interface ProductRecord extends SyncEntity {
   numericId: number;
   code: string;

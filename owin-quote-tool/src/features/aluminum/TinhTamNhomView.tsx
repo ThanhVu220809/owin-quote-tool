@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardCopy, Download, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import {
   calculateAluminumEstimatorRow,
@@ -32,7 +32,9 @@ import {
   buildAluminumPrintHtml,
   downloadAluminumDocx,
 } from '@/lib/aluminum-estimator-export';
+import { subscribeToAppData } from '@/features/supabase/sharedDataRepo';
 import {
+  ALUMINUM_ESTIMATOR_STORAGE_KEY,
   clearAluminumEstimatorStorage,
   createDefaultAluminumEstimatorState,
   getAluminumEstimatorInput,
@@ -167,6 +169,7 @@ export function TinhTamNhomView() {
   const [hydrated, setHydrated] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [printScope, setPrintScope] = useState<AluminumPrintScope>('all-systems');
+  const applyingRemoteUpdate = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -182,8 +185,26 @@ export function TinhTamNhomView() {
 
   useEffect(() => {
     if (!hydrated) return;
+    if (applyingRemoteUpdate.current) {
+      applyingRemoteUpdate.current = false;
+      return;
+    }
     void saveAluminumEstimatorStorage(pageState);
   }, [hydrated, pageState]);
+
+  useEffect(() => subscribeToAppData(ALUMINUM_ESTIMATOR_STORAGE_KEY, () => {
+    void loadAluminumEstimatorStorage().then((stored) => {
+      if (!stored) return;
+      setPageState((current) => {
+        const currentUpdatedAt = current.updatedAt ?? '';
+        const remoteUpdatedAt = stored.updatedAt ?? '';
+        // Ignore our own echo and older in-flight writes; only a newer browser edit wins.
+        if (remoteUpdatedAt <= currentUpdatedAt) return current;
+        applyingRemoteUpdate.current = true;
+        return stored;
+      });
+    });
+  }), []);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -359,7 +380,10 @@ export function TinhTamNhomView() {
       <AluminumSystemTabs
         selectedSystemId={selectedSystem?.id ?? ''}
         rowCountsBySystem={rowCountsBySystem}
-        onSelect={(systemId) => setPageState((current) => ({ ...current, selectedSystemId: systemId }))}
+        onSelect={(systemId) => setPageState((current) => touchAluminumEstimatorState({
+          ...current,
+          selectedSystemId: systemId,
+        }))}
       />
 
       {selectedSystem && (
@@ -370,7 +394,7 @@ export function TinhTamNhomView() {
             <span>Số dòng: <strong>{rowViewModels.length}</strong></span>
             {selectedSystem.customerName && <span>Khách: <strong>{selectedSystem.customerName}</strong></span>}
           </div>
-          <span>Dữ liệu lưu trong IndexedDB trên máy này.</span>
+          <span>Dữ liệu lưu trực tiếp trên Supabase.</span>
         </section>
       )}
 

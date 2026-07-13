@@ -37,5 +37,9 @@
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",
     "vitest": "^4.1.8"
+  },
+  "overrides": {
+    "uuid": "^11.1.1",
+    "xmldom": "npm:@xmldom/xmldom@^0.8.11"
   }
 }

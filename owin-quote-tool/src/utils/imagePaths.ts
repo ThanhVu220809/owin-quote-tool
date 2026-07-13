@@ -1,4 +1,8 @@
-import { getImage, getQuoteImage } from './imageStorage';
+import {
+  downloadImageBlob,
+  publicUrl as storagePublicUrl,
+  storagePathFromPublicUrl,
+} from '@/features/supabase/imagesRepo';
 
 export const DEFAULT_LOGO_PATH = 'owin-user-assets/logo/logo.webp';
 const STATIC_PUBLIC_PREFIXES = ['owin-user-assets/', 'imported-assets/'];
@@ -28,11 +32,14 @@ export function normalizeImagePath(path: string | null | undefined): string | nu
 
 export function imageStoreKeyFromPath(path: string | null | undefined): string | null {
   const normalized = normalizeImagePath(path);
-  if (!normalized || /^(https?:|data:|blob:)/i.test(normalized)) return null;
+  if (!normalized) return null;
+  const storagePath = storagePathFromPublicUrl(normalized);
+  if (/^https?:/i.test(normalized)) return storagePath;
+  if (/^(data:|blob:)/i.test(normalized)) return null;
   const legacyPrefix = 'legacy-images/';
   if (normalized.startsWith(legacyPrefix)) return normalized.slice(legacyPrefix.length);
   if (normalized.startsWith(appBase())) return null;
-  return normalized;
+  return storagePath || normalized;
 }
 
 export function productCoverPath(code: string, name: string): string {
@@ -67,10 +74,7 @@ export async function resolveImageUrl(path: string | null | undefined): Promise<
 
   const key = imageStoreKeyFromPath(normalized);
   if (!key) return { url: withBasePath(DEFAULT_LOGO_PATH), revoke: false };
-  const blob = normalized.startsWith('quotes/') ? await getQuoteImage(key) : await getImage(key);
-  return blob
-    ? { url: URL.createObjectURL(blob), revoke: true }
-    : { url: withBasePath(DEFAULT_LOGO_PATH), revoke: false };
+  return { url: storagePublicUrl(key), revoke: false };
 }
 
 async function fetchPublicDataUrl(publicPath: string): Promise<string | null> {
@@ -81,6 +85,11 @@ async function fetchPublicDataUrl(publicPath: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+async function fetchDataUrl(source: string): Promise<string | null> {
+  const blob = await downloadImageBlob(source);
+  return blob ? blobToDataUrl(blob) : null;
 }
 
 /**
@@ -97,7 +106,7 @@ export async function getImageDataUrlByPath(
   const load = async (): Promise<string | null> => {
     if (!normalized) return null;
     if (normalized.startsWith('data:')) return normalized;
-    if (/^(https?:|blob:)/i.test(normalized)) return null;
+    if (/^(https?:|blob:)/i.test(normalized)) return fetchDataUrl(normalized);
     if (normalized.startsWith(appBase())) {
       try {
         const response = await fetch(normalized);
@@ -109,9 +118,7 @@ export async function getImageDataUrlByPath(
     }
     const key = imageStoreKeyFromPath(normalized);
     if (!key) return null;
-    const blob = normalized.startsWith('quotes/') ? await getQuoteImage(key) : await getImage(key);
-    if (!blob) return null;
-    return blobToDataUrl(blob);
+    return fetchDataUrl(key);
   };
 
   const dataUrl = await load();

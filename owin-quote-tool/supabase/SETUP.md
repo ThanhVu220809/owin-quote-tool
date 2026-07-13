@@ -1,35 +1,28 @@
-# Setup Supabase + Vercel cho OWIN Quote Tool
+# Supabase + GitHub Pages
 
-Mô hình: **Vercel** host web · **Supabase** chứa data + ảnh + đăng nhập · giữ **Vite + React**.
+## Supabase
 
-## A. Tạo Supabase (bạn làm — ~10 phút)
+1. Chạy toàn bộ `schema.sql` trong SQL Editor. File có thể chạy lại an toàn.
+2. Bật Email/Password Auth và tạo user trong Authentication.
+3. Bucket public `product-images`, RLS và Realtime được cấu hình bởi schema.
+4. Chỉ đưa Project URL và anon key vào frontend. Không bao giờ đưa `service_role` hoặc PAT vào GitHub Pages.
 
-1. Vào **supabase.com** → đăng nhập → **New project**.
-   - Region: **Singapore** (gần VN nhất).
-   - Đặt mật khẩu database (lưu lại, chỉ dùng khi cần).
-2. **SQL Editor** → New query → dán toàn bộ `schema.sql` → **Run**.
-3. **Storage** → **New bucket** → tên đúng `product-images` → bật **Public** → Create.
-   (Sau khi tạo bucket, chạy lại phần STORAGE ở cuối `schema.sql` nếu lúc đầu báo lỗi thiếu bucket.)
-4. **Authentication → Users → Add user**: tạo 1 tài khoản admin (email + mật khẩu) — đây là tài khoản bạn login vào tool.
-   - (Tuỳ chọn) Authentication → Providers → tắt "Confirm email" cho nhanh.
-5. **Project Settings → API**, copy 2 giá trị gửi cho tôi:
-   - **Project URL**  (dạng `https://xxxx.supabase.co`)
-   - **anon public key**  (KHÔNG phải `service_role`)
+Các bảng dùng chung:
 
-> anon key là public, để trong bundle client là bình thường. TUYỆT ĐỐI không đưa `service_role` key vào client.
+- `products`: catalog + JSON document đầy đủ.
+- `quotes`: báo giá + snapshot đầy đủ.
+- `suggestions`: autocomplete đã học.
+- `app_data`: meta và trạng thái tính nhôm.
 
-## B. Vercel (làm khi qua bước deploy)
+## GitHub Pages
 
-1. **vercel.com** → New Project → import repo `owin-quote-tool`.
-   - Root Directory: `owin-quote-tool`
-   - Framework preset: **Vite** (tự nhận), Build: `npm run build`, Output: `dist`.
-2. Environment Variables: thêm `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
-3. (Sau khi chạy ổn) trỏ domain `saigonfox.online` sang Vercel.
+Repository Settings → Secrets and variables → Actions cần hai secret:
 
-## C. Phần tôi làm (sau khi có URL + anon key)
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
-- Thêm `@supabase/supabase-js` + `supabaseClient.ts`.
-- Viết lại tầng data: products/quotes đọc-ghi thẳng Supabase (bỏ full-sync Google Drive → hết "nặng lâu").
-- Màn đăng nhập admin (login 1 lần, nhớ phiên).
-- Script migrate: đẩy 142 sản phẩm hiện tại (**dedupe sạch `-COPY-`**) + ảnh lên Supabase Storage + báo giá.
-- Giữ Google Sheet mirror như 1 kênh backup phụ (tuỳ chọn).
+Push vào `main` chạy CI rồi workflow Deploy GitHub Pages. Domain production là `saigonfox.online` và file `public/CNAME` giữ custom domain.
+
+## Chuyển dữ liệu cũ
+
+Trên đúng trình duyệt từng chứa dữ liệu cũ: đăng nhập → menu dấu ba chấm → **Khôi phục dữ liệu trình duyệt cũ (một lần)**. Công cụ chỉ đọc LocalForage cũ và upsert lên Supabase; mọi thao tác mới vẫn ghi trực tiếp Supabase.

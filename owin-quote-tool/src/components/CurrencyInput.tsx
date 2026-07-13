@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { formatSoVND } from '@/utils/format';
 
@@ -20,11 +20,8 @@ export function CurrencyInput({
   onBlur,
   ...props
 }: CurrencyInputProps) {
-  const [displayValue, setDisplayValue] = useState('');
-
-  useEffect(() => {
-    setDisplayValue(value > 0 ? formatSoVND(value) : '');
-  }, [value]);
+  const [draftValue, setDraftValue] = useState<string | null>(null);
+  const displayValue = draftValue ?? (value > 0 ? formatSoVND(value) : '');
 
   return (
     <input
@@ -35,11 +32,11 @@ export function CurrencyInput({
       value={displayValue}
       onChange={(event) => {
         const parsed = parseCurrencyInput(event.target.value);
-        setDisplayValue(parsed > 0 ? formatSoVND(parsed) : '');
+        setDraftValue(parsed > 0 ? formatSoVND(parsed) : '');
         onChange(parsed);
       }}
       onBlur={(event) => {
-        setDisplayValue(value > 0 ? formatSoVND(value) : '');
+        setDraftValue(null);
         onBlur?.(event);
       }}
     />

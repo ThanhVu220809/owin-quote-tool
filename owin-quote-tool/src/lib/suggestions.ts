@@ -1,9 +1,13 @@
-import localforage from 'localforage';
-import { notifyLocalDataChanged } from './dataChangeEvents';
 import type { ProductRecord, QuoteInput, SuggestionRecord } from '@/types/models';
 import importedProducts from '@/data/imported/products.json';
 import importedQuotes from '@/data/imported/quotes.json';
 import importedSuggestions from '@/data/imported/suggestions.json';
+import {
+  getHostedSuggestion,
+  getHostedSuggestionsByIds,
+  listHostedSuggestions,
+  upsertHostedSuggestions,
+} from '@/features/supabase/sharedDataRepo';
 import { normalizeSuggestionText, rankSuggestionCandidates } from './suggestionEngine';
 
 export const SUGGESTION_TYPES = [
@@ -94,15 +98,6 @@ export const DEFAULT_SPEC_KEYS = [
   'Song Nhôm Bảo Vệ',
 ] as const;
 
-const suggestionStore = localforage.createInstance({
-  name: 'owin-quote-tool',
-  storeName: 'suggestions',
-  driver: localforage.INDEXEDDB,
-  description: 'Suggestion/autocomplete values',
-});
-
-const SEED_KEY = '__seeded__';
-const REFERENCE_SEED_KEY = '__reference_suggestions_seed_v5__';
 const seedModules = import.meta.glob('../data/suggestions/*.json', {
   eager: true,
   import: 'default',
@@ -191,18 +186,19 @@ function collectImportedQuoteSuggestionEntries(): Array<[SuggestionType, unknown
   return entries;
 }
 
-async function seedSuggestionValue(
+function seedSuggestionValue(
+  records: Map<string, SuggestionRecord>,
   type: string,
   value: unknown,
   usedCount: number,
   createdAt: string,
-  overwriteExisting: boolean,
-): Promise<void> {
+): void {
   const text = normalizeValue(value);
   if (!type || !text) return;
   const id = suggestionId(type, text);
-  if (!overwriteExisting && await suggestionStore.getItem<SuggestionRecord>(id)) return;
-  await suggestionStore.setItem<SuggestionRecord>(id, {
+  const existing = records.get(id);
+  if (existing && existing.usedCount >= usedCount) return;
+  records.set(id, {
     id,
     type,
     value: text,
@@ -212,12 +208,12 @@ async function seedSuggestionValue(
   });
 }
 
-async function seedSuggestionEntries(
+function seedSuggestionEntries(
+  records: Map<string, SuggestionRecord>,
   entries: Array<[SuggestionType, unknown]>,
   usedCount: number,
   createdAt: string,
-  overwriteExisting: boolean,
-): Promise<void> {
+): void {
   const deduped = new Map<string, [SuggestionType, string]>();
   for (const [type, value] of entries) {
     const text = normalizeValue(value);
@@ -226,51 +222,65 @@ async function seedSuggestionEntries(
     if (!deduped.has(id)) deduped.set(id, [type, text]);
   }
   for (const [type, value] of deduped.values()) {
-    await seedSuggestionValue(type, value, usedCount, createdAt, overwriteExisting);
+    seedSuggestionValue(records, type, value, usedCount, createdAt);
   }
 }
 
-export async function seedSuggestionsIfEmpty(): Promise<void> {
-  const seeded = await suggestionStore.getItem<boolean>(SEED_KEY);
-  const referenceSeeded = await suggestionStore.getItem<boolean>(REFERENCE_SEED_KEY);
+function buildSeedSuggestionRecords(): SuggestionRecord[] {
+  const records = new Map<string, SuggestionRecord>();
   const createdAt = nowIso();
   for (const [path, values] of Object.entries(seedModules)) {
     const type = typeFromPath(path);
     for (const value of values || []) {
-      await seedSuggestionValue(type, value, 1, createdAt, false);
+      seedSuggestionValue(records, type, value, 1, createdAt);
     }
   }
   for (const [type, values] of Object.entries(importedSuggestions as Record<string, string[]>)) {
     for (const value of values || []) {
-      await seedSuggestionValue(type, value, 2, createdAt, !seeded);
+      seedSuggestionValue(records, type, value, 2, createdAt);
     }
   }
-  if (!referenceSeeded) {
-    const importedEntries: Array<[SuggestionType, unknown]> = [
-      ...(importedProducts as unknown[]).flatMap((product) =>
-        collectProductLikeSuggestionEntries(product as Record<string, unknown>),
-      ),
-      ...collectImportedQuoteSuggestionEntries(),
-    ];
-    await seedSuggestionEntries(importedEntries, 3, createdAt, !seeded);
-    await suggestionStore.setItem(REFERENCE_SEED_KEY, true);
+  const importedEntries: Array<[SuggestionType, unknown]> = [
+    ...(importedProducts as unknown[]).flatMap((product) =>
+      collectProductLikeSuggestionEntries(product as Record<string, unknown>),
+    ),
+    ...collectImportedQuoteSuggestionEntries(),
+  ];
+  seedSuggestionEntries(records, importedEntries, 3, createdAt);
+  return Array.from(records.values());
+}
+
+let seedPromise: Promise<void> | null = null;
+
+export async function seedSuggestionsIfEmpty(): Promise<void> {
+  if (!seedPromise) {
+    seedPromise = upsertHostedSuggestions(buildSeedSuggestionRecords(), { ignoreExisting: true })
+      .catch((error: unknown) => {
+        seedPromise = null;
+        throw error;
+      });
   }
-  await suggestionStore.setItem(SEED_KEY, true);
+  return seedPromise;
 }
 
 export async function getSuggestions(type: SuggestionType, query = ''): Promise<string[]> {
   await seedSuggestionsIfEmpty();
-  const aliases = new Set(getSuggestionTypeAliases(String(type)));
-  const out: SuggestionRecord[] = [];
-  await suggestionStore.iterate<SuggestionRecord | boolean, void>((value, key) => {
-    if (key === SEED_KEY || key === REFERENCE_SEED_KEY || !value || typeof value === 'boolean') return;
-    if (aliases.has(value.type)) out.push(value);
-  });
+  const aliases = getSuggestionTypeAliases(String(type));
+  const out = await listHostedSuggestions(aliases);
   return rankSuggestionCandidates(query, out, 60).map((item) => item.value);
 }
 
 export async function getSuggestionMap(types: SuggestionType[]): Promise<Record<string, string[]>> {
-  const entries = await Promise.all(types.map(async (type) => [type, await getSuggestions(type)] as const));
+  if (types.length === 0) return {};
+  await seedSuggestionsIfEmpty();
+  const aliasesByType = new Map(types.map((type) => [type, getSuggestionTypeAliases(String(type))]));
+  const allAliases = Array.from(new Set(Array.from(aliasesByType.values()).flat()));
+  const allRecords = await listHostedSuggestions(allAliases);
+  const entries = types.map((type) => {
+    const aliases = new Set(aliasesByType.get(type) ?? []);
+    const records = allRecords.filter((record) => aliases.has(record.type));
+    return [type, rankSuggestionCandidates('', records, 60).map((item) => item.value)] as const;
+  });
   return Object.fromEntries(entries);
 }
 
@@ -307,27 +317,36 @@ export function suggestionTypesForSpecKey(key: string): SuggestionType[] {
 }
 
 export async function rememberSuggestion(type: SuggestionType, value: unknown): Promise<void> {
-  const text = normalizeValue(value);
-  if (!text) return;
-  await seedSuggestionsIfEmpty();
-  const id = suggestionId(type, text);
-  const existing = await suggestionStore.getItem<SuggestionRecord>(id);
-  const timestamp = nowIso();
-  await suggestionStore.setItem<SuggestionRecord>(id, {
-    id,
-    type,
-    value: text,
-    usedCount: (existing?.usedCount || 0) + 1,
-    createdAt: existing?.createdAt || timestamp,
-    updatedAt: timestamp,
-  });
-  notifyLocalDataChanged();
+  await rememberSuggestions([[type, value]]);
 }
 
 export async function rememberSuggestions(entries: Array<[SuggestionType, unknown]>): Promise<void> {
+  await seedSuggestionsIfEmpty();
+  const pending = new Map<string, { type: SuggestionType; value: string; count: number }>();
   for (const [type, value] of entries) {
-    await rememberSuggestion(type, value);
+    const text = normalizeValue(value);
+    if (!type || !text) continue;
+    const id = suggestionId(type, text);
+    const existing = pending.get(id);
+    if (existing) existing.count += 1;
+    else pending.set(id, { type, value: text, count: 1 });
   }
+  if (pending.size === 0) return;
+
+  const existing = await getHostedSuggestionsByIds(Array.from(pending.keys()));
+  const timestamp = nowIso();
+  const records = Array.from(pending, ([id, next]) => {
+    const current = existing.get(id);
+    return {
+      id,
+      type: String(next.type),
+      value: next.value,
+      usedCount: (current?.usedCount || 0) + next.count,
+      createdAt: current?.createdAt || timestamp,
+      updatedAt: timestamp,
+    } satisfies SuggestionRecord;
+  });
+  await upsertHostedSuggestions(records);
 }
 
 function collectAccessorySuggestionEntries(
@@ -411,18 +430,31 @@ export async function rememberQuoteSuggestions(quote: QuoteInput): Promise<void>
 
 export async function getAllSuggestionRecords(): Promise<SuggestionRecord[]> {
   await seedSuggestionsIfEmpty();
-  const out: SuggestionRecord[] = [];
-  await suggestionStore.iterate<SuggestionRecord | boolean, void>((value, key) => {
-    if (key === SEED_KEY || key === REFERENCE_SEED_KEY || !value || typeof value === 'boolean') return;
-    out.push(value);
-  });
-  return out;
+  return listHostedSuggestions();
 }
 
 export async function bulkPutSuggestions(records: SuggestionRecord[]): Promise<void> {
-  for (const record of records) {
-    await suggestionStore.setItem(record.id, record);
-  }
+  await upsertHostedSuggestions(records);
 }
 
-export { suggestionStore };
+/** LocalForage-compatible surface retained for callers while storage is hosted. */
+export const suggestionStore = {
+  async getItem<T>(key: string): Promise<T | null> {
+    return await getHostedSuggestion(key) as T | null;
+  },
+  async setItem<T>(key: string, value: T): Promise<T> {
+    const record = value as SuggestionRecord;
+    await upsertHostedSuggestions([{ ...record, id: key }]);
+    return value;
+  },
+  async iterate<T, U>(
+    iterator: (value: T, key: string, iterationNumber: number) => U,
+  ): Promise<U | undefined> {
+    const records = await listHostedSuggestions();
+    for (let index = 0; index < records.length; index += 1) {
+      const result = iterator(records[index] as T, records[index].id, index + 1);
+      if (result !== undefined) return result;
+    }
+    return undefined;
+  },
+};

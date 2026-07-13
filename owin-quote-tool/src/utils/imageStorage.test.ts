@@ -1,12 +1,8 @@
 /**
- * Test tầng LƯU TRỮ IndexedDB của imageStorage (chạy được trong node nhờ fake-indexeddb).
- *
- * ⚠️ GIỚI HẠN: phần NÉN ảnh (EXIF orientation + tỉ lệ nén) cần canvas/Web Worker của
- * trình duyệt THẬT, KHÔNG kiểm được ở node. Các test đó là 👤 HUMAN / browser-verify
- * (xem harness in-app + LOG). Ở đây chỉ test: round-trip lưu/đọc, chịu tải >5MB
- * (thoát bẫy localStorage), và CHẶN file không phải ảnh (nhánh không cần canvas).
+ * Compatibility API tests. In test mode blobs live only in transient RAM;
+ * production upload behavior is covered by the Supabase repository contract.
+ * Compression/EXIF still needs a real browser canvas/Web Worker.
  */
-import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   saveImage,
@@ -29,8 +25,8 @@ function fakeBlob(sizeKB: number): Blob {
   return new Blob([new Uint8Array(sizeKB * 1024)], { type: 'image/jpeg' });
 }
 
-describe('TEST 2.2 — IndexedDB chịu tải, không tràn quota localStorage', () => {
-  it('lưu 25 ảnh ~100KB, đọc lại ảnh #1 và #20 đúng', async () => {
+describe('image compatibility cache (RAM only)', () => {
+  it('keeps 25 temporary blobs readable during the current session', async () => {
     for (let i = 1; i <= 25; i++) {
       await saveImage(`img-${i}`, fakeBlob(100));
     }
@@ -44,8 +40,7 @@ describe('TEST 2.2 — IndexedDB chịu tải, không tràn quota localStorage',
     expect(twentieth!.size).toBe(100 * 1024);
   });
 
-  it('tổng dữ liệu vượt 5MB (bẫy localStorage) vẫn lưu/đọc được', async () => {
-    // 60 × 100KB ≈ 6MB > giới hạn localStorage 5MB → chứng minh đang dùng IndexedDB.
+  it('does not use localStorage when temporary data exceeds 5MB', async () => {
     for (let i = 0; i < 60; i++) {
       await saveImage(`big-${i}`, fakeBlob(100));
     }
