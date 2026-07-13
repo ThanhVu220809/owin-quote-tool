@@ -12,8 +12,8 @@ const mocks = vi.hoisted(() => ({
   syncReferencedImages: vi.fn(),
 }));
 
-vi.mock('./googleAuth', () => ({
-  isConfigured: () => true,
+vi.mock('./publicConfig', () => ({
+  isSyncConfigured: () => true,
 }));
 
 vi.mock('./driveSync', () => ({

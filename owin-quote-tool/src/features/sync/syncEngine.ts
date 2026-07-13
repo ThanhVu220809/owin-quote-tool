@@ -24,7 +24,7 @@ import {
 } from '@/features/aluminum/aluminumEstimatorStorage';
 import { mergeEntities, type Conflict } from './merge';
 import { downloadDB, getDBMetadata, uploadDB } from './driveSync';
-import { isConfigured } from './googleAuth';
+import { isSyncConfigured } from './publicConfig';
 import { clearQueue } from './syncQueue';
 import { notifyProductsChanged } from '@/features/products/productEvents';
 import { syncReferencedImages } from './imageSync';
@@ -130,7 +130,7 @@ export async function checkRemoteChanges(): Promise<
   | { state: 'unchanged' }
   | { state: 'changed'; signature: string }
 > {
-  if (!isConfigured()) return { state: 'skipped', reason: 'not-configured' };
+  if (!isSyncConfigured()) return { state: 'skipped', reason: 'not-configured' };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { state: 'skipped', reason: 'offline' };
   }
@@ -148,7 +148,7 @@ export async function syncNow(
   resolvedMerged?: ProductRecord[] | ResolvedSync,
   options: SyncOptions = {},
 ): Promise<SyncStatus> {
-  if (!isConfigured()) return { state: 'skipped', reason: 'not-configured' };
+  if (!isSyncConfigured()) return { state: 'skipped', reason: 'not-configured' };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { state: 'skipped', reason: 'offline' };
   }
@@ -250,7 +250,7 @@ export async function syncNow(
  */
 export async function forcePushToDrive(options: SyncOptions = {}): Promise<SyncStatus> {
   if (!options.confirmed) return { state: 'error', message: 'Cần xác nhận ghi đè toàn bộ dữ liệu Google Drive.' };
-  if (!isConfigured()) return { state: 'skipped', reason: 'not-configured' };
+  if (!isSyncConfigured()) return { state: 'skipped', reason: 'not-configured' };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { state: 'skipped', reason: 'offline' };
   }

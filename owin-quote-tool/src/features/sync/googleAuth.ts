@@ -14,23 +14,23 @@
  *   <script src="https://accounts.google.com/gsi/client" async defer></script>
  */
 
-import { getGoogleClientId, getValidatedGoogleClientId, isValidGoogleClientId } from './googleClientId';
+import { getValidatedGoogleClientId } from './googleClientId';
 import { parseApiResponse } from './apiResponse';
+import { isOAuthConfigured } from './publicConfig';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
-const SHARED_SECRET = import.meta.env.VITE_SHARED_SECRET ?? '';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.trim() ?? '';
+const SHARED_SECRET = import.meta.env.VITE_SHARED_SECRET?.trim() ?? '';
 const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
 let accessToken: string | null = null;
 let tokenExpiryMs = 0;
 
 /**
- * Đã cấu hình đủ env chưa (để UI biết có nên hiện nút Kết nối không).
- * Client ID phải ĐÚNG ĐỊNH DẠNG — cấu hình sai coi như chưa cấu hình để CHẶN mọi
- * lời gọi backend/Drive khi OAuth chắc chắn sẽ lỗi.
+ * OAuth đã cấu hình chưa. Backend/shared value là cấu hình đồng bộ riêng và không
+ * được dùng để ẩn nút OAuth.
  */
 export function isConfigured(): boolean {
-  return Boolean(isValidGoogleClientId(getGoogleClientId()) && BACKEND_URL && SHARED_SECRET);
+  return isOAuthConfigured();
 }
 
 interface BackendResponse {

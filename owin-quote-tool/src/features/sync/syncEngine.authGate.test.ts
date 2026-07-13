@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 // OAuth chưa thành công / cấu hình Client ID không hợp lệ → coi như chưa cấu hình.
-vi.mock('./googleAuth', () => ({ isConfigured: () => false }));
+vi.mock('./publicConfig', () => ({ isSyncConfigured: () => false }));
 
 vi.mock('./driveSync', () => ({
   downloadDB: mocks.downloadDB,

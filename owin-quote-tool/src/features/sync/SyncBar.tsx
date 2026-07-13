@@ -3,6 +3,7 @@ import { Cloud, CloudOff, MoreHorizontal, RefreshCw } from 'lucide-react';
 import type { ProductRecord, QuoteRecord } from '@/types/models';
 import { LOCAL_DATA_CHANGED_EVENT } from '@/lib/dataChangeEvents';
 import { isConfigured, connectGoogle, ensureToken, requestOneTimeGoogleToken } from './googleAuth';
+import { getPublicConfigDiagnostics, isSyncConfigured } from './publicConfig';
 import { checkRemoteChanges, forcePushToDrive, syncNow, type SyncStatus } from './syncEngine';
 import { createSyncPoller, type SyncPoller } from './syncPolling';
 import { resolveConflict, type Conflict } from './merge';
@@ -19,9 +20,16 @@ type ConflictFlow = { kind: 'owner-sync' } | { kind: 'transfer'; context: Transf
 
 export function SyncBar({ compact = false }: { compact?: boolean }) {
   const configured = isConfigured();
+  const syncConfigured = isSyncConfigured();
+  const configDiagnostics = getPublicConfigDiagnostics();
+  const configMessage = configDiagnostics.overallSync === 'backend-invalid'
+    ? 'Google đã cấu hình · Backend chưa hợp lệ'
+    : configDiagnostics.overallSync === 'shared-value-missing'
+      ? 'Google đã cấu hình · Thiếu cấu hình đồng bộ'
+      : 'Chưa cấu hình Google';
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState(configured && !syncConfigured ? configMessage : '');
   const [conflicts, setConflicts] = useState<Conflict<ProductRecord>[]>([]);
   const [quoteConflicts, setQuoteConflicts] = useState<Conflict<QuoteRecord>[]>([]);
   const [conflictFlow, setConflictFlow] = useState<ConflictFlow | null>(null);
@@ -46,7 +54,7 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
 
   const applyStatus = (status: SyncStatus, automatic = false) => {
     if (status.state === 'skipped') {
-      setMsg(status.reason === 'offline' ? 'Đã lưu trên máy · đang offline.' : 'Chưa cấu hình Google.');
+      setMsg(status.reason === 'offline' ? 'Đã lưu trên máy · đang offline.' : `${configMessage}.`);
     } else if (status.state === 'unchanged') {
       setMsg('Đang kiểm tra Google · không có thay đổi.');
     } else if (status.state === 'need-relogin') {
@@ -99,11 +107,11 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
       const result = await checkRemoteChanges();
       if (result.state === 'changed') await runOwnerSyncRef.current(true, true);
       else if (result.state === 'unchanged') setMsg('Đang kiểm tra Google · không có thay đổi.');
-      else setMsg(result.reason === 'offline' ? 'Đã lưu trên máy · đang offline.' : 'Chưa cấu hình Google.');
+      else setMsg(result.reason === 'offline' ? 'Đã lưu trên máy · đang offline.' : `${configMessage}.`);
     } catch (error) {
       setMsg(error instanceof Error ? `Lỗi kiểm tra Google: ${error.message}` : 'Lỗi kiểm tra Google');
     }
-  }, []);
+  }, [configMessage]);
 
   const handleConnect = async () => {
     setBusy(true);
@@ -120,7 +128,7 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
   };
 
   useEffect(() => {
-    if (!configured) return undefined;
+    if (!syncConfigured) return undefined;
     let active = true;
     void ensureToken().then(() => {
       if (!active) return;
@@ -132,10 +140,10 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
       setMsg(error instanceof Error && error.message !== 'NEED_RELOGIN' ? error.message : 'Bấm Google để kết nối lần đầu.');
     });
     return () => { active = false; };
-  }, [configured]);
+  }, [syncConfigured]);
 
   useEffect(() => {
-    if (!configured || !connected) return undefined;
+    if (!syncConfigured || !connected) return undefined;
     const poller = createSyncPoller({ check: checkRemote, isVisible: () => document.visibilityState === 'visible' });
     pollerRef.current = poller;
     const trigger = () => poller.trigger();
@@ -159,7 +167,7 @@ export function SyncBar({ compact = false }: { compact?: boolean }) {
       poller.stop();
       pollerRef.current = null;
     };
-  }, [configured, connected, checkRemote]);
+  }, [syncConfigured, connected, checkRemote]);
 
   const chooseProductConflict = (conflict: Conflict<ProductRecord>, choice: 'local' | 'remote' | 'copy') => {
     const products = resolveConflict(working, conflict, choice === 'copy' ? 'local' : choice);
