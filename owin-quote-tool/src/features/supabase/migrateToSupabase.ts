@@ -1,91 +1,90 @@
 /**
- * MIGRATE 1 LẦN: dữ liệu cũ (IndexedDB) → Supabase.
- * - Upload ảnh sản phẩm (blob trong máy) lên Storage → đổi path thành URL CDN.
- * - Dedupe sản phẩm trùng y hệt (name+nhóm+ĐVT+giá+kích thước) → bỏ bản dư (rác -COPY-).
- * - Upsert products + quotes. KHÔNG xoá gì ở local — chạy lại nhiều lần vẫn an toàn.
+ * MIGRATE 1 LẦN: dữ liệu cũ (IndexedDB) → Supabase. Chạy lại nhiều lần vẫn an toàn
+ * (upsert theo id, KHÔNG xoá gì ở local).
+ *
+ * Nguyên tắc (theo yêu cầu tối ưu DB):
+ *  - KHÔNG bỏ sản phẩm nào (kể cả trùng metadata — chúng có ảnh chi tiết khác nhau).
+ *  - Mã chứa "COPY" → regen mã sạch (id giữ nguyên nên vẫn upsert đúng dòng).
+ *  - Ảnh lưu 1 LẦN theo nội dung (hash) rồi trỏ chung → tiết kiệm, dùng ở list/bảng giá/chi tiết.
+ *  - Backfill cover: nếu cover rỗng nhưng có ảnh trong gallery → lấy làm cover (list hết logo).
  */
 import type { ProductRecord } from '@/types/models';
 import { getAllProductsRaw } from '@/features/products/productStore';
 import { getAllQuotesRaw } from '@/features/quote/quoteStore';
 import { getImage } from '@/utils/imageStorage';
 import { imageStoreKeyFromPath } from '@/utils/imagePaths';
+import { generateProductCode } from '@/lib/products/productCode';
 import { upsertProductsBatch } from './productsRepo';
 import { upsertQuotesBatch } from './quotesRepo';
-import { uploadImageBlob, storagePathFor } from './imagesRepo';
+import { uploadImageDedup } from './imagesRepo';
 
 export interface MigrateReport {
   products: number;
-  skippedDuplicates: number;
+  regeneratedCodes: number;
   images: number;
   imageErrors: number;
   quotes: number;
 }
 
-function dupSignature(p: ProductRecord): string {
-  return [
-    (p.name ?? '').trim().toLowerCase(),
-    p.category ?? '',
-    p.unit ?? '',
-    Math.round(Number(p.unitPriceVnd ?? 0)),
-    p.rawSizeText ?? '',
-  ].join('|');
+/** Mã mới sạch cho sp có "COPY" — cùng timestamp + số thứ tự để không đụng nhau. */
+function regenCode(index: number): string {
+  return `${generateProductCode()}${String(index).padStart(4, '0')}`;
 }
 
-async function migrateImage(
-  productCode: string,
-  path: string | null | undefined,
-  filename: string,
+/**
+ * Trả về path ảnh dùng cho cover:
+ *  - path tĩnh/URL (imported-assets, http…) → dùng nguyên (đã hiển thị được).
+ *  - path blob trong IndexedDB → upload dedup → URL CDN.
+ * Ưu tiên cover, nếu không có ảnh thì thử lần lượt gallery (backfill).
+ */
+async function resolveCover(
+  p: ProductRecord,
+  seen: Set<string>,
   report: MigrateReport,
-): Promise<string | null | undefined> {
-  if (!path) return path;
-  const key = imageStoreKeyFromPath(path);
-  if (!key) return path; // ảnh tĩnh (imported-assets) hoặc đã là URL → giữ nguyên
-  try {
-    const blob = await getImage(key);
-    if (!blob) return path;
-    const url = await uploadImageBlob(storagePathFor(productCode, filename), blob);
-    report.images += 1;
-    return url;
-  } catch {
-    report.imageErrors += 1;
-    return path;
+): Promise<string | null> {
+  const candidates = [p.coverImagePath, ...(Array.isArray(p.gallery) ? p.gallery : [])].filter(Boolean) as string[];
+  for (const path of candidates) {
+    const key = imageStoreKeyFromPath(path);
+    if (!key) return path; // ảnh tĩnh/URL → hiển thị được ở mọi nơi
+    try {
+      const blob = await getImage(key);
+      if (blob) { report.images += 1; return await uploadImageDedup(blob, seen); }
+    } catch { report.imageErrors += 1; }
   }
+  return p.coverImagePath ?? null; // không có ảnh → giữ nguyên (có thể null → logo, chấp nhận)
 }
 
-async function migrateProduct(p: ProductRecord, report: MigrateReport): Promise<ProductRecord> {
-  const cover = await migrateImage(p.code, p.coverImagePath, 'cover.webp', report);
-  const gallery: string[] = [];
-  const src = Array.isArray(p.gallery) ? p.gallery : [];
-  for (let i = 0; i < src.length; i += 1) {
-    const g = await migrateImage(p.code, src[i], `g${i}.webp`, report);
-    if (g) gallery.push(g);
+/** Upload các ảnh gallery (blob) lên dạng dedup; ảnh tĩnh/URL giữ nguyên. */
+async function resolveGallery(p: ProductRecord, seen: Set<string>, report: MigrateReport): Promise<string[]> {
+  const out: string[] = [];
+  for (const path of Array.isArray(p.gallery) ? p.gallery : []) {
+    if (!path) continue;
+    const key = imageStoreKeyFromPath(path);
+    if (!key) { out.push(path); continue; }
+    try {
+      const blob = await getImage(key);
+      if (blob) { report.images += 1; out.push(await uploadImageDedup(blob, seen)); }
+    } catch { report.imageErrors += 1; }
   }
-  return { ...p, coverImagePath: cover ?? null, gallery };
+  return out;
 }
 
 export async function migrateToSupabase(
-  opts: { dedupe?: boolean; onProgress?: (msg: string) => void } = {},
+  opts: { onProgress?: (msg: string) => void } = {},
 ): Promise<MigrateReport> {
-  const dedupe = opts.dedupe !== false;
-  const report: MigrateReport = { products: 0, skippedDuplicates: 0, images: 0, imageErrors: 0, quotes: 0 };
+  const report: MigrateReport = { products: 0, regeneratedCodes: 0, images: 0, imageErrors: 0, quotes: 0 };
+  const seen = new Set<string>(); // hash ảnh đã upload trong phiên này
 
   const all = (await getAllProductsRaw()).filter((p) => !p.deletedAt);
-  const sorted = [...all].sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
-  const seen = new Set<string>();
-  const keep: ProductRecord[] = [];
-  for (const p of sorted) {
-    if (dedupe) {
-      const sig = dupSignature(p);
-      if (seen.has(sig)) { report.skippedDuplicates += 1; continue; }
-      seen.add(sig);
-    }
-    keep.push(p);
-  }
-
   const migrated: ProductRecord[] = [];
-  for (let i = 0; i < keep.length; i += 1) {
-    opts.onProgress?.(`Ảnh & sản phẩm ${i + 1}/${keep.length}`);
-    migrated.push(await migrateProduct(keep[i], report));
+  for (let i = 0; i < all.length; i += 1) {
+    const p = all[i];
+    opts.onProgress?.(`Ảnh & sản phẩm ${i + 1}/${all.length}`);
+    const cover = await resolveCover(p, seen, report);
+    const gallery = await resolveGallery(p, seen, report);
+    let code = p.code;
+    if (/copy/i.test(code)) { code = regenCode(i); report.regeneratedCodes += 1; }
+    migrated.push({ ...p, code, coverImagePath: cover, gallery });
   }
   await upsertProductsBatch(migrated);
   report.products = migrated.length;

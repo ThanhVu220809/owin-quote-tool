@@ -26,3 +26,27 @@ export async function uploadImageBlob(path: string, blob: Blob): Promise<string>
   if (error) throw new Error(error.message);
   return publicUrl(path);
 }
+
+/** SHA-256 hex của blob → định danh nội dung để lưu ảnh 1 lần. */
+async function blobHash(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Upload ảnh theo NỘI DUNG (content-addressed): cùng ảnh → cùng path `img/<hash>` →
+ * chỉ lưu 1 lần, nhiều sản phẩm trỏ chung 1 URL. `seen` bỏ qua lần upload lặp trong 1 phiên.
+ */
+export async function uploadImageDedup(blob: Blob, seen?: Set<string>): Promise<string> {
+  const hash = await blobHash(blob);
+  const path = `img/${hash}.webp`;
+  if (!seen?.has(hash)) {
+    const { error } = await supabase.storage
+      .from(PRODUCT_IMAGE_BUCKET)
+      .upload(path, blob, { upsert: true, contentType: blob.type || 'image/webp' });
+    if (error) throw new Error(error.message);
+    seen?.add(hash);
+  }
+  return publicUrl(path);
+}

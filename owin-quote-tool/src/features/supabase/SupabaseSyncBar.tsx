@@ -21,9 +21,9 @@ export function SupabaseSyncBar({ compact = false }: { compact?: boolean }) {
     if (!window.confirm('Chuyển toàn bộ dữ liệu cũ trên máy này lên Supabase? (an toàn, không xoá dữ liệu local)')) return;
     setBusy(true); setMsg('Bắt đầu chuyển dữ liệu…');
     try {
-      const r: MigrateReport = await migrateToSupabase({ dedupe: true, onProgress: setMsg });
+      const r: MigrateReport = await migrateToSupabase({ onProgress: setMsg });
       await pullAll();
-      setMsg(`Xong: ${r.products} SP (bỏ ${r.skippedDuplicates} trùng) · ${r.images} ảnh${r.imageErrors ? ` · ${r.imageErrors} ảnh lỗi` : ''} · ${r.quotes} báo giá`);
+      setMsg(`Xong: ${r.products} SP (regen ${r.regeneratedCodes} mã) · ${r.images} ảnh${r.imageErrors ? ` · ${r.imageErrors} ảnh lỗi` : ''} · ${r.quotes} báo giá`);
     } catch (e) { setMsg(e instanceof Error ? `Lỗi migrate: ${e.message}` : 'Lỗi migrate'); }
     finally { setBusy(false); }
   };
