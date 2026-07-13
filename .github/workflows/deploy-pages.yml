@@ -41,6 +41,8 @@ jobs:
           VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
           # This value is public in the client bundle; it is only a temporary client-side gate.
           VITE_SHARED_SECRET: ${{ secrets.VITE_SHARED_SECRET }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           BASE_PATH: /
         run: npm run build
       - name: Upload Pages artifact

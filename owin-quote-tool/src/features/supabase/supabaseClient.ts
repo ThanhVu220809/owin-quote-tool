@@ -13,7 +13,13 @@ export const isSupabaseConfigured = Boolean(url && anonKey);
 /** Bucket ảnh sản phẩm (public). */
 export const PRODUCT_IMAGE_BUCKET = 'product-images';
 
-export const supabase = createClient(url, anonKey, {
+// Placeholder hợp lệ khi CHƯA cấu hình để createClient KHÔNG ném lỗi lúc import
+// (nếu không, biến env rỗng sẽ làm trắng cả app). Khi chưa cấu hình, SupabaseGate
+// render app cũ và không đụng tới client này.
+const safeUrl = url || 'https://placeholder.supabase.co';
+const safeKey = anonKey || 'placeholder-anon-key';
+
+export const supabase = createClient(safeUrl, safeKey, {
   auth: {
     persistSession: true,      // admin đăng nhập 1 lần, nhớ phiên
     autoRefreshToken: true,
