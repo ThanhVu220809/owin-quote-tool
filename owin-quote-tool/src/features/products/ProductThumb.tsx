@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { openImageLightbox } from '@/components/ImageLightbox';
 import { resolveImageUrl, thumbUrlFor } from '@/utils/imagePaths';
 import { resolveItemImage, type ImageItem } from '@/lib/media/itemImageResolver';
 import type { ProductRecord } from '@/types/models';
@@ -103,7 +104,8 @@ export function ProductThumb({
       decoding="async"
       data-image-loading={resolving ? 'true' : 'false'}
       aria-busy={resolving}
-      style={sizeStyle}
+      style={{ ...sizeStyle, cursor: masterUrl ? 'zoom-in' : undefined }}
+      onClick={masterUrl ? (e) => { e.stopPropagation(); openImageLightbox(masterUrl); } : undefined}
       onError={() => {
         setResolving(false);
         // thumb thiếu → thử master; master lỗi → logo.

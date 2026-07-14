@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardCopy, Download, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
+import { openImageLightbox } from '@/components/ImageLightbox';
 import {
   calculateAluminumEstimatorRow,
   calculateAluminumEstimatorTotals,
@@ -804,7 +805,12 @@ function AluminumTable({
                 <td>
                   <div className="aluminum-image-cell">
                     {image.kind === 'image' ? (
-                      <img src={image.src} alt={`Hình ${source.code}`} />
+                      <img
+                        src={image.src}
+                        alt={`Hình ${source.code}`}
+                        style={{ cursor: 'zoom-in' }}
+                        onClick={() => openImageLightbox(image.src)}
+                      />
                     ) : (
                       <span>{image.label}</span>
                     )}

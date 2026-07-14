@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Maximize2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { OWIN_LOGO } from '@/features/products/ProductThumb';
 
@@ -97,4 +97,29 @@ export function ImageLightbox({ src, alt = 'Ảnh sản phẩm', open, onClose }
       </div>
     </div>
   );
+}
+
+// ---- Opener toàn cục: bấm ảnh ở bất kỳ đâu để phóng to ----
+let globalSrc: string | null = null;
+const globalListeners = new Set<() => void>();
+
+export function openImageLightbox(url: string | null | undefined): void {
+  if (!url) return;
+  globalSrc = url;
+  globalListeners.forEach((l) => l());
+}
+
+function closeGlobalLightbox(): void {
+  globalSrc = null;
+  globalListeners.forEach((l) => l());
+}
+
+/** Mount 1 lần ở App; các nơi gọi openImageLightbox(url) để mở. */
+export function GlobalImageLightbox() {
+  const src = useSyncExternalStore(
+    (cb) => { globalListeners.add(cb); return () => { globalListeners.delete(cb); }; },
+    () => globalSrc,
+    () => null,
+  );
+  return <ImageLightbox src={src} open={src !== null} onClose={closeGlobalLightbox} />;
 }

@@ -7,6 +7,7 @@ import { ProductsView } from '@/features/products/ProductsView';
 import { QuoteView } from '@/features/quote/QuoteView';
 import { BangGiaView } from '@/features/catalogue/BangGiaView';
 import { TinhTamNhomView } from '@/features/aluminum/TinhTamNhomView';
+import { GlobalImageLightbox } from '@/components/ImageLightbox';
 
 type Tab = 'products' | 'quotes' | 'catalogue' | 'aluminum';
 
@@ -93,6 +94,7 @@ function App() {
           )}
         </main>
       </div>
+      <GlobalImageLightbox />
     </SupabaseGate>
   );
 }
