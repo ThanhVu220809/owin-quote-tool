@@ -938,28 +938,17 @@ export function QuoteView() {
     if (await flushDraftBeforeLeaving()) openNewQuote();
   };
 
+  // In/Xuất KHÔNG lưu dữ liệu — chỉ tạo file từ dữ liệu hiện tại. Autosave (lúc gõ) lo phần lưu.
   const exportWord = async () => {
     if (items.length === 0) return;
-    cancelPendingAutosave();
     beginBusy();
     setMessage('');
     setSaveError('');
     try {
       const { code } = ensureDraftIdentity();
-      await persistQuote('SAVED', {
-        code,
-        learnSuggestions: false,
-        quiet: true,
-      });
       const { exportQuoteWord } = await import('@/features/export/wordExport');
-      const fileName = await exportQuoteWord({ ...calculated, quoteCode: code }, code, productRecords);
-      await persistQuote('EXPORTED', {
-        code,
-        exportFileName: fileName,
-        exportType: 'docx',
-        learnSuggestions: true,
-        successMessage: `Đã xuất Word và lưu ${code}`,
-      });
+      await exportQuoteWord({ ...calculated, quoteCode: code }, code, productRecords);
+      setMessage(`Đã xuất Word ${code}`);
     } catch (error) {
       showOperationError('Không thể hoàn tất xuất Word', error);
     } finally {
@@ -969,26 +958,14 @@ export function QuoteView() {
 
   const exportExcel = async () => {
     if (items.length === 0) return;
-    cancelPendingAutosave();
     beginBusy();
     setMessage('');
     setSaveError('');
     try {
       const { code } = ensureDraftIdentity();
-      await persistQuote('SAVED', {
-        code,
-        learnSuggestions: false,
-        quiet: true,
-      });
       const { exportQuoteExcel } = await import('@/features/export/quoteExcelExport');
-      const fileName = await exportQuoteExcel({ ...calculated, quoteCode: code }, code, productRecords);
-      await persistQuote('EXPORTED', {
-        code,
-        exportFileName: fileName,
-        exportType: 'xlsx',
-        learnSuggestions: true,
-        successMessage: `Đã xuất Excel và lưu ${code}`,
-      });
+      await exportQuoteExcel({ ...calculated, quoteCode: code }, code, productRecords);
+      setMessage(`Đã xuất Excel ${code}`);
     } catch (error) {
       showOperationError('Không thể hoàn tất xuất Excel', error);
     } finally {
@@ -998,22 +975,13 @@ export function QuoteView() {
 
   const printCurrentQuote = async () => {
     if (items.length === 0) return;
-    cancelPendingAutosave();
     beginBusy();
     setMessage('');
     setSaveError('');
     try {
-      const { code } = ensureDraftIdentity();
-      await persistQuote('EXPORTED', {
-        code,
-        exportFileName: pdfExportFileName(code),
-        exportType: 'pdf',
-        learnSuggestions: true,
-        successMessage: `Đã lưu ${code} trước khi mở In/PDF`,
-      });
       await exportQuotePDF();
     } catch (error) {
-      showOperationError('Không thể lưu báo giá để In/PDF', error);
+      showOperationError('Không thể mở In/PDF', error);
     } finally {
       endBusy();
     }

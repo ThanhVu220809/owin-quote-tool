@@ -26,7 +26,17 @@ export function BangGiaView() {
   const [exporting, setExporting] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportError, setExportError] = useState('');
-  const rows = useMemo(() => buildCatalogueBlockRows(productRecords), [productRecords]);
+  // In theo loại cửa: 'all' = tất cả (như hiện tại), hoặc 1 danh mục cụ thể.
+  const [printCategory, setPrintCategory] = useState('all');
+  const categories = useMemo(
+    () => Array.from(new Set(productRecords.map((p) => p.category).filter(Boolean))),
+    [productRecords],
+  );
+  const shownRecords = useMemo(
+    () => (printCategory === 'all' ? productRecords : productRecords.filter((p) => p.category === printCategory)),
+    [productRecords, printCategory],
+  );
+  const rows = useMemo(() => buildCatalogueBlockRows(shownRecords), [shownRecords]);
   // Group so category stays with first product and accessories stay with product for print keep-together.
   const blocks = useMemo(() => {
     const out: CatalogueBlockRow[][] = [];
@@ -63,7 +73,7 @@ export function BangGiaView() {
     setExportError('');
     try {
       const { exportBangGiaWord } = await import('@/features/export/wordExport');
-      await exportBangGiaWord(productRecords);
+      await exportBangGiaWord(shownRecords);
     } catch {
       setExportError('Không thể xuất bảng giá Word. Vui lòng kiểm tra mạng và thử lại.');
     } finally {
@@ -76,7 +86,7 @@ export function BangGiaView() {
     setExportError('');
     try {
       const { exportBangGiaExcel } = await import('@/features/export/catalogueExcelExport');
-      await exportBangGiaExcel(productRecords);
+      await exportBangGiaExcel(shownRecords);
     } catch {
       setExportError('Không thể xuất bảng giá Excel. Vui lòng thử lại.');
     } finally {
@@ -98,19 +108,33 @@ export function BangGiaView() {
       <div className="toolbar catalogue-toolbar no-print">
         <div>
           <h1 className="app-title">Bảng giá</h1>
-          <p className="app-subtitle">BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN · {loading ? 'Đang tải…' : `${productRecords.length} sản phẩm`}</p>
+          <p className="app-subtitle">BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN · {loading ? 'Đang tải…' : (printCategory === 'all' ? `${productRecords.length} sản phẩm` : `${shownRecords.length} sản phẩm · ${printCategory}`)}</p>
         </div>
         <div className="spacer" />
+        <label className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+          In theo:
+          <select
+            className="input"
+            value={printCategory}
+            onChange={(e) => setPrintCategory(e.target.value)}
+            style={{ width: 'auto', minWidth: 140 }}
+          >
+            <option value="all">Tất cả</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
         <button
           className="btn btn-ghost"
-          disabled={productRecords.length === 0 || exporting}
+          disabled={shownRecords.length === 0 || exporting}
           onClick={() => void exportWord()}
         >
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Tải Word (.docx)'}
         </button>
         <button
           className="btn btn-ghost"
-          disabled={productRecords.length === 0 || exportingExcel}
+          disabled={shownRecords.length === 0 || exportingExcel}
           onClick={() => void exportExcel()}
         >
           <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? 'Đang xuất…' : 'Tải Excel (.xlsx)'}
