@@ -5,6 +5,11 @@ import type { ProductRecord } from '@/types/models';
 
 const OWIN_LOGO = `${import.meta.env.BASE_URL}owin-user-assets/logo/logo.webp`;
 
+// Stable empty default: a fresh `[]` per render would change the effect's
+// dependency every render → the resolve effect re-runs endlessly → 142 thumbnails
+// re-render in a loop (Bảng giá freeze).
+const NO_PRODUCTS: ProductRecord[] = [];
+
 /**
  * Product image thumbnail with OWIN logo fallback when missing.
  * fill = fill parent frame with 95% contain semantics (CSS class).
@@ -15,7 +20,7 @@ export function ProductThumb({
   size = 52,
   fill = false,
   item,
-  products = [],
+  products = NO_PRODUCTS,
   thumb = false,
 }: {
   imageId?: string;
