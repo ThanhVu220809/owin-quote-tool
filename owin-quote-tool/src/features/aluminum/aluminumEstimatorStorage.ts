@@ -15,9 +15,15 @@ import type {
 
 export type { AluminumEstimatorInputState, AluminumEstimatorRowsBySystem };
 
+/** Các màu chọn được cho toàn bộ thanh nhôm. */
+export const ALUMINUM_COLORS = ['Ghi Xanh', 'Vân Gỗ Trắc', 'Vân Gỗ Lim'] as const;
+export const DEFAULT_ALUMINUM_COLOR = 'Vân Gỗ Trắc';
+
 export interface AluminumEstimatorPageState {
   selectedSystemId: string;
   inputRows: AluminumEstimatorRowsBySystem;
+  /** Màu áp cho tất cả thanh (hiển thị + xuất file). */
+  color: string;
   updatedAt: string | null;
 }
 
@@ -46,6 +52,7 @@ export function createDefaultAluminumEstimatorState(): AluminumEstimatorPageStat
   return {
     selectedSystemId: ALUMINUM_SYSTEMS[0]?.id ?? '',
     inputRows: {},
+    color: DEFAULT_ALUMINUM_COLOR,
     updatedAt: null,
   };
 }
@@ -103,6 +110,7 @@ export function aluminumEstimatorStateContentEquals(
   right: AluminumEstimatorPageState,
 ): boolean {
   if (left.selectedSystemId !== right.selectedSystemId) return false;
+  if (left.color !== right.color) return false;
 
   const systemIds = new Set([
     ...Object.keys(left.inputRows),
@@ -163,9 +171,11 @@ export function mergeAluminumEstimatorStates(
   const selectedSystemId = local.selectedSystemId !== base.selectedSystemId
     ? local.selectedSystemId
     : remote.selectedSystemId;
+  const color = local.color !== base.color ? local.color : remote.color;
   const mergedContent: AluminumEstimatorPageState = {
     selectedSystemId,
     inputRows,
+    color,
     updatedAt: null,
   };
 
@@ -185,6 +195,7 @@ export function normalizeAluminumEstimatorState(value: unknown): AluminumEstimat
   return {
     selectedSystemId: parsed.selectedSystemId,
     inputRows: normalizeInputRows(parsed.inputRows),
+    color: typeof parsed.color === 'string' && parsed.color.trim() ? parsed.color : DEFAULT_ALUMINUM_COLOR,
     updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null,
   };
 }
@@ -205,6 +216,7 @@ export function normalizeAluminumCalculationRecord(value: unknown): AluminumCalc
     id: typeof parsed.id === 'string' && parsed.id.trim() ? parsed.id : ALUMINUM_ESTIMATOR_STORAGE_KEY,
     selectedSystemId: state.selectedSystemId,
     inputRows: state.inputRows,
+    color: state.color,
     createdAt,
     updatedAt,
     deleted: parsed.deleted ? true : undefined,
@@ -217,6 +229,7 @@ function toPageState(record: AluminumCalculationRecord): AluminumEstimatorPageSt
   return {
     selectedSystemId: record.selectedSystemId,
     inputRows: record.inputRows,
+    color: record.color && record.color.trim() ? record.color : DEFAULT_ALUMINUM_COLOR,
     updatedAt: record.updatedAt,
   };
 }
@@ -267,6 +280,7 @@ function recordFromPageState(
     id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
     selectedSystemId: state.selectedSystemId,
     inputRows: normalizeInputRows(state.inputRows),
+    color: state.color,
     createdAt: base.createdAt ?? updatedAt,
     updatedAt,
     deleted: undefined,

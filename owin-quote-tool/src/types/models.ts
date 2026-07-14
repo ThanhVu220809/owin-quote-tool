@@ -390,6 +390,8 @@ export type AluminumEstimatorRowsBySystem = Record<string, Record<string, Alumin
 export interface AluminumCalculationRecord extends SyncEntity {
   selectedSystemId: string;
   inputRows: AluminumEstimatorRowsBySystem;
+  /** Màu áp cho toàn bộ thanh nhôm (Ghi Xanh / Vân Gỗ Trắc / Vân Gỗ Lim). */
+  color?: string;
   createdAt: string;
 }
 

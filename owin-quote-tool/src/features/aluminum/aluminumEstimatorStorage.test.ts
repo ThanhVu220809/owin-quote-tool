@@ -22,8 +22,9 @@ function state(
   inputRows: AluminumEstimatorPageState['inputRows'],
   updatedAt: string | null,
   selectedSystemId = 'system-a',
+  color = 'Vân Gỗ Trắc',
 ): AluminumEstimatorPageState {
-  return { selectedSystemId, inputRows, updatedAt };
+  return { selectedSystemId, inputRows, color, updatedAt };
 }
 
 describe('mergeAluminumEstimatorStates', () => {

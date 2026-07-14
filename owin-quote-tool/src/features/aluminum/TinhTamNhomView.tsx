@@ -37,6 +37,7 @@ import {
   ALUMINUM_ESTIMATOR_STORAGE_KEY,
   aluminumEstimatorStateContentEquals,
   clearAluminumEstimatorStorage,
+  ALUMINUM_COLORS,
   createDefaultAluminumEstimatorState,
   getAluminumEstimatorInput,
   loadAluminumEstimatorStorage,
@@ -94,7 +95,9 @@ function buildEstimatorCsv(model: AluminumPrintModel): string {
 }
 
 function buildRowsForSystem(systemId: string, pageState: AluminumEstimatorPageState): AluminumEstimatorRowViewModel[] {
-  return getDefaultAluminumEstimatorRows(systemId).map((source) => {
+  return getDefaultAluminumEstimatorRows(systemId).map((raw) => {
+    // Màu áp cho tất cả thanh theo lựa chọn ở trên (thay màu mặc định của hệ).
+    const source = { ...raw, color: pageState.color };
     const input = getAluminumEstimatorInput(pageState.inputRows, source.systemId, source.rowId);
     const calculated = calculateAluminumEstimatorRow(source, normalizeInput(input));
 
@@ -121,10 +124,10 @@ function buildPrintInputSystems(pageState: AluminumEstimatorPageState): Aluminum
     return {
       systemId: system.id,
       systemName: system.name,
-      color: system.color,
+      color: pageState.color,
       rows: rows.map((row) => ({
         stt: row.source.stt,
-        color: row.source.color,
+        color: pageState.color,
         systemId: row.source.systemId,
         systemName: row.source.systemName,
         image: row.source.image,
@@ -519,7 +522,16 @@ export function TinhTamNhomView() {
         <section className="aluminum-system-meta">
           <div>
             <span>Hệ: <strong>{selectedSystem.name}</strong></span>
-            <span>Màu: <strong>{selectedSystem.color}</strong></span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Màu:
+              <select
+                className="input"
+                value={pageState.color}
+                onChange={(e) => updatePageState((current) => touchAluminumEstimatorState({ ...current, color: e.target.value }))}
+                style={{ width: 'auto', minWidth: 130 }}
+              >
+                {ALUMINUM_COLORS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </span>
             <span>Số dòng: <strong>{rowViewModels.length}</strong></span>
             {selectedSystem.customerName && <span>Khách: <strong>{selectedSystem.customerName}</strong></span>}
           </div>
