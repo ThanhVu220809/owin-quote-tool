@@ -3,7 +3,20 @@
  * Database records store the returned public URL; image bytes never need a
  * browser database.
  */
+import imageCompression from 'browser-image-compression';
 import { supabase, PRODUCT_IMAGE_BUCKET, QUOTE_IMAGE_BUCKET } from './supabaseClient';
+
+/** Tạo bản thumbnail (~400px, WebP) cho list/bảng giá tải nhanh. */
+async function makeThumbBlob(blob: Blob): Promise<Blob> {
+  const file = blob instanceof File ? blob : new File([blob], 'image', { type: blob.type || 'image/webp' });
+  return imageCompression(file, {
+    maxWidthOrHeight: 400,
+    initialQuality: 0.72,
+    fileType: 'image/webp',
+    maxSizeMB: 0.05,
+    useWebWorker: true,
+  });
+}
 
 export const PRIVATE_QUOTE_IMAGE_PREFIX = 'quote-private:';
 
@@ -84,12 +97,20 @@ export type UploadedImage = { path: string; url: string };
 /** Upload by content hash so cancelling/retrying a form does not create duplicates. */
 export async function uploadImageDedupResult(blob: Blob, seen?: Set<string>): Promise<UploadedImage> {
   const hash = await blobHash(blob);
-  const path = `img/${hash}.${extensionForBlob(blob)}`;
+  const ext = extensionForBlob(blob);
+  const path = `img/${hash}.${ext}`;
   if (!seen?.has(hash)) {
     const { error } = await supabase.storage
       .from(PRODUCT_IMAGE_BUCKET)
       .upload(path, blob, { upsert: true, contentType: blob.type || 'image/webp' });
     if (error) throw new Error(error.message);
+    // Best-effort: thumbnail cùng tên ở thumb/<hash> (UI tự fallback master nếu thiếu).
+    try {
+      const thumbBlob = await makeThumbBlob(blob);
+      await supabase.storage
+        .from(PRODUCT_IMAGE_BUCKET)
+        .upload(`thumb/${hash}.${ext}`, thumbBlob, { upsert: true, contentType: 'image/webp' });
+    } catch { /* thumb là tối ưu, thiếu không sao */ }
     seen?.add(hash);
   }
   return { path, url: publicUrl(path) };

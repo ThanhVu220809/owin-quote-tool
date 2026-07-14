@@ -83,7 +83,7 @@ export function ProductList({
                 )}
                 <td>
                   <button className="product-image-button" onClick={() => onPreview(p)} aria-label={`Xem ảnh ${p.code}`}>
-                    <ProductThumb imagePath={p.coverImagePath} fill />
+                    <ProductThumb imagePath={p.coverImagePath} fill thumb />
                   </button>
                 </td>
                 <td>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { resolveImageUrl } from '@/utils/imagePaths';
+import { resolveImageUrl, thumbUrlFor } from '@/utils/imagePaths';
 import { resolveItemImage, type ImageItem } from '@/lib/media/itemImageResolver';
 import type { ProductRecord } from '@/types/models';
 
@@ -16,6 +16,7 @@ export function ProductThumb({
   fill = false,
   item,
   products = [],
+  thumb = false,
 }: {
   imageId?: string;
   imagePath?: string | null;
@@ -23,9 +24,12 @@ export function ProductThumb({
   fill?: boolean;
   item?: ImageItem;
   products?: ProductRecord[];
+  /** Dùng bản thumbnail nhẹ (~400px) cho list/bảng giá; tự fallback về master nếu thiếu. */
+  thumb?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const [resolving, setResolving] = useState(true);
 
   useEffect(() => {
@@ -35,6 +39,7 @@ export function ProductThumb({
     /* eslint-disable react-hooks/set-state-in-effect */
     setResolving(true);
     setFailed(false);
+    setThumbFailed(false);
     /* eslint-enable react-hooks/set-state-in-effect */
 
     const resolve = async () => {
@@ -77,7 +82,10 @@ export function ProductThumb({
     };
   }, [imageId, imagePath, item, products]);
 
-  const displayUrl = !failed && url ? url : OWIN_LOGO;
+  const masterUrl = !failed && url ? url : null;
+  const thumbUrl = thumb && !thumbFailed && masterUrl ? thumbUrlFor(masterUrl) : null;
+  const showingThumb = Boolean(thumbUrl);
+  const displayUrl = thumbUrl ?? masterUrl ?? OWIN_LOGO;
   const sizeStyle = fill ? { width: '95%', height: '95%' } : { width: size, height: size };
   const className = fill ? 'ph image-fit-contain' : 'product-thumb image-fit-contain';
 
@@ -93,7 +101,9 @@ export function ProductThumb({
       style={sizeStyle}
       onError={() => {
         setResolving(false);
-        if (!failed) setFailed(true);
+        // thumb thiếu → thử master; master lỗi → logo.
+        if (showingThumb) setThumbFailed(true);
+        else if (!failed) setFailed(true);
       }}
     />
   );

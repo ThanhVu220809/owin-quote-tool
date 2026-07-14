@@ -209,7 +209,7 @@ function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
         {isProduct && (
           <td rowSpan={row.imageRowSpan} className="image-cell">
             <div className="bang-gia-image-frame">
-              <ProductThumb imagePath={row.imagePath} fill />
+              <ProductThumb imagePath={row.imagePath} fill thumb />
             </div>
           </td>
         )}

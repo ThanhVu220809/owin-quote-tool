@@ -20,11 +20,16 @@ import {
 } from '@/features/supabase/imagesRepo';
 import { isSupabaseConfigured } from '@/features/supabase/supabaseClient';
 
-/** Compression target: roughly 800px / 100KB while baking EXIF orientation. */
+/**
+ * Master target: ~1600px WebP (sharp on any screen, incl. retina/4K when zoomed)
+ * at ~150KB, EXIF orientation baked in. A separate ~400px thumbnail is produced by
+ * imagesRepo for fast list/catalogue rendering.
+ */
 export const COMPRESS_OPTIONS = {
-  maxSizeMB: 0.1,
-  maxWidthOrHeight: 800,
-  initialQuality: 0.7,
+  maxSizeMB: 0.25,
+  maxWidthOrHeight: 1600,
+  initialQuality: 0.82,
+  fileType: 'image/webp',
   // Keep customer/product bytes inside this app process; do not load a worker
   // program from a third-party CDN at runtime.
   useWebWorker: false,

@@ -56,6 +56,16 @@ export function productCoverPath(code: string, name: string): string {
   return `products/${safeCode}-${slug || 'item'}/images/cover.webp`;
 }
 
+/**
+ * URL bản thumbnail (~400px) của 1 ảnh master trên Supabase Storage.
+ * Quy ước: master ở `.../product-images/img/<hash>`, thumb ở `.../product-images/thumb/<hash>`.
+ * Trả null nếu URL không phải ảnh master Supabase (không có thumb tương ứng).
+ */
+export function thumbUrlFor(url: string | null | undefined): string | null {
+  if (!url || !url.includes('/product-images/img/')) return null;
+  return url.replace('/product-images/img/', '/product-images/thumb/');
+}
+
 export function quoteItemImagePath(quoteId: string, itemCode: string, extension = 'webp'): string {
   const safeQuote = quoteId.trim().replace(/[^a-zA-Z0-9_-]+/g, '-') || 'draft';
   const safeItem = itemCode.trim().replace(/[^a-zA-Z0-9_-]+/g, '-') || 'item';
