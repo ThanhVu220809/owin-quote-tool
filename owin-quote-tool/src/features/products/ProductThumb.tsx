@@ -86,6 +86,8 @@ export function ProductThumb({
       className={className}
       src={displayUrl}
       alt=""
+      loading="lazy"
+      decoding="async"
       data-image-loading={resolving ? 'true' : 'false'}
       aria-busy={resolving}
       style={sizeStyle}
