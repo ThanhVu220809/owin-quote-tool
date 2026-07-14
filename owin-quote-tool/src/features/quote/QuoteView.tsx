@@ -323,6 +323,8 @@ export function QuoteView() {
   const [items, setItems] = useState<QuoteItemInput[]>([]);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  // Tab lọc ngang hạng mục theo loại cửa ('all' = tất cả).
+  const [itemCategoryFilter, setItemCategoryFilter] = useState('all');
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteStatusFilter, setQuoteStatusFilter] = useState<QuoteRecord['status'] | ''>('');
@@ -1264,6 +1266,18 @@ export function QuoteView() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-label">Hạng mục báo giá ({items.length})</div>
+        {(() => {
+          const cats = Array.from(new Set(items.map((it) => (it.category || it.groupName || '').trim()).filter(Boolean)));
+          if (cats.length < 2) return null;
+          return (
+            <div className="tool-nav no-print" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 10 }} role="tablist">
+              <button type="button" className={`tool-nav-item ${itemCategoryFilter === 'all' ? 'active' : ''}`} onClick={() => setItemCategoryFilter('all')}>Tất cả</button>
+              {cats.map((c) => (
+                <button key={c} type="button" className={`tool-nav-item ${itemCategoryFilter === c ? 'active' : ''}`} onClick={() => setItemCategoryFilter(c)}>{c}</button>
+              ))}
+            </div>
+          );
+        })()}
         {items.length === 0 ? (
           <div className="muted" style={{ padding: 12 }}>Chưa có hạng mục nào.</div>
         ) : (
@@ -1271,6 +1285,8 @@ export function QuoteView() {
             {items.map((item, index) => {
               const uiKey = itemUiKeys[index] || `fallback-${index}`;
               const locked = !expandedItemKeys.has(uiKey);
+              // Tab lọc: bỏ qua hạng mục không thuộc loại đang chọn (index giữ nguyên cho sửa/xóa).
+              if (itemCategoryFilter !== 'all' && (item.category || item.groupName || '').trim() !== itemCategoryFilter) return null;
               return (
               <div key={uiKey} className="quote-item-drop" {...itemDrag.rowProps(index)}>
               <QuoteItemCard
