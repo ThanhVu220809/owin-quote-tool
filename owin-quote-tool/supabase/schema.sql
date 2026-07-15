@@ -97,16 +97,23 @@ grant all privileges on public.suggestions to authenticated;
 grant all privileges on public.app_data to authenticated;
 
 -- ---------- RLS (Row Level Security) ----------
--- Giai đoạn TOOL-ADMIN: mọi thao tác đều cần đăng nhập (admin login 1 lần).
--- Landing công khai (anon đọc products) sẽ mở policy riêng ở phase sau.
+-- TOOL-ADMIN: authenticated full access.
+-- LANDING: anon chỉ SELECT products public (is_public, chưa xoá).
 alter table public.products enable row level security;
 alter table public.quotes   enable row level security;
 alter table public.suggestions enable row level security;
 alter table public.app_data enable row level security;
 
+grant select on public.products to anon;
+
 drop policy if exists products_auth_all on public.products;
 create policy products_auth_all on public.products
   for all to authenticated using (true) with check (true);
+
+drop policy if exists products_public_read on public.products;
+create policy products_public_read on public.products
+  for select to anon
+  using (deleted_at is null and coalesce(is_public, true) = true);
 
 drop policy if exists quotes_auth_all on public.quotes;
 create policy quotes_auth_all on public.quotes
