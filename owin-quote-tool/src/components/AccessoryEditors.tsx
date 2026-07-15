@@ -2,6 +2,7 @@ import { Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { ProductUnit } from '@/types/models';
 import { AutoSuggestInput } from './AutoSuggestInput';
 import { CurrencyInput } from './CurrencyInput';
+import { SmartNumberInput } from './SmartNumberInput';
 import { DragHandle, reorderList, useDragReorder } from './DragReorder';
 import { formatVND } from '@/utils/format';
 import {
@@ -162,17 +163,19 @@ export function FixedAccessoryPackageEditor({
               />
               <div className="field">
                 <label>SL</label>
-                <input
+                <SmartNumberInput
                   className="input"
-                  type="number"
+                  mode="decimal"
+                  decimals={3}
                   min={0}
                   value={item.quantity}
-                  onChange={(event) => {
+                  onChange={(quantity) => {
                     const items = value.items.map((row, i) =>
-                      i === index ? { ...row, quantity: Number(event.target.value) || 0 } : row,
+                      i === index ? { ...row, quantity } : row,
                     );
                     patch({ items });
                   }}
+                  placeholder="0"
                 />
               </div>
               <div className="row-action-group">
@@ -198,12 +201,13 @@ export function FixedAccessoryPackageEditor({
       <div className="fixed-package-grid">
         <div className="field">
           <label>Số lượng bộ</label>
-          <input
+          <SmartNumberInput
             className="input"
-            type="number"
-            min={1}
-            value={value.packageQuantity || 1}
-            onChange={(event) => patch({ packageQuantity: Number(event.target.value) || 1 })}
+            mode="int"
+            min={0}
+            value={value.packageQuantity}
+            onChange={(packageQuantity) => patch({ packageQuantity })}
+            placeholder="0"
           />
         </div>
         <div className="field">
@@ -289,14 +293,16 @@ export function ExtraAccessoriesEditor({
               </div>
               <div className="field">
                 <label>SL</label>
-                <input
+                <SmartNumberInput
                   className="input"
-                  type="number"
+                  mode="decimal"
+                  decimals={3}
                   min={0}
                   value={item.quantity}
-                  onChange={(event) =>
-                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity: Number(event.target.value) || 0 }))
+                  onChange={(quantity) =>
+                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity }))
                   }
+                  placeholder="0"
                 />
               </div>
               <div className="field">
@@ -304,15 +310,16 @@ export function ExtraAccessoriesEditor({
                 {item.unit === 'BO' ? (
                   <div className="readonly-money muted-money">—</div>
                 ) : (
-                  <input
+                  <SmartNumberInput
                     className="input"
-                    type="number"
+                    mode="decimal"
+                    decimals={3}
                     min={0}
-                    step="0.001"
-                    value={item.weight || ''}
-                    onChange={(event) =>
-                      onChange(updateAccessoryDraftAtIndex(value, index, { weight: Number(event.target.value) || 0 }))
+                    value={item.weight}
+                    onChange={(weight) =>
+                      onChange(updateAccessoryDraftAtIndex(value, index, { weight }))
                     }
+                    placeholder="0"
                   />
                 )}
               </div>

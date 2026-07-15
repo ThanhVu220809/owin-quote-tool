@@ -8,6 +8,8 @@ import type {
 } from '@/types/models';
 import { AutoSuggestInput } from '@/components/AutoSuggestInput';
 import { CurrencyInput } from '@/components/CurrencyInput';
+import { SmartNumberInput } from '@/components/SmartNumberInput';
+import { parseSmartNumber } from '@/utils/smartNumber';
 import { ExtraAccessoriesEditor, FixedAccessoryPackageEditor } from '@/components/AccessoryEditors';
 import { ImageDropzone } from '@/components/ImageDropzone';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -471,21 +473,25 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
             </div>
             <div className="field">
               <label>Rộng mẫu (m)</label>
-              <input
+              <SmartNumberInput
                 className="input"
-                inputMode="decimal"
-                value={widthM}
-                onChange={(e) => setWidthM(e.target.value)}
+                mode="decimal"
+                decimals={3}
+                min={0}
+                value={parseSmartNumber(widthM, { mode: 'decimal' })}
+                onChange={(n) => setWidthM(n === 0 ? '' : String(n))}
                 placeholder="1.80"
               />
             </div>
             <div className="field">
               <label>Cao mẫu (m)</label>
-              <input
+              <SmartNumberInput
                 className="input"
-                inputMode="decimal"
-                value={heightM}
-                onChange={(e) => setHeightM(e.target.value)}
+                mode="decimal"
+                decimals={3}
+                min={0}
+                value={parseSmartNumber(heightM, { mode: 'decimal' })}
+                onChange={(n) => setHeightM(n === 0 ? '' : String(n))}
                 placeholder="2.20"
               />
             </div>

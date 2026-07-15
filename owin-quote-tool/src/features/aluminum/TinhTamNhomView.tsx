@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Printer } from 'lucide-react';
 import { openImageLightbox } from '@/components/imageLightboxStore';
+import { SmartNumberInput } from '@/components/SmartNumberInput';
+import { parseSmartNumber } from '@/utils/smartNumber';
 import {
   calculateAluminumEstimatorRow,
   calculateAluminumEstimatorTotals,
-  formatEstimatorInputNumber,
   formatEstimatorMoney,
   parseEstimatorNumber,
   type AluminumEstimatorCalculatedRow,
@@ -559,24 +560,26 @@ function AluminumTable({
     value: string,
     label: string,
     className: string,
-  ) => (
-    <input
-      aria-label={label}
-      value={value}
-      inputMode="decimal"
-      min={key === 'quantity' ? 0 : undefined}
-      step={key === 'quantity' ? 1 : undefined}
-      onFocus={() => {
-        if (key === 'unitPrice' && value) onRowChange(rowId, { unitPrice: parseEstimatorNumber(value).toString() });
-      }}
-      onChange={(event) => onRowChange(rowId, { [key]: event.target.value })}
-      onBlur={() => {
-        if (key === 'unitPrice') onRowChange(rowId, { unitPrice: formatEstimatorInputNumber(value) });
-      }}
-      className={className}
-      placeholder={key === 'quantity' ? '0' : '0'}
-    />
-  );
+  ) => {
+    const numeric = parseSmartNumber(value, {
+      mode: key === 'quantity' ? 'int' : 'currency',
+      min: 0,
+    });
+    return (
+      <SmartNumberInput
+        aria-label={label}
+        className={className}
+        mode={key === 'quantity' ? 'int' : 'currency'}
+        min={0}
+        value={numeric}
+        onChange={(n) => {
+          // Lưu chuỗi: 0 → "" để ô trống, gõ tiếp được; còn lại số thuần.
+          onRowChange(rowId, { [key]: n === 0 ? '' : String(n) });
+        }}
+        placeholder="0"
+      />
+    );
+  };
 
   return (
     <div className="aluminum-table-wrap">

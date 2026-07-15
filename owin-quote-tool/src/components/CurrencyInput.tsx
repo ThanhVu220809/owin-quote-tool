@@ -1,44 +1,27 @@
-import { useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
-import { formatSoVND } from '@/utils/format';
+import { SmartNumberInput } from './SmartNumberInput';
 
 interface CurrencyInputProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'min' | 'max'> {
   value: number;
   onChange: (value: number) => void;
+  min?: number;
+  max?: number;
 }
 
-function parseCurrencyInput(value: string): number {
-  const digits = value.replace(/\D/g, '');
-  return digits ? Number(digits) : 0;
-}
-
-export function CurrencyInput({
-  value,
-  onChange,
-  className = 'input',
-  onBlur,
-  ...props
-}: CurrencyInputProps) {
-  const [draftValue, setDraftValue] = useState<string | null>(null);
-  const displayValue = draftValue ?? (value > 0 ? formatSoVND(value) : '');
-
+/**
+ * Ô tiền VND thông minh (wrapper SmartNumberInput mode=currency).
+ * Xóa hết → 0; gõ tiếp từ ô trống; chấm nghìn khi blur.
+ */
+export function CurrencyInput({ value, onChange, ...props }: CurrencyInputProps) {
   return (
-    <input
+    <SmartNumberInput
       {...props}
-      className={className}
-      inputMode="numeric"
-      type="text"
-      value={displayValue}
-      onChange={(event) => {
-        const parsed = parseCurrencyInput(event.target.value);
-        setDraftValue(parsed > 0 ? formatSoVND(parsed) : '');
-        onChange(parsed);
-      }}
-      onBlur={(event) => {
-        setDraftValue(null);
-        onBlur?.(event);
-      }}
+      mode="currency"
+      value={value}
+      onChange={onChange}
+      min={0}
+      placeholder={props.placeholder ?? '0'}
     />
   );
 }

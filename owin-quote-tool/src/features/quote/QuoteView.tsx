@@ -18,6 +18,7 @@ import { titleCaseVi } from '@/utils/titleCase';
 import { normalizeCategoryName } from '@/config/categoryOrder';
 import { AutoSuggestInput } from '@/components/AutoSuggestInput';
 import { CurrencyInput } from '@/components/CurrencyInput';
+import { SmartNumberInput } from '@/components/SmartNumberInput';
 import { DragHandle, reorderList, useDragReorder } from '@/components/DragReorder';
 import { ExtraAccessoriesEditor, FixedAccessoryPackageEditor } from '@/components/AccessoryEditors';
 import { calculateQuote } from '@/lib/quote/quoteCalculator';
@@ -2347,9 +2348,32 @@ function QuoteItemCard({
                 <option value="BO">Bộ</option>
                 <option value="METER">md</option>
               </select>
-              <input className="input" type="number" step="0.001" value={line.widthM ?? ''} onChange={(e) => onDimension(lineIndex, { widthM: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Rộng" />
-              <input className="input" type="number" step="0.001" value={line.heightM ?? ''} onChange={(e) => onDimension(lineIndex, { heightM: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Cao" />
-              <input className="input" type="number" min={1} value={line.quantity || ''} onChange={(e) => onDimension(lineIndex, { quantity: Number(e.target.value) || 1 })} placeholder="SL" />
+              <SmartNumberInput
+                className="input"
+                mode="decimal"
+                decimals={3}
+                min={0}
+                value={line.widthM}
+                onChange={(widthM) => onDimension(lineIndex, { widthM: widthM === 0 ? null : widthM })}
+                placeholder="Rộng"
+              />
+              <SmartNumberInput
+                className="input"
+                mode="decimal"
+                decimals={3}
+                min={0}
+                value={line.heightM}
+                onChange={(heightM) => onDimension(lineIndex, { heightM: heightM === 0 ? null : heightM })}
+                placeholder="Cao"
+              />
+              <SmartNumberInput
+                className="input"
+                mode="int"
+                min={0}
+                value={line.quantity}
+                onChange={(quantity) => onDimension(lineIndex, { quantity })}
+                placeholder="SL"
+              />
               <div className="readonly-money muted-money">{calculatedLine?.calculatedQty?.toFixed(3) ?? '0.000'}</div>
               <CurrencyInput value={Number(line.unitPriceVnd ?? item.unitPriceVnd ?? 0)} onChange={(unitPriceVnd) => onDimension(lineIndex, { unitPriceVnd })} placeholder="Đơn giá" />
               <div className="readonly-money">{formatVND(calculatedLine?.lineTotalVnd ?? 0)}</div>
@@ -2378,7 +2402,15 @@ function QuoteItemCard({
               />
               <div className="field">
                 <label>SL/Bộ</label>
-                <input className="input" type="number" value={accessory.quantityPerSet || ''} onChange={(e) => onAccessory(accIndex, { quantityPerSet: Number(e.target.value) || 0 })} />
+                <SmartNumberInput
+                  className="input"
+                  mode="decimal"
+                  decimals={3}
+                  min={0}
+                  value={accessory.quantityPerSet}
+                  onChange={(quantityPerSet) => onAccessory(accIndex, { quantityPerSet })}
+                  placeholder="0"
+                />
               </div>
               <div className="field">
                 <label>Đơn giá</label>
