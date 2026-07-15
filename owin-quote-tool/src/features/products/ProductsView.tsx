@@ -344,14 +344,17 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
     options?: ProductFormSaveOptions,
   ) => {
     const saved = await saveProduct(input, { baseRecord: options?.baseRecord });
+    // Suggestions must never block the save ACK / autosave UI.
     if (options?.learnSuggestions !== false) {
-      try {
-        const record = await getProductRecord(saved.id);
-        if (record) await rememberProductSuggestions(record);
-        await refreshSuggestions();
-      } catch {
-        // Autocomplete ranking is secondary; the product save already succeeded.
-      }
+      void (async () => {
+        try {
+          const record = saved.record ?? (await getProductRecord(saved.id));
+          if (record) await rememberProductSuggestions(record);
+          await refreshSuggestions();
+        } catch {
+          // Autocomplete ranking is secondary; the product save already succeeded.
+        }
+      })();
     }
     return saved;
   };

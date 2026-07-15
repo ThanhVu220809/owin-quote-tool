@@ -285,9 +285,15 @@ export function toLegacyProduct(record: ProductRecord): Product {
   };
 }
 
+/**
+ * Allocate a display-only numeric id without listing the whole catalogue.
+ * Primary identity is UUID; this value only needs to be unique enough for UI/export.
+ */
 async function getNextNumericId(): Promise<number> {
-  const records = await getAllProductsRaw();
-  return records.reduce((max, item) => Math.max(max, item.numericId || 0), 0) + 1;
+  // Prefer a short random+time mix over downloading 100+ product rows per save.
+  const timePart = Date.now() % 1_000_000_000;
+  const randPart = Math.floor(Math.random() * 900) + 100;
+  return timePart * 1000 + randPart;
 }
 
 /**
@@ -412,23 +418,31 @@ export async function saveProduct(
   options: SaveProductOptions = {},
 ): Promise<SavedProduct> {
   const id = normalizeString(p.id, crypto.randomUUID());
-  const currentValue = await getProductById(id);
-  const current = currentValue ? normalizeProductRecord(currentValue as ProductInput) : null;
+  const hasExplicitBase = Object.prototype.hasOwnProperty.call(options, 'baseRecord');
+  // Fast path: ProductForm already holds the last ACK as baseRecord — skip an extra GET.
+  let current: ProductRecord | null;
+  if (hasExplicitBase) {
+    current = options.baseRecord && options.baseRecord.id === id
+      ? normalizeProductRecord(options.baseRecord as ProductInput)
+      : null;
+  } else {
+    const currentValue = await getProductById(id);
+    current = currentValue ? normalizeProductRecord(currentValue as ProductInput) : null;
+  }
   if (current?.deleted || current?.deletedAt) {
     throw new Error('Sản phẩm đã bị xoá trên một máy khác và không thể khôi phục từ bản cũ.');
   }
-  const hasExplicitBase = Object.prototype.hasOwnProperty.call(options, 'baseRecord');
   const base = hasExplicitBase
     ? (options.baseRecord ? normalizeProductRecord(options.baseRecord as ProductInput) : null)
     : current;
   const identitySource = current ?? base;
-  const numericId = identitySource ? identitySource.numericId : await getNextNumericId();
+  const numericId = p.numericId ?? identitySource?.numericId ?? (await getNextNumericId());
   const local = normalizeProductRecord(
     {
       ...(base ?? current ?? {}),
       ...p,
       id,
-      numericId: p.numericId ?? numericId,
+      numericId,
       // Ordering is changed only by set_product_order; an open form never owns it.
       sortOrder: current?.sortOrder ?? base?.sortOrder ?? p.sortOrder,
       createdAt: current?.createdAt ?? base?.createdAt ?? p.createdAt,

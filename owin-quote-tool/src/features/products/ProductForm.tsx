@@ -70,7 +70,8 @@ interface Props {
 
 type AutosaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
-const AUTOSAVE_DELAY_MS = 900;
+/** Shorter debounce: one CAS is enough once typing pauses; avoid feeling “lưu lâu”. */
+const AUTOSAVE_DELAY_MS = 380;
 
 const UNIT_OPTIONS: { label: string; value: ProductUnit }[] = [
   { label: 'm²', value: 'M2' },

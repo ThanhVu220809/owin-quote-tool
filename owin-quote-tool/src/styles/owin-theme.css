@@ -3052,15 +3052,15 @@ textarea.input:focus {
 }
 .aluminum-image-cell {
   margin: 0 auto;
-  width: 64px;
-  height: 46px;
+  width: 96px;
+  height: 72px;
   border: 1px solid var(--owin-border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3px;
+  padding: 4px;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }
 .aluminum-image-cell img {
