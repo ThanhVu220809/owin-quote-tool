@@ -1936,12 +1936,13 @@ function buildQuotePrintAccessoryRows(item: ReturnType<typeof calculateQuote>['i
       const quantity = Number(extra.quantity ?? extra.quantityPerSet ?? 1) || 1;
       const weight = normalizedUnit === 'BO' ? 0 : Number(extra.weight ?? extra.kl ?? 0) || 0;
       const unitPrice = Number(extra.unitPrice ?? extra.unitPriceVnd ?? 0) || 0;
-      const basis = normalizedUnit === 'BO' ? quantity : weight;
+      // SL = số cái; md/m²: thành tiền = KL × giá (KL trống → SL)
+      const basis = normalizedUnit === 'BO' ? quantity : weight > 0 ? weight : quantity;
       rows.push({
         descriptionLines: [String(extra.name || 'Phụ kiện phát sinh').trim()],
         unit: unitLabel(normalizedUnit),
-        quantity: normalizedUnit === 'BO' ? compactNumber(quantity) : '',
-        weight: normalizedUnit === 'BO' ? '' : compactNumber(weight),
+        quantity: compactNumber(quantity),
+        weight: normalizedUnit === 'BO' ? '' : compactNumber(weight > 0 ? weight : quantity),
         unitPriceVnd: unitPrice,
         amountVnd: Math.round(basis * unitPrice),
       });

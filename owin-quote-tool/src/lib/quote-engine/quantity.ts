@@ -29,7 +29,12 @@ export function calculateMeterQuantity(
   height: number | string | null | undefined,
   quantity: number | string,
 ): number {
-  return roundQuantity3((asNumber(width) + asNumber(height)) * asNumber(quantity));
+  const w = asNumber(width);
+  const h = asNumber(height);
+  const q = asNumber(quantity);
+  // Có R/C → (R+C)×SL; không kích thước → dùng SL (mét dài gõ thẳng vào SL hiếm)
+  if (w + h > 0) return roundQuantity3((w + h) * q);
+  return roundQuantity3(q);
 }
 
 export function calculateBoQuantity(quantity: number | string): number {

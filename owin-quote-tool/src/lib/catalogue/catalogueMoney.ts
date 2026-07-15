@@ -1,5 +1,5 @@
 import type { ProductRecord } from '@/types/models';
-import { normalizeUnit, roundMoneyDownToHundreds } from '@/lib/quote-engine';
+import { normalizeUnit, roundMoneyToVnd } from '@/lib/quote-engine';
 
 interface CatalogueAccessoryInput {
   name?: unknown;
@@ -65,18 +65,19 @@ export function buildCatalogueMoneyBlocks(product: ProductRecord) {
   const { width, height } = parseSizeToMeters(product.rawSizeText);
   const productUnitPrice = Number(product.unitPriceVnd || 0);
   const productWeight = getCatalogueLineWeight(product.unit, width, height, 1);
-  const productAmount = roundMoneyDownToHundreds(productWeight * productUnitPrice);
+  // Dòng tiền: làm tròn đồng (KHÔNG floor 100.000 — rule 100k chỉ cho tổng báo giá).
+  const productAmount = roundMoneyToVnd(productWeight * productUnitPrice);
 
   const fixedPkg = parseJsonMaybe<CatalogueFixedAccessoryPackageInput | null>(product.fixedAccessoryPackage, null);
   const fixedQuantity = fixedPkg ? Number(fixedPkg.packageQuantity ?? fixedPkg.quantity ?? 1) || 1 : 0;
   const fixedUnitPrice = fixedPkg ? Number(fixedPkg.unitPrice ?? fixedPkg.unitPriceVnd ?? 0) || 0 : 0;
-  const fixedAmount = roundMoneyDownToHundreds(fixedQuantity * fixedUnitPrice);
+  const fixedAmount = roundMoneyToVnd(fixedQuantity * fixedUnitPrice);
 
   const legacyAccessories = !fixedPkg && Array.isArray(product.accessories) ? product.accessories : [];
   const legacyAmount = legacyAccessories.reduce((sum, item) => {
     const qty = Number(item.quantityPerSet ?? 1) || 1;
     const unitPrice = Number(item.unitPriceVnd ?? 0) || 0;
-    return sum + roundMoneyDownToHundreds(qty * unitPrice);
+    return sum + roundMoneyToVnd(qty * unitPrice);
   }, 0);
 
   const extraAccessories = parseJsonMaybe<CatalogueAccessoryInput[]>(product.extraAccessories, []);
@@ -86,10 +87,12 @@ export function buildCatalogueMoneyBlocks(product: ProductRecord) {
         .map((item) => {
           const unit = normalizeUnit(String(item.unit || 'BO'));
           const quantity = Number(item.quantity ?? item.quantityPerSet ?? 1) || 1;
-          const weight = unit === 'BO' ? quantity : Number(item.weight ?? item.kl ?? item.quantity ?? 0) || 0;
+          const weight = unit === 'BO' ? 0 : Number(item.weight ?? item.kl ?? 0) || 0;
           const unitPrice = Number(item.unitPrice ?? item.unitPriceVnd ?? 0) || 0;
-          const amount = roundMoneyDownToHundreds((unit === 'BO' ? quantity : weight) * unitPrice);
-          return { item, unit, quantity, weight, unitPrice, amount };
+          // BO: SL × giá; m²/md: KL (fallback SL nếu KL trống)
+          const basis = unit === 'BO' ? quantity : weight > 0 ? weight : quantity;
+          const amount = roundMoneyToVnd(basis * unitPrice);
+          return { item, unit, quantity, weight: unit === 'BO' ? 0 : weight || quantity, unitPrice, amount };
         })
     : [];
 

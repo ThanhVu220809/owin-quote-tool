@@ -185,8 +185,10 @@ describe('reference Word catalogue template renderer', () => {
     expect(xml).not.toMatch(/Song Nhôm Bảo Vệ:\s*</);
     expect(xml).toContain('Bộ phụ kiện Kinlong');
     expect(xml).toContain('Nẹp Phát Sinh');
-    expect(xml).toContain('4.200.000');
-    expect(xml).toContain('5.400.000');
+    // Line money = round(đồng), not floor 100k: 1.196×1.796×2.000.000 → 4.296.032
+    expect(xml).toContain('4.296.032');
+    // product + fixed(2×500k) + extra(200k) = 5.496.032
+    expect(xml).toContain('5.496.032');
     expect(xml).not.toMatch(/\{(?:category|product_info_block|accessory_block|tong_tien)\}/);
     // Category + product + accessory block keep-together markers.
     expect(xml).toContain('w:cantSplit');

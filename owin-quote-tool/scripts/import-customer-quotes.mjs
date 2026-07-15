@@ -267,16 +267,23 @@ function parseDocx(buffer) {
       const name = desc.split('\n')[0].split(' - ')[0].trim() || code;
       const unit = normalizeUnit(unitRaw, 'M2');
       const { imageBytes, imageName } = extractImageForCode(stt, code);
+      // SL = số cái (int). Luôn giữ 1 dòng kích thước kể cả BO không R/C.
+      const pieceQty = Math.max(1, Math.round(qty || 1) || 1);
       products.push({
         code,
         name,
         unit,
         unitPriceVnd: price,
         description: desc,
-        dimensions:
-          widthM || heightM
-            ? [{ unit, widthM, heightM, quantity: qty || 1, unitPriceVnd: price }]
-            : [],
+        dimensions: [
+          {
+            unit,
+            widthM: widthM,
+            heightM: heightM,
+            quantity: pieceQty,
+            unitPriceVnd: price,
+          },
+        ],
         packageName: '',
         packageItems: [],
         packageQty: 1,
@@ -300,16 +307,25 @@ function parseDocx(buffer) {
     }
     if (isPhao) {
       const unit = normalizeUnit(unitRaw, 'BO');
-      // md/m²: độ dài/diện tích nằm ở SL hoặc KL trong Word
-      const measure = Number(qty || weight || 0) || 0;
-      const quantity = unit === 'BO' ? Math.max(1, qty || 1) : measure || 1;
-      const kl = unit === 'BO' ? 0 : measure || quantity;
-      const amount = Math.round(price * (unit === 'BO' ? quantity : kl || quantity));
+      // SL = số cái (thường 1). KL/md/m² = cột weight hoặc (nếu SL là số thập phân lớn) measure.
+      const pieceQty = Math.max(1, Math.round(Number(qty) >= 1 && Number(qty) === Math.floor(Number(qty)) ? qty : 1) || 1);
+      let kl = 0;
+      if (unit === 'BO') {
+        kl = 0;
+      } else if (weight && weight > 0) {
+        kl = weight;
+      } else if (qty && qty > 0 && qty !== pieceQty) {
+        // Word đôi khi để md vào cột SL
+        kl = qty;
+      } else if (qty && qty > 1 && qty !== Math.floor(qty)) {
+        kl = qty;
+      }
+      const amount = Math.round(price * (unit === 'BO' ? pieceQty : kl || pieceQty));
       current.extras.push({
         id: crypto.randomUUID(),
         name: desc.split('\n')[0].trim(),
         unit,
-        quantity,
+        quantity: unit === 'BO' ? Math.max(1, Math.round(qty || 1) || 1) : pieceQty,
         weight: kl,
         unitPrice: price,
         amount,
@@ -317,12 +333,12 @@ function parseDocx(buffer) {
       });
       continue;
     }
-    if (widthM || heightM) {
+    if (widthM || heightM || qty) {
       current.dimensions.push({
         unit: normalizeUnit(unitRaw, current.unit),
         widthM,
         heightM,
-        quantity: qty || 1,
+        quantity: Math.max(1, Math.round(qty || 1) || 1),
         unitPriceVnd: price || current.unitPriceVnd,
       });
     }
@@ -349,6 +365,8 @@ function buildQuote(parsed, code) {
       ? p.dimensions
       : [{ unit: p.unit, widthM: null, heightM: null, quantity: 1, unitPriceVnd: p.unitPriceVnd }]
     ).map((d, j) => {
+      // ensure piece qty int ≥ 1
+      d = { ...d, quantity: Math.max(1, Math.round(Number(d.quantity) || 1)) };
       const { calculatedQty, lineTotal } = calcDim(
         d.unit || p.unit,
         d.widthM,
@@ -425,7 +443,8 @@ function buildQuote(parsed, code) {
   const subProduct = items.reduce((s, i) => s + i.productSubtotalVnd, 0);
   const subAcc = items.reduce((s, i) => s + i.accessorySubtotalVnd, 0);
   const total = subProduct + subAcc;
-  const rounded = Math.round(total / 1000) * 1000;
+  // Khớp app: làm tròn xuống 100.000đ
+  const rounded = Math.floor(total / 100000) * 100000;
   const quoteDate = parsed.quoteDate || now.slice(0, 10);
   const id = crypto.randomUUID();
 

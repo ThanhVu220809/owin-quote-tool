@@ -293,22 +293,16 @@ export function ExtraAccessoriesEditor({
               </div>
               <div className="field">
                 <label>SL</label>
+                {/* SL = số cái (thường 1), không phải md/m² */}
                 <SmartNumberInput
                   className="input"
-                  mode="decimal"
-                  decimals={3}
+                  mode="int"
                   min={0}
                   value={item.quantity}
                   onChange={(quantity) =>
-                    onChange(
-                      updateAccessoryDraftAtIndex(value, index, {
-                        quantity,
-                        // m²/md: gõ SL cũng điền KL để thành tiền = SL × đơn giá
-                        ...(item.unit !== 'BO' ? { weight: quantity } : {}),
-                      }),
-                    )
+                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity }))
                   }
-                  placeholder="0"
+                  placeholder="1"
                 />
               </div>
               <div className="field">
@@ -316,6 +310,7 @@ export function ExtraAccessoriesEditor({
                 {item.unit === 'BO' ? (
                   <div className="readonly-money muted-money">—</div>
                 ) : (
+                  /* KL = md hoặc m² để nhân đơn giá */
                   <SmartNumberInput
                     className="input"
                     mode="decimal"
@@ -323,12 +318,7 @@ export function ExtraAccessoriesEditor({
                     min={0}
                     value={item.weight}
                     onChange={(weight) =>
-                      onChange(
-                        updateAccessoryDraftAtIndex(value, index, {
-                          weight,
-                          quantity: weight > 0 ? weight : item.quantity,
-                        }),
-                      )
+                      onChange(updateAccessoryDraftAtIndex(value, index, { weight }))
                     }
                     placeholder="0"
                   />

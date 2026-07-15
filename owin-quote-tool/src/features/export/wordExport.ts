@@ -624,10 +624,11 @@ function buildQuoteItemDocRows(
       .filter((entry) => String(entry.name || '').trim())
       .forEach((entry) => {
         const unit = normalizeUnit(entry.unit);
+        // SL = số cái; KL = md/m² để nhân tiền (KL trống → fallback SL)
         const quantity = Number(entry.quantity ?? entry.quantityPerSet ?? 0) || 0;
-        const weight = unit === 'BO' ? quantity : Number(entry.weight ?? entry.kl ?? 0) || 0;
+        const weight = unit === 'BO' ? 0 : Number(entry.weight ?? entry.kl ?? 0) || 0;
         const unitPrice = Number(entry.unitPrice ?? entry.unitPriceVnd ?? 0) || 0;
-        const amount = (unit === 'BO' ? quantity : weight) * unitPrice;
+        const basis = unit === 'BO' ? quantity : weight > 0 ? weight : quantity;
         rows.push({
           kind: 'extraAccessory',
           stt: '',
@@ -636,10 +637,10 @@ function buildQuoteItemDocRows(
           unit: unitLabel(unit),
           width: '',
           height: '',
-          quantity: unit === 'BO' ? formatDecimal(quantity) : '',
-          weight: unit === 'BO' ? '' : formatDecimal(weight),
+          quantity: formatDecimal(quantity || (unit === 'BO' ? 0 : 1)),
+          weight: unit === 'BO' ? '' : formatDecimal(weight > 0 ? weight : quantity),
           unitPrice: formatSoVND(unitPrice),
-          amount: formatSoVND(amount),
+          amount: formatSoVND(basis * unitPrice),
           showImage: false,
         });
       });

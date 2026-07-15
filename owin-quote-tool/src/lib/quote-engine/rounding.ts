@@ -15,6 +15,10 @@ export function roundMoneyDownToHundredThousands(
   return roundDownToNearestMultiple(value, 100000);
 }
 
+/**
+ * @deprecated Tên gây hiểu nhầm — từng bị dùng floor 100k cho từng dòng Bảng giá.
+ * Giữ alias = floor 100.000đ (chỉ dùng cho TỔNG báo giá). Không dùng cho dòng SP.
+ */
 export function roundMoneyDownToHundreds(value: number | string | null | undefined): number {
   return roundMoneyDownToHundredThousands(value);
 }

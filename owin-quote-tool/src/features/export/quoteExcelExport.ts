@@ -156,7 +156,8 @@ function buildExtraAccessoryRows(item: CalculatedQuoteItem): QuoteExcelRow[] {
       const quantity = safeNumber(entry.quantity ?? entry.quantityPerSet, 1);
       const weight = safeNumber(entry.weight ?? entry.kl, 0);
       const unitPrice = safeNumber(entry.unitPrice ?? entry.unitPriceVnd, 0);
-      const basis = unit === 'BO' ? quantity : weight;
+      // SL = số cái; md/m² nhân KL (fallback SL nếu KL trống) — khớp quote-engine.
+      const basis = unit === 'BO' ? quantity : weight > 0 ? weight : quantity;
       return {
         stt: '',
         productCode: '',
@@ -165,8 +166,8 @@ function buildExtraAccessoryRows(item: CalculatedQuoteItem): QuoteExcelRow[] {
         unit: unitLabel(unit),
         width: '',
         height: '',
-        quantity: unit === 'BO' ? optionalNumber(quantity) : '',
-        volume: unit === 'BO' ? '' : optionalNumber(weight),
+        quantity: unit === 'BO' ? optionalNumber(quantity) : optionalNumber(quantity || 1),
+        volume: unit === 'BO' ? '' : optionalNumber(weight > 0 ? weight : quantity),
         unitPriceVnd: moneyNumber(unitPrice),
         lineTotalVnd: moneyNumber(basis * unitPrice),
         rowType: 'accessory' as const,

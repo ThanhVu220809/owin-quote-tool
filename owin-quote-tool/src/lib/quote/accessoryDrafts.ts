@@ -233,12 +233,9 @@ export function normalizeAccessoryDraft(
   sortOrder = 0,
 ): ExtraAccessoryDraft {
   const unit = normalizeUnit(input.unit || 'BO') as ProductUnit;
-  // Blank/new accessory rows default to quantity 0 (not 1).
+  // SL = số cái (thường 1). KL = md/m² để nhân tiền. Không gộp SL→KL.
   const quantity = Math.max(0, numberOr(input.quantity, 0));
-  // m²/md: nếu KL trống/0 mà có SL → dùng SL làm KL (thành tiền = SL × đơn giá).
-  const rawWeight = unit === 'BO' ? 0 : numberOr(input.weight, NaN);
-  const weight =
-    unit === 'BO' ? 0 : Number.isFinite(rawWeight) && rawWeight > 0 ? rawWeight : quantity;
+  const weight = unit === 'BO' ? 0 : Math.max(0, numberOr(input.weight, 0));
   const unitPrice = numberOr(input.unitPrice, 0);
   const amount = calculateAccessoryDraftTotal({ unit, quantity, weight, unitPrice });
   return {
