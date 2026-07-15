@@ -794,21 +794,8 @@ export function QuoteView() {
               setMessage(options.successMessage || `Đã lưu ${saved.code} lên Supabase`);
             }
           } else {
+            // Có chỉnh sửa trong lúc đang lưu — chờ user bấm Lưu lại (không auto).
             setSaveUiState('pending');
-            if (currentHasItemsRef.current && followupAutosaveTimerRef.current === null) {
-              if (autosaveTimerRef.current !== null) {
-                window.clearTimeout(autosaveTimerRef.current);
-                autosaveTimerRef.current = null;
-              }
-              followupAutosaveTimerRef.current = window.setTimeout(() => {
-                followupAutosaveTimerRef.current = null;
-                if (formGenerationRef.current !== generation) return;
-                void persistQuoteRef.current?.('DRAFT', {
-                  learnSuggestions: false,
-                  quiet: true,
-                }).catch(() => undefined);
-              }, 0);
-            }
           }
         }
 
@@ -851,6 +838,7 @@ export function QuoteView() {
     persistQuoteRef.current = persistQuote;
   });
 
+  // Chỉ đánh dấu dirty / saved — KHÔNG tự ghi Supabase (user bấm "Lưu báo giá").
   useEffect(() => {
     currentSignatureRef.current = autosaveSignature;
     currentHasItemsRef.current = items.length > 0;
@@ -862,59 +850,22 @@ export function QuoteView() {
         }
         setSaveUiState('idle');
       }
-      return undefined;
+      return;
     }
     if (suppressNextAutosaveRef.current) {
       suppressNextAutosaveRef.current = false;
       lastSavedSignatureRef.current = autosaveSignature;
       setSaveUiState('saved');
       setSaveError('');
-      return undefined;
+      return;
     }
     if (lastSavedSignatureRef.current === autosaveSignature) {
-      setSaveUiState('saved');
-      return undefined;
+      setSaveUiState((current) => (current === 'error' || current === 'saving' ? current : 'saved'));
+      return;
     }
-
-    setSaveUiState('pending');
+    setSaveUiState((current) => (current === 'saving' ? current : 'pending'));
     setSaveError('');
-    const timer = window.setTimeout(() => {
-      if (autosaveTimerRef.current === timer) autosaveTimerRef.current = null;
-      void persistQuoteRef.current?.('DRAFT', {
-        learnSuggestions: false,
-        quiet: true,
-      }).catch(() => undefined);
-    }, 1_000);
-    autosaveTimerRef.current = timer;
-    return () => {
-      window.clearTimeout(timer);
-      if (autosaveTimerRef.current === timer) autosaveTimerRef.current = null;
-    };
   }, [autosaveSignature, items.length, view]);
-
-  useEffect(() => {
-    if (view !== 'form' || items.length === 0) return undefined;
-    const retryUnsavedDraft = () => {
-      if (!navigator.onLine || busyCountRef.current > 0) return;
-      if (lastSavedSignatureRef.current === currentSignatureRef.current) return;
-      cancelPendingAutosave();
-      void persistQuoteRef.current?.('DRAFT', {
-        learnSuggestions: false,
-        quiet: true,
-      }).catch(() => undefined);
-    };
-    const retryWhenVisible = () => {
-      if (document.visibilityState === 'visible') retryUnsavedDraft();
-    };
-    window.addEventListener('online', retryUnsavedDraft);
-    window.addEventListener('focus', retryUnsavedDraft);
-    document.addEventListener('visibilitychange', retryWhenVisible);
-    return () => {
-      window.removeEventListener('online', retryUnsavedDraft);
-      window.removeEventListener('focus', retryUnsavedDraft);
-      document.removeEventListener('visibilitychange', retryWhenVisible);
-    };
-  }, [items.length, view]);
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -929,8 +880,8 @@ export function QuoteView() {
 
   const retryLastSave = () => {
     const retry = retrySaveRef.current ?? {
-      status: 'DRAFT' as const,
-      options: { learnSuggestions: false, quiet: true },
+      status: 'SAVED' as const,
+      options: { learnSuggestions: true, quiet: false },
     };
     void persistQuoteRef.current?.(retry.status, retry.options).catch(() => undefined);
   };
@@ -944,28 +895,24 @@ export function QuoteView() {
     }
   };
 
-  const flushDraftBeforeLeaving = async (): Promise<boolean> => {
+  /** Rời form: không auto-save — hỏi nếu còn thay đổi chưa lưu. */
+  const confirmLeaveIfDirty = (): boolean => {
     cancelPendingAutosave();
     if (items.length === 0 || lastSavedSignatureRef.current === currentSignatureRef.current) {
       return true;
     }
-    try {
-      await persistQuote('DRAFT', { learnSuggestions: false, quiet: true });
-      return lastSavedSignatureRef.current === currentSignatureRef.current;
-    } catch {
-      return false;
-    }
+    return window.confirm('Có thay đổi chưa lưu. Thoát mà không lưu?');
   };
 
-  const backToQuoteList = async () => {
-    if (await flushDraftBeforeLeaving()) setView('list');
+  const backToQuoteList = () => {
+    if (confirmLeaveIfDirty()) setView('list');
   };
 
-  const startNewQuote = async () => {
-    if (await flushDraftBeforeLeaving()) openNewQuote();
+  const startNewQuote = () => {
+    if (confirmLeaveIfDirty()) openNewQuote();
   };
 
-  // In/Xuất KHÔNG lưu dữ liệu — chỉ tạo file từ dữ liệu hiện tại. Autosave (lúc gõ) lo phần lưu.
+  // In/Xuất KHÔNG lưu dữ liệu — chỉ tạo file. Lưu bằng nút «Lưu báo giá».
   const exportWord = async () => {
     if (items.length === 0) return;
     beginBusy();
@@ -1211,7 +1158,7 @@ export function QuoteView() {
   return (
     <section className="admin-page quote-workflow-page">
       <div className="toolbar quote-form-heading">
-        <button className="admin-back-button" onClick={() => void backToQuoteList()} aria-label="Quay lại danh sách báo giá">
+        <button className="admin-back-button" onClick={backToQuoteList} aria-label="Quay lại danh sách báo giá">
           <ArrowLeft size={20} />
         </button>
         <div>
@@ -1221,7 +1168,7 @@ export function QuoteView() {
           </p>
         </div>
         <div className="spacer" />
-        <button className="btn btn-ghost" disabled={saving} onClick={() => void startNewQuote()}>Báo giá mới</button>
+        <button className="btn btn-ghost" disabled={saving} onClick={startNewQuote}>Báo giá mới</button>
         <button className="btn btn-primary" disabled={items.length === 0 || saving} onClick={() => void saveManually()}>
           <Save size={17} style={{ verticalAlign: '-3px' }} /> {saving ? 'Đang lưu…' : 'Lưu báo giá'}
         </button>
@@ -1801,10 +1748,10 @@ function SaveFeedback({
   onRetry: () => void;
 }) {
   if (state === 'idle') {
-    return <div className="product-sub">Thêm ít nhất một hạng mục để bật tự động lưu.</div>;
+    return <div className="product-sub">Thêm hạng mục, rồi bấm «Lưu báo giá».</div>;
   }
   if (state === 'pending') {
-    return <div className="product-sub">Có thay đổi · sẽ tự lưu lên Supabase sau 1 giây…</div>;
+    return <div className="product-sub">Có thay đổi chưa lưu — bấm «Lưu báo giá».</div>;
   }
   if (state === 'saving') {
     return (
@@ -1816,12 +1763,12 @@ function SaveFeedback({
   if (state === 'error') {
     return (
       <div className="product-sub" style={{ color: 'var(--ios-red)' }} role="alert">
-        {error || 'Không thể tự động lưu.'}{' '}
+        {error || 'Không thể lưu.'}{' '}
         <button type="button" className="btn btn-ghost" onClick={onRetry}>Thử lưu lại</button>
       </div>
     );
   }
-  return <div className="product-sub" style={{ color: 'var(--ios-green)' }}>Đã tự động lưu trên Supabase.</div>;
+  return <div className="product-sub" style={{ color: 'var(--ios-green)' }}>Đã lưu trên Supabase.</div>;
 }
 
 function Field({

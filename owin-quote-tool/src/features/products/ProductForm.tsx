@@ -70,10 +70,8 @@ interface Props {
   registerCloseHandler?: (handler: (() => Promise<void>) | null) => void;
 }
 
-type AutosaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
-
-/** Shorter debounce: one CAS is enough once typing pauses; avoid feeling “lưu lâu”. */
-const AUTOSAVE_DELAY_MS = 380;
+/** Trạng thái lưu tay (không auto-save). */
+type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
 const UNIT_OPTIONS: { label: string; value: ProductUnit }[] = [
   { label: 'm²', value: 'M2' },
@@ -178,9 +176,8 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
     parseExtraAccessoriesJson(editing?.extraAccessories),
   );
   const [saving, setSaving] = useState(false);
-  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>(editing ? 'saved' : 'idle');
-  const [autosaveError, setAutosaveError] = useState<{ fingerprint: string; message: string } | null>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(editing ? 'saved' : 'idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
   const saveQueueRef = useRef(new SerialTaskQueue());
   const mountedRef = useRef(true);
   const closingRef = useRef(false);
@@ -303,13 +300,6 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
     latestDraftRef.current = { input: draftInput, fingerprint: draftFingerprint };
   }, [draftFingerprint, draftInput]);
 
-  const clearSaveTimer = useCallback(() => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-  }, []);
-
   const persistDraft = useCallback(async (
     input: SaveProductInput,
     fingerprint: string,
@@ -318,8 +308,8 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
     try {
       const saved = await saveQueueRef.current.run(async () => {
         if (mountedRef.current) {
-          setAutosaveStatus('saving');
-          setAutosaveError(null);
+          setSaveStatus('saving');
+          setSaveError(null);
         }
         const patch = changedProductFields(acknowledgedDraftRef.current, input);
         return onSaveRef.current(patch, {
@@ -332,76 +322,41 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
       lastSavedFingerprintRef.current = fingerprint;
       if (mountedRef.current) {
         setLastSavedFingerprint(fingerprint);
-        setAutosaveStatus('saved');
+        setSaveStatus('saved');
       }
       return true;
     } catch (error) {
       if (mountedRef.current) {
-        setAutosaveStatus('error');
-        setAutosaveError({ fingerprint, message: errorMessage(error) });
+        setSaveStatus('error');
+        setSaveError(errorMessage(error));
       }
       return false;
     }
   }, []);
 
-  useEffect(() => {
-    clearSaveTimer();
-    if (closingRef.current || !canSave || draftFingerprint === lastSavedFingerprint) return;
-
-    const input = draftInput;
-    const fingerprint = draftFingerprint;
-    saveTimerRef.current = setTimeout(() => {
-      saveTimerRef.current = null;
-      void persistDraft(input, fingerprint, false);
-    }, AUTOSAVE_DELAY_MS);
-
-    return clearSaveTimer;
-  }, [canSave, clearSaveTimer, draftFingerprint, draftInput, lastSavedFingerprint, persistDraft]);
-
-  const retryAutosave = useCallback(() => {
-    clearSaveTimer();
-    const latest = latestDraftRef.current;
-    if (!latest.input.name?.trim()) return;
-    void persistDraft(latest.input, latest.fingerprint, false);
-  }, [clearSaveTimer, persistDraft]);
-
-  const flushLatestDraft = useCallback(async (learnSuggestions: boolean): Promise<boolean> => {
-    let shouldLearnSuggestions = learnSuggestions;
-    for (;;) {
-      const latest = latestDraftRef.current;
-      if (!latest.input.name?.trim()) return false;
-      if (!shouldLearnSuggestions && latest.fingerprint === lastSavedFingerprintRef.current) return true;
-
-      const saved = await persistDraft(latest.input, latest.fingerprint, shouldLearnSuggestions);
-      if (!saved) return false;
-      shouldLearnSuggestions = false;
-      if (latestDraftRef.current.fingerprint === lastSavedFingerprintRef.current) return true;
-    }
-  }, [persistDraft]);
-
   const save = async () => {
     if (!canSave || saving) return;
-    clearSaveTimer();
     closingRef.current = true;
     setSaving(true);
-    const saved = await flushLatestDraft(true);
+    const latest = latestDraftRef.current;
+    const ok = await persistDraft(latest.input, latest.fingerprint, true);
     closingRef.current = false;
     if (mountedRef.current) setSaving(false);
-    if (saved) onCancelRef.current();
+    if (ok) onCancelRef.current();
   };
 
   const requestClose = useCallback(async () => {
     if (closingRef.current) return;
-    clearSaveTimer();
-    closingRef.current = true;
-    await saveQueueRef.current.waitForIdle();
     const latest = latestDraftRef.current;
-    const saved = !latest.input.name?.trim()
-      ? true
-      : await flushLatestDraft(false);
-    closingRef.current = false;
-    if (saved) onCancelRef.current();
-  }, [clearSaveTimer, flushLatestDraft]);
+    const dirty =
+      Boolean(latest.input.name?.trim()) &&
+      latest.fingerprint !== lastSavedFingerprintRef.current;
+    if (dirty) {
+      const leave = window.confirm('Có thay đổi chưa lưu. Thoát mà không lưu?');
+      if (!leave) return;
+    }
+    onCancelRef.current();
+  }, []);
 
   useEffect(() => {
     registerCloseHandler?.(requestClose);
@@ -412,9 +367,8 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      clearSaveTimer();
     };
-  }, [clearSaveTimer]);
+  }, []);
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -427,15 +381,16 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
     return () => window.removeEventListener('beforeunload', warnBeforeUnload);
   }, []);
 
-  const displayedAutosaveStatus: AutosaveStatus = !canSave
+  // Derive UI status — không auto-save.
+  const displayedSaveStatus: SaveStatus = !canSave
     ? 'idle'
-    : draftFingerprint === lastSavedFingerprint
-      ? 'saved'
-      : autosaveStatus === 'error' && autosaveError?.fingerprint === draftFingerprint
+    : saveStatus === 'saving'
+      ? 'saving'
+      : saveStatus === 'error' && draftFingerprint !== lastSavedFingerprint
         ? 'error'
-        : autosaveStatus === 'saving'
-          ? 'saving'
-          : 'pending';
+        : draftFingerprint === lastSavedFingerprint
+          ? 'saved'
+          : 'dirty';
 
   return (
     <div className="card product-editor-card">
@@ -594,24 +549,25 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
 
       <div className="toolbar product-editor-actions">
         <div
-          className={`product-autosave-status is-${displayedAutosaveStatus}`}
-          role={displayedAutosaveStatus === 'error' ? 'alert' : 'status'}
+          className={`product-autosave-status is-${displayedSaveStatus === 'dirty' ? 'pending' : displayedSaveStatus}`}
+          role={displayedSaveStatus === 'error' ? 'alert' : 'status'}
           aria-live="polite"
         >
-          {displayedAutosaveStatus === 'idle' && 'Nhập tên sản phẩm để bật tự lưu.'}
-          {(displayedAutosaveStatus === 'pending' || displayedAutosaveStatus === 'saving') && 'Đang tự lưu…'}
-          {displayedAutosaveStatus === 'saved' && 'Đã lưu trên Supabase.'}
-          {displayedAutosaveStatus === 'error' && (
+          {displayedSaveStatus === 'idle' && 'Nhập tên sản phẩm, rồi bấm Lưu.'}
+          {displayedSaveStatus === 'dirty' && 'Có thay đổi — bấm Lưu để ghi Supabase.'}
+          {displayedSaveStatus === 'saving' && 'Đang lưu…'}
+          {displayedSaveStatus === 'saved' && 'Đã lưu trên Supabase.'}
+          {displayedSaveStatus === 'error' && (
             <>
-              <span>Lỗi tự lưu: {autosaveError?.message}</span>
-              <button type="button" className="btn-link" onClick={retryAutosave}>Thử lại</button>
+              <span>Lỗi lưu: {saveError}</span>
+              <button type="button" className="btn-link" onClick={() => void save()}>Thử lại</button>
             </>
           )}
         </div>
         <div className="spacer" />
         <button type="button" className="btn btn-ghost" onClick={() => void requestClose()}>Quay lại</button>
-        <button type="button" className="btn btn-primary" onClick={save} disabled={!canSave || saving}>
-          {saving ? 'Đang lưu…' : 'Lưu ngay'}
+        <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={!canSave || saving}>
+          {saving ? 'Đang lưu…' : 'Lưu'}
         </button>
       </div>
     </div>
