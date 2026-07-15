@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ClipboardCopy, Download, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
+import { FileText, Printer } from 'lucide-react';
 import { openImageLightbox } from '@/components/imageLightboxStore';
 import {
   calculateAluminumEstimatorRow,
   calculateAluminumEstimatorTotals,
   formatEstimatorInputNumber,
   formatEstimatorMoney,
-  formatEstimatorQuantity,
   parseEstimatorNumber,
   type AluminumEstimatorCalculatedRow,
   type AluminumEstimatorTotals,
@@ -17,15 +16,10 @@ import {
   getDefaultAluminumEstimatorRows,
   type AluminumEstimatorDefaultRow,
 } from '@/lib/aluminum-estimator/aluminum-systems';
-import {
-  buildAluminumEstimatorDetailText,
-  buildAluminumEstimatorSummaryText,
-} from '@/lib/aluminum-estimator/aluminum-estimator-copy';
 import { getAluminumProfileImageDisplay } from '@/lib/aluminum-estimator/aluminum-profile-image';
 import {
   buildAluminumPrintModel,
   type AluminumPrintInputSystem,
-  type AluminumPrintModel,
   type AluminumPrintScope,
 } from '@/lib/aluminum-estimator-print';
 import {
@@ -37,7 +31,6 @@ import { subscribeToAppData } from '@/features/supabase/sharedDataRepo';
 import {
   ALUMINUM_ESTIMATOR_STORAGE_KEY,
   aluminumEstimatorStateContentEquals,
-  clearAluminumEstimatorStorage,
   ALUMINUM_COLORS,
   createDefaultAluminumEstimatorState,
   getAluminumEstimatorInput,
@@ -73,35 +66,12 @@ function normalizeInput(input: AluminumEstimatorInputState) {
   };
 }
 
-function csvCell(value: string | number): string {
-  const raw = String(value);
-  return /[",\n]/.test(raw) ? `"${raw.replaceAll('"', '""')}"` : raw;
-}
-
-function buildEstimatorCsv(model: AluminumPrintModel): string {
-  const header = ['STT', 'Màu', 'Mã cây', 'Mô tả / Tên cây', 'SL cây', 'Đơn giá/cây', 'Thành tiền'];
-  const body = model.sections.flatMap((section) =>
-    section.rows.map((row) => [
-      row.stt,
-      row.color,
-      row.code,
-      row.description,
-      row.quantity,
-      row.unitPrice,
-      row.lineTotal,
-    ]),
-  );
-
-  return [header, ...body].map((line) => line.map(csvCell).join(',')).join('\n');
-}
-
 function buildRowsForSystem(systemId: string, pageState: AluminumEstimatorPageState): AluminumEstimatorRowViewModel[] {
   return getDefaultAluminumEstimatorRows(systemId).map((raw) => {
-    // Màu áp cho tất cả thanh theo lựa chọn ở trên (thay màu mặc định của hệ).
+    // Màu áp cho tất cả thanh theo lựa chọn ở trên.
     const source = { ...raw, color: pageState.color };
     const input = getAluminumEstimatorInput(pageState.inputRows, source.systemId, source.rowId);
     const calculated = calculateAluminumEstimatorRow(source, normalizeInput(input));
-
     return { source, input, calculated };
   });
 }
@@ -109,7 +79,6 @@ function buildRowsForSystem(systemId: string, pageState: AluminumEstimatorPageSt
 function summarizeSystems(pageState: AluminumEstimatorPageState): AluminumEstimatorSystemTotals[] {
   return ALUMINUM_SYSTEMS.map((system) => {
     const rows = buildRowsForSystem(system.id, pageState);
-
     return {
       systemId: system.id,
       systemName: system.name,
@@ -121,7 +90,6 @@ function summarizeSystems(pageState: AluminumEstimatorPageState): AluminumEstima
 function buildPrintInputSystems(pageState: AluminumEstimatorPageState): AluminumPrintInputSystem[] {
   return ALUMINUM_SYSTEMS.map((system) => {
     const rows = buildRowsForSystem(system.id, pageState);
-
     return {
       systemId: system.id,
       systemName: system.name,
@@ -141,41 +109,11 @@ function buildPrintInputSystems(pageState: AluminumEstimatorPageState): Aluminum
   });
 }
 
-async function writeClipboardText(text: string): Promise<boolean> {
-  if (!navigator.clipboard) return false;
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function downloadTextFile(fileName: string, content: string, type: string): void {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function formatUpdatedAt(value: string | null): string {
-  if (!value) return 'Chưa có dữ liệu tạm';
-  return new Intl.DateTimeFormat('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(value));
-}
-
 export function TinhTamNhomView() {
   const [pageState, setPageState] = useState<AluminumEstimatorPageState>(() => createDefaultAluminumEstimatorState());
   const [hydrated, setHydrated] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [exportScope, setExportScope] = useState<AluminumPrintScope>('current-system');
   const [printScope, setPrintScope] = useState<AluminumPrintScope>('all-systems');
   const [autosavePhase, setAutosavePhase] = useState<AutosavePhase>('loading');
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -226,8 +164,6 @@ export function TinhTamNhomView() {
       })
       .catch(() => {
         if (!mounted || serverObservation.current !== observationAtStart) return;
-        // Never save the blank fallback until a hosted read has succeeded. A
-        // temporary load failure must not overwrite another machine's data.
         setInitialLoadFailed(true);
         setAutosavePhase('error');
       });
@@ -319,10 +255,8 @@ export function TinhTamNhomView() {
     const unsubscribe = subscribeToAppData(
       ALUMINUM_ESTIMATOR_STORAGE_KEY,
       scheduleRefresh,
-      (status) => {
-        // The first subscription closes the REST/subscription race; every later
-        // SUBSCRIBED status repairs any events missed during a reconnect.
-        if (status === 'SUBSCRIBED') scheduleRefresh();
+      (statusValue) => {
+        if (statusValue === 'SUBSCRIBED') scheduleRefresh();
       },
     );
 
@@ -345,7 +279,6 @@ export function TinhTamNhomView() {
       event.preventDefault();
       event.returnValue = '';
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [autosavePhase, hydrated]);
@@ -376,7 +309,6 @@ export function TinhTamNhomView() {
       ) as Record<string, number>,
     [systemSummaries],
   );
-  const activeSystemCount = systemSummaries.filter((summary) => summary.totals.enteredRowCount > 0).length;
   const printInputSystems = useMemo(() => buildPrintInputSystems(pageState), [pageState]);
   const currentPrintModel = useMemo(
     () =>
@@ -403,7 +335,6 @@ export function TinhTamNhomView() {
     updatePageState((current) => {
       const currentSystemRows = current.inputRows[selectedSystem.id] ?? {};
       const currentInput = currentSystemRows[rowId] ?? { quantity: '', unitPrice: '', note: '' };
-
       return touchAluminumEstimatorState({
         ...current,
         inputRows: {
@@ -420,159 +351,128 @@ export function TinhTamNhomView() {
     });
   };
 
-  const clearCurrentSystem = () => {
-    if (!selectedSystem) return;
-    if (!window.confirm('Xóa số liệu tạm của hệ này?')) return;
-
-    updatePageState((current) => {
-      const nextInputRows = { ...current.inputRows };
-      delete nextInputRows[selectedSystem.id];
-
-      return touchAluminumEstimatorState({
-        ...current,
-        inputRows: nextInputRows,
-      });
-    });
-  };
-
-  const clearAll = () => {
-    if (!window.confirm('Xóa toàn bộ số liệu tạm?')) return;
-    void clearAluminumEstimatorStorage().catch(() => setAutosavePhase('error'));
-    updatePageState(() => touchAluminumEstimatorState(createDefaultAluminumEstimatorState()));
-    setCopyStatus(null);
-  };
-
-  const copyTotal = () => {
-    const text = buildAluminumEstimatorSummaryText(
-      systemSummaries.map((summary) => ({
-        system: { id: summary.systemId, name: summary.systemName },
-        totals: summary.totals,
-      })),
-    );
-
-    void writeClipboardText(text).then((ok) => setCopyStatus(ok ? 'Đã copy tổng.' : 'Không copy được tổng.'));
-  };
-
-  const copyCurrentSystem = () => {
-    const text = buildAluminumEstimatorDetailText(selectedSystem?.name ?? '', rowViewModels);
-    void writeClipboardText(text).then((ok) => setCopyStatus(ok ? 'Đã copy chi tiết hệ này.' : 'Không copy được chi tiết.'));
-  };
-
-  const exportCsv = () => {
-    if (allPrintModel.rowCount === 0) {
-      setCopyStatus('Chưa có dòng nào để xuất CSV.');
-      return;
-    }
-
-    const csv = `\uFEFF${buildEstimatorCsv(allPrintModel)}`;
-    downloadTextFile('bang-tinh-tam-gia-nhom-tat-ca-he.csv', csv, 'text/csv;charset=utf-8');
-  };
-
-  const printPdf = (scope: AluminumPrintScope) => {
-    const model = scope === 'current-system' ? currentPrintModel : allPrintModel;
+  const printPdf = () => {
+    const model = exportScope === 'current-system' ? currentPrintModel : allPrintModel;
     if (model.rowCount === 0) {
-      setCopyStatus('Chưa có dòng nào để in.');
+      setStatus('Chưa có dòng nào để in.');
       return;
     }
-
-    setPrintScope(scope);
+    setStatus(null);
+    setPrintScope(exportScope);
     window.setTimeout(() => window.print(), 80);
   };
 
-  const exportWord = (scope: AluminumPrintScope) => {
-    const model = scope === 'current-system' ? currentPrintModel : allPrintModel;
+  const exportWord = () => {
+    const model = exportScope === 'current-system' ? currentPrintModel : allPrintModel;
     if (model.rowCount === 0) {
-      setCopyStatus('Chưa có dòng nào để xuất Word.');
+      setStatus('Chưa có dòng nào để xuất Word.');
       return;
     }
-
-    void downloadAluminumDocx(model).catch(() => setCopyStatus('Không xuất được Word.'));
+    setStatus(null);
+    void downloadAluminumDocx(model)
+      .then(() => setStatus('Đã tải file Word.'))
+      .catch(() => setStatus('Không xuất được Word.'));
   };
 
   return (
     <section className="admin-page aluminum-page">
-      <div className="aluminum-hero">
+      <div className="aluminum-hero aluminum-hero-compact">
         <div>
-          <h1 className="app-title">Bảng tính tạm giá nhôm</h1>
-          <p className="app-subtitle">Nhập số cây và đơn giá để tính nhanh chi phí nhôm.</p>
+          <h1 className="app-title">Bảng tính nhôm</h1>
+          <p className="app-subtitle">Nhập SL + đơn giá · chỉ xuất Word / In PDF (không lưu file vào hệ thống).</p>
         </div>
-        <AluminumActions
-          copyStatus={copyStatus}
-          onClearCurrentSystem={clearCurrentSystem}
-          onClearAll={clearAll}
-          onCopyTotal={copyTotal}
-          onCopyCurrentSystem={copyCurrentSystem}
-          onExportCsv={exportCsv}
-          onPrintPdfCurrent={() => printPdf('current-system')}
-          onPrintPdfAll={() => printPdf('all-systems')}
-          onExportWordCurrent={() => exportWord('current-system')}
-          onExportWordAll={() => exportWord('all-systems')}
-        />
+        <div className="aluminum-export-bar">
+          <div className="aluminum-scope-toggle" role="group" aria-label="Phạm vi xuất">
+            <button
+              type="button"
+              className={exportScope === 'current-system' ? 'active' : ''}
+              onClick={() => setExportScope('current-system')}
+            >
+              Hệ này
+            </button>
+            <button
+              type="button"
+              className={exportScope === 'all-systems' ? 'active' : ''}
+              onClick={() => setExportScope('all-systems')}
+            >
+              Tất cả hệ
+            </button>
+          </div>
+          <button className="btn btn-primary" type="button" onClick={exportWord}>
+            <FileText size={16} /> Word
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={printPdf}>
+            <Printer size={16} /> In PDF
+          </button>
+          {status && <span className="aluminum-status">{status}</span>}
+        </div>
       </div>
 
-      <AluminumSystemTabs
-        selectedSystemId={selectedSystem?.id ?? ''}
-        rowCountsBySystem={rowCountsBySystem}
-        onSelect={(systemId) => updatePageState((current) => touchAluminumEstimatorState({
-          ...current,
-          selectedSystemId: systemId,
-        }))}
-      />
-
-      {selectedSystem && (
-        <section className="aluminum-system-meta">
-          <div>
-            <span>Hệ: <strong>{selectedSystem.name}</strong></span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Màu:
-              <select
-                className="input"
-                value={pageState.color}
-                onChange={(e) => updatePageState((current) => touchAluminumEstimatorState({ ...current, color: e.target.value }))}
-                style={{ width: 'auto', minWidth: 130 }}
+      <div className="aluminum-toolbar-row">
+        <AluminumSystemTabs
+          selectedSystemId={selectedSystem?.id ?? ''}
+          rowCountsBySystem={rowCountsBySystem}
+          systemTotals={systemSummaries}
+          onSelect={(systemId) => updatePageState((current) => touchAluminumEstimatorState({
+            ...current,
+            selectedSystemId: systemId,
+          }))}
+        />
+        <div className="aluminum-color-block">
+          <span className="aluminum-color-label">Màu</span>
+          <div className="aluminum-color-chips" role="group" aria-label="Chọn màu nhôm">
+            {ALUMINUM_COLORS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`aluminum-color-chip${pageState.color === color ? ' active' : ''}`}
+                onClick={() => updatePageState((current) => touchAluminumEstimatorState({ ...current, color }))}
               >
-                {ALUMINUM_COLORS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </span>
-            <span>Số dòng: <strong>{rowViewModels.length}</strong></span>
-            {selectedSystem.customerName && <span>Khách: <strong>{selectedSystem.customerName}</strong></span>}
+                {color}
+              </button>
+            ))}
           </div>
-          <span className={`aluminum-autosave aluminum-autosave-${autosavePhase}`}>
-            {autosavePhase === 'loading' && 'Đang tải dữ liệu Supabase…'}
-            {autosavePhase === 'idle' && 'Sẵn sàng tự lưu lên Supabase.'}
-            {autosavePhase === 'pending' && 'Sắp tự lưu…'}
-            {autosavePhase === 'saving' && 'Đang tự lưu lên Supabase…'}
-            {autosavePhase === 'saved' && `Đã tự lưu ${formatUpdatedAt(lastSavedAt)}`}
-            {autosavePhase === 'error' && (
-              <>
-                Tự lưu thất bại.{' '}
-                <button
-                  type="button"
-                  className="btn-link"
-                  onClick={() => {
-                    if (initialLoadFailed) {
-                      setHydrated(false);
-                      setAutosavePhase('loading');
-                      setLoadAttempt((value) => value + 1);
-                    } else {
-                      setAutosaveRetry((value) => value + 1);
-                    }
-                  }}
-                >
-                  Thử lại
-                </button>
-              </>
-            )}
-          </span>
-        </section>
-      )}
+        </div>
+      </div>
 
-      <AluminumSummary
-        currentSystemName={selectedSystem?.name ?? ''}
-        currentTotals={currentTotals}
-        allTotals={allTotals}
-        activeSystemCount={activeSystemCount}
-        updatedAt={lastSavedAt}
-      />
+      <div className="aluminum-totals-strip">
+        <div className="aluminum-total-chip">
+          <span>Tổng hệ {selectedSystem?.name ?? ''}</span>
+          <strong>{formatEstimatorMoney(currentTotals.totalAmount)} đ</strong>
+        </div>
+        <div className="aluminum-total-chip aluminum-total-chip-all">
+          <span>Tổng tất cả hệ</span>
+          <strong>{formatEstimatorMoney(allTotals.totalAmount)} đ</strong>
+        </div>
+        <span className={`aluminum-autosave aluminum-autosave-${autosavePhase}`}>
+          {autosavePhase === 'loading' && 'Đang tải…'}
+          {autosavePhase === 'idle' && 'Sẵn sàng'}
+          {autosavePhase === 'pending' && 'Sắp lưu…'}
+          {autosavePhase === 'saving' && 'Đang lưu…'}
+          {autosavePhase === 'saved' && (lastSavedAt ? 'Đã lưu' : 'Sẵn sàng')}
+          {autosavePhase === 'error' && (
+            <>
+              Lỗi lưu.{' '}
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => {
+                  if (initialLoadFailed) {
+                    setHydrated(false);
+                    setAutosavePhase('loading');
+                    setLoadAttempt((value) => value + 1);
+                  } else {
+                    setAutosaveRetry((value) => value + 1);
+                  }
+                }}
+              >
+                Thử lại
+              </button>
+            </>
+          )}
+        </span>
+      </div>
+
       <AluminumTable rows={rowViewModels} onRowChange={updateRow} />
 
       <section className="aluminum-print-root" id="aluminum-estimator-print-root">
@@ -605,81 +505,28 @@ export function TinhTamNhomView() {
   );
 }
 
-function AluminumActions({
-  copyStatus,
-  onClearCurrentSystem,
-  onClearAll,
-  onCopyTotal,
-  onCopyCurrentSystem,
-  onExportCsv,
-  onPrintPdfCurrent,
-  onPrintPdfAll,
-  onExportWordCurrent,
-  onExportWordAll,
-}: {
-  copyStatus: string | null;
-  onClearCurrentSystem: () => void;
-  onClearAll: () => void;
-  onCopyTotal: () => void;
-  onCopyCurrentSystem: () => void;
-  onExportCsv: () => void;
-  onPrintPdfCurrent: () => void;
-  onPrintPdfAll: () => void;
-  onExportWordCurrent: () => void;
-  onExportWordAll: () => void;
-}) {
-  return (
-    <div className="aluminum-actions">
-      <div className="aluminum-actions-group" role="group" aria-label="Xuất file">
-        <button className="btn btn-primary" type="button" onClick={onExportWordCurrent} title="Xuất Word hệ đang chọn">
-          <FileText size={16} /> Word
-        </button>
-        <button className="btn btn-ghost" type="button" onClick={onExportWordAll} title="Xuất Word tất cả hệ">
-          Word tất cả
-        </button>
-        <button className="btn btn-ghost" type="button" onClick={onPrintPdfCurrent} title="In / PDF hệ đang chọn">
-          <Printer size={16} /> In
-        </button>
-        <button className="btn btn-ghost" type="button" onClick={onPrintPdfAll} title="In / PDF tất cả hệ">
-          In tất cả
-        </button>
-      </div>
-      <div className="aluminum-actions-group aluminum-actions-secondary" role="group" aria-label="Tiện ích">
-        <button className="btn btn-ghost" type="button" onClick={onCopyCurrentSystem} title="Copy bảng hệ đang chọn">
-          <ClipboardCopy size={16} /> Copy
-        </button>
-        <button className="btn btn-ghost" type="button" onClick={onCopyTotal} title="Copy tổng tất cả hệ">
-          Copy tổng
-        </button>
-        <button className="btn btn-ghost" type="button" onClick={onExportCsv} title="Xuất CSV">
-          <Download size={16} /> CSV
-        </button>
-        <button className="btn btn-ghost" type="button" onClick={onClearCurrentSystem} title="Xóa số liệu hệ đang chọn">
-          <RotateCcw size={16} /> Xóa hệ
-        </button>
-        <button className="btn btn-danger" type="button" onClick={onClearAll} title="Xóa toàn bộ số liệu">
-          <Trash2 size={16} /> Xóa hết
-        </button>
-      </div>
-      {copyStatus && <span className="aluminum-status">{copyStatus}</span>}
-    </div>
-  );
-}
-
 function AluminumSystemTabs({
   selectedSystemId,
   rowCountsBySystem,
+  systemTotals,
   onSelect,
 }: {
   selectedSystemId: string;
   rowCountsBySystem: Record<string, number>;
+  systemTotals: AluminumEstimatorSystemTotals[];
   onSelect: (systemId: string) => void;
 }) {
+  const totalById = useMemo(
+    () => Object.fromEntries(systemTotals.map((s) => [s.systemId, s.totals.totalAmount])),
+    [systemTotals],
+  );
+
   return (
     <div className="aluminum-tabs">
       {ALUMINUM_SYSTEMS.map((system) => {
         const isActive = system.id === selectedSystemId;
         const rowCount = rowCountsBySystem[system.id] ?? 0;
+        const amount = totalById[system.id] ?? 0;
 
         return (
           <button
@@ -689,62 +536,12 @@ function AluminumSystemTabs({
             onClick={() => onSelect(system.id)}
           >
             <span>{system.name}</span>
-            {rowCount > 0 && <strong>{rowCount}</strong>}
+            {rowCount > 0 && (
+              <strong className="aluminum-tab-amount">{formatEstimatorMoney(amount)} đ</strong>
+            )}
           </button>
         );
       })}
-    </div>
-  );
-}
-
-function AluminumSummary({
-  currentSystemName,
-  currentTotals,
-  allTotals,
-  activeSystemCount,
-  updatedAt,
-}: {
-  currentSystemName: string;
-  currentTotals: AluminumEstimatorTotals;
-  allTotals: AluminumEstimatorTotals;
-  activeSystemCount: number;
-  updatedAt: string | null;
-}) {
-  return (
-    <section className="aluminum-summary-grid">
-      <div className="aluminum-summary-card">
-        <div className="aluminum-card-heading">
-          <span>{currentSystemName}</span>
-          <strong>Hệ hiện tại</strong>
-        </div>
-        <div className="aluminum-metric-grid three">
-          <Metric label="Tổng SL cây" value={formatEstimatorQuantity(currentTotals.totalQuantity)} />
-          <Metric label="Tổng tạm tính hệ" value={`${formatEstimatorMoney(currentTotals.totalAmount)} đ`} highlight />
-          <Metric label="Dòng có nhập" value={String(currentTotals.enteredRowCount)} />
-        </div>
-      </div>
-
-      <div className="aluminum-summary-card wide">
-        <div className="aluminum-card-heading">
-          <span>Tất cả hệ</span>
-          <strong>Đã lưu tạm: {formatUpdatedAt(updatedAt)}</strong>
-        </div>
-        <div className="aluminum-metric-grid four">
-          <Metric label="Tổng SL cây tất cả hệ" value={formatEstimatorQuantity(allTotals.totalQuantity)} />
-          <Metric label="Tổng tạm tính" value={`${formatEstimatorMoney(allTotals.totalAmount)} đ`} highlight />
-          <Metric label="Số hệ có dữ liệu" value={String(activeSystemCount)} />
-          <Metric label="Số dòng có nhập" value={String(allTotals.enteredRowCount)} />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Metric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="aluminum-metric">
-      <span>{label}</span>
-      <strong className={highlight ? 'highlight' : ''}>{value}</strong>
     </div>
   );
 }
@@ -777,22 +574,21 @@ function AluminumTable({
         if (key === 'unitPrice') onRowChange(rowId, { unitPrice: formatEstimatorInputNumber(value) });
       }}
       className={className}
-      placeholder={key === 'quantity' ? '0' : '0 đ'}
+      placeholder={key === 'quantity' ? '0' : '0'}
     />
   );
 
   return (
     <div className="aluminum-table-wrap">
-      <table className="aluminum-table">
+      <table className="aluminum-table aluminum-table-compact">
         <thead>
           <tr>
             <th>STT</th>
-            <th>Màu</th>
             <th>Hình</th>
             <th>Mã cây</th>
-            <th>Mô tả / Tên cây</th>
-            <th>SL cây</th>
-            <th>Đơn giá/cây</th>
+            <th>Mô tả</th>
+            <th>SL</th>
+            <th>Đơn giá</th>
             <th>Thành tiền</th>
           </tr>
         </thead>
@@ -800,12 +596,11 @@ function AluminumTable({
           {rows.map(({ source, input, calculated }) => {
             const image = getAluminumProfileImageDisplay(source.image);
             const isActive = calculated.quantity > 0 || parseEstimatorNumber(input.unitPrice) > 0;
-            const lineTotalText = calculated.lineTotal > 0 ? `${formatEstimatorMoney(calculated.lineTotal)} đ` : '0 đ';
+            const lineTotalText = calculated.lineTotal > 0 ? `${formatEstimatorMoney(calculated.lineTotal)} đ` : '—';
 
             return (
               <tr key={source.rowId} className={isActive ? 'active' : ''}>
                 <td className="center">{source.stt}</td>
-                <td className="center">{source.color}</td>
                 <td>
                   <div className="aluminum-image-cell">
                     {image.kind === 'image' ? (
