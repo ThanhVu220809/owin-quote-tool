@@ -134,10 +134,10 @@ export function FixedAccessoryPackageEditor({
           Chỉ chuẩn hoá <strong>tên</strong>, không ép đơn giá.
         </div>
       )}
-      {orphans.length > 0 && (
+      {orphans.length > 0 && orphans.length <= 24 && (
         <div className="hint accessory-orphan-hint">
-          Phụ kiện ngoài bộ chuẩn (có thể gộp): {orphans.slice(0, 8).join(' · ')}
-          {orphans.length > 8 ? ` · +${orphans.length - 8}` : ''}
+          Món lẻ ngoài bộ chuẩn (gợi ý gộp): {orphans.slice(0, 6).join(' · ')}
+          {orphans.length > 6 ? ` · +${orphans.length - 6}` : ''}
         </div>
       )}
 

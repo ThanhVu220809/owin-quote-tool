@@ -112,12 +112,17 @@ describe('accessoryPackages', () => {
       ...products,
       product({
         id: 'p3',
-        accessories: [{ name: 'Ray trượt custom 999', quantityPerSet: 1, unitPriceVnd: 1, note: null }],
+        accessories: [
+          { name: 'Ray trượt custom 999', quantityPerSet: 1, unitPriceVnd: 1, note: null },
+          // Package titles must never appear as "orphan item" hints.
+          { name: 'Bộ Phụ Kiện Cửa Thủy Lực', quantityPerSet: 1, unitPriceVnd: 0, note: null },
+        ],
         fixedAccessoryPackage: null,
       }),
     ];
     const orphans = findOrphanAccessoryNames(withOrphan, catalog);
     expect(orphans.some((name) => /Ray trượt custom/i.test(name))).toBe(true);
+    expect(orphans.some((name) => /Bộ Phụ Kiện/i.test(name))).toBe(false);
   });
 
   it('recognizes blank/default package items', () => {

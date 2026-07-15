@@ -147,31 +147,41 @@ export function findOrphanAccessoryNames(
   catalog: readonly AccessoryPackageTemplate[],
 ): string[] {
   const known = new Set<string>();
+  // Package titles themselves are not orphan item names.
   for (const pkg of catalog) {
+    known.add(normalizeSuggestionText(pkg.name));
     for (const item of pkg.items) {
       known.add(normalizeSuggestionText(item.name));
     }
   }
   for (const ruleName of [
     'Bản Lề Sàn Alder',
+    'Bản Lề Sàn',
     'Ngỗng Trên Dưới',
     'Tay Nắm KOLN',
+    'Tay Nắm',
     'Khóa Bi Ngang',
     'Chốt Cánh Phụ',
     'Vật Tư Phụ',
+    'Vật tư phụ',
     'Khóa Đơn Điểm',
     'Bản Lề',
+    'Bản Lề Cối',
     'Khóa Đa Điểm',
     'Bánh Xe',
     'Chốt Sập',
     'Khóa',
     'Tay Đa Điểm',
     'Thanh Chuyển Động Đa Điểm',
+    'Bộ Chuyển Động 5 Thứ',
     'Bản Lề Chữ A',
     'Tay Đơn Điểm',
   ]) {
     known.add(normalizeSuggestionText(ruleName));
   }
+
+  const looksLikePackageTitle = (name: string) =>
+    /^b[oộ]\s+ph[uụ]\s*ki[eệ]n/i.test(name) || /^bộ\s+/i.test(name);
 
   const orphanCounts = new Map<string, { name: string; count: number }>();
   for (const product of products) {
@@ -182,7 +192,7 @@ export function findOrphanAccessoryNames(
     ];
     for (const raw of names) {
       const name = String(raw || '').trim();
-      if (!name) continue;
+      if (!name || looksLikePackageTitle(name)) continue;
       const key = normalizeSuggestionText(name);
       if (known.has(key)) continue;
       const prev = orphanCounts.get(key);

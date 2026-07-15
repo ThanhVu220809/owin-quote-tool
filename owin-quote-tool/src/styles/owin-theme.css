@@ -1,36 +1,206 @@
 /*
- * OWIN THEME — phủ lên ios.css để đổi sang phong cách UI mới (lấy từ web.zip globals.css).
- * Giữ nguyên class hiện có; chỉ remap token màu/bo góc + tinh chỉnh header, bảng, preview A4, in PDF.
+ * OWIN THEME — design system cân bằng (desktop / tablet / phone).
  * Import SAU ios.css trong main.tsx.
  */
 :root {
-  /* Bảng màu Apple/OWIN từ zip */
-  --owin-primary: #0f2a3d;      /* navy đậm */
-  --owin-gold: #c8a45d;         /* vàng đồng */
-  --owin-action: #0066cc;       /* xanh hành động */
+  /* Palette */
+  --owin-primary: #0f2a3d;
+  --owin-gold: #c8a45d;
+  --owin-action: #0066cc;
   --owin-action-hover: #0071e3;
   --owin-ink: #1d1d1f;
   --owin-ink-muted: #6e6e73;
   --owin-bg: #f5f5f7;
   --owin-border: #e5e5ea;
+  --owin-surface: #ffffff;
+  --owin-soft: #f0f2f5;
 
-  /* Remap token cũ (ios) → palette mới, để toàn bộ class hiện có đổi theo */
+  /* Radius scale — bo tròn nhất quán */
+  --r-xs: 10px;
+  --r-sm: 14px;
+  --r-md: 18px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* Type scale — chữ đọc rõ, không “nhỏ xíu” so với control */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+  --fs-title: clamp(22px, 2.2vw, 28px);
+
+  /* Spacing / control heights */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --control-h: 44px;
+  --control-h-sm: 40px;
+  --icon-btn: 40px;
+  --touch: 44px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 42, 61, 0.05);
+  --shadow-md: 0 8px 24px rgba(15, 42, 61, 0.08);
+  --shadow-lg: 0 18px 48px rgba(15, 42, 61, 0.14);
+
+  /* Remap legacy iOS tokens */
   --ios-blue: var(--owin-action);
   --ios-green: #1f8a5b;
   --ios-red: #c2410c;
   --ios-gray1: var(--owin-ink-muted);
   --ios-gray5: var(--owin-border);
-  --ios-gray6: #eff0f2;
+  --ios-gray6: var(--owin-soft);
   --ios-label: var(--owin-ink);
   --ios-label2: #3c3c43;
   --ios-bg: var(--owin-bg);
-  --ios-card: #ffffff;
-  --ios-radius: 20px;
-  --ios-radius-sm: 12px;
-  --ios-shadow: 0 1px 2px rgba(15, 42, 61, 0.05), 0 10px 30px rgba(15, 42, 61, 0.06);
+  --ios-card: var(--owin-surface);
+  --ios-radius: var(--r-lg);
+  --ios-radius-sm: var(--r-sm);
+  --ios-shadow: var(--shadow-sm), var(--shadow-md);
 
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
     'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--owin-ink);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ─── Base rebalance (chống chữ bé / control phình) ─── */
+html, body {
+  min-width: 0;
+  overflow-x: hidden;
+}
+body {
+  background: var(--owin-bg);
+  color: var(--owin-ink);
+  font-size: var(--fs-md);
+}
+img, svg, video, canvas {
+  max-width: 100%;
+}
+button, input, select, textarea {
+  font: inherit;
+  max-width: 100%;
+}
+/* Number inputs: ẩn spinner (tránh “phình” cột SL) */
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.app-title {
+  font-size: var(--fs-title) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 4px !important;
+}
+.app-subtitle {
+  font-size: var(--fs-md) !important;
+  line-height: 1.4;
+  margin: 0 !important;
+  color: var(--owin-ink-muted);
+}
+.section-label {
+  font-size: var(--fs-sm) !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.02em;
+}
+
+/* Unified controls */
+.input,
+.btn,
+.btn-primary,
+.btn-ghost,
+.btn-danger,
+select.input,
+textarea.input {
+  border-radius: var(--r-sm) !important;
+  font-size: var(--fs-md) !important;
+  min-height: var(--control-h);
+  box-sizing: border-box;
+}
+.input,
+select.input,
+textarea.input {
+  padding: 10px 14px !important;
+  background: var(--owin-soft) !important;
+  border: 1px solid transparent !important;
+  color: var(--owin-ink);
+  width: 100%;
+}
+.input:focus,
+select.input:focus,
+textarea.input:focus {
+  outline: none;
+  border-color: rgba(0, 102, 204, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.14) !important;
+  background: #fff !important;
+}
+.btn,
+.btn-primary,
+.btn-ghost,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+.icon-btn {
+  width: var(--icon-btn);
+  height: var(--icon-btn);
+  min-width: var(--icon-btn);
+  min-height: var(--icon-btn);
+  padding: 0 !important;
+  border-radius: var(--r-sm) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.field > label {
+  font-size: var(--fs-sm) !important;
+  font-weight: 650;
+  color: var(--owin-ink);
+  margin-bottom: 6px;
+}
+.card,
+.editor-panel,
+.product-filter-card,
+.product-table-card,
+.product-empty-card,
+.quote-list-table-card,
+.bulk-price-modal,
+.product-preview-modal,
+.quote-picker-modal,
+.aluminum-hero,
+.aluminum-tabs,
+.aluminum-color-block,
+.aluminum-totals-strip,
+.aluminum-table-wrap,
+.product-summary-strip {
+  border-radius: var(--r-md) !important;
+}
+.modal-backdrop,
+.quote-picker-backdrop {
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }
 
 /* Header chữ tiêu đề kèm gạch chân vàng đồng */
@@ -163,7 +333,7 @@
 .tool-content {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 18px 20px 28px;
+  padding: 16px clamp(12px, 2.5vw, 24px) 32px;
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
@@ -313,23 +483,10 @@
   min-height: auto;
   padding-bottom: 4px;
 }
-/* Soft OWIN rounded polish (not neon/xAI branding) */
-.card,
-.editor-panel,
-.product-filter-card,
-.quote-picker-modal,
-.bulk-price-modal {
-  border-radius: 18px;
-}
-.input,
-.btn,
+/* Soft OWIN rounded polish */
 .btn-primary,
 .btn-ghost {
-  border-radius: 12px;
-}
-.btn-primary,
-.btn-ghost {
-  min-height: 40px;
+  min-height: var(--control-h);
 }
 .account-menu {
   position: relative;
@@ -862,13 +1019,14 @@
 .product-preview-actions .btn { flex: 1 1 140px; justify-content: center; }
 .accessory-package-hint,
 .accessory-orphan-hint {
-  margin: 6px 0 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
   background: rgba(0, 102, 204, 0.05);
   border: 1px solid rgba(0, 102, 204, 0.1);
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--owin-ink);
 }
 .accessory-orphan-hint {
   background: rgba(255, 149, 0, 0.06);
@@ -1005,8 +1163,20 @@
 
 .autosuggest { position: relative; }
 .autosuggest-control { position: relative; display: flex; align-items: center; }
-.autosuggest-control .input { padding-right: 42px; }
-.autosuggest-control.has-value .input { padding-right: 68px; }
+.autosuggest-control .input { padding-right: 44px !important; }
+.autosuggest-control.has-value .input { padding-right: 72px !important; }
+.autosuggest .field { margin-bottom: 0; }
+.drag-handle {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--r-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--owin-ink-muted);
+  flex: 0 0 auto;
+}
 .autosuggest-toggle {
   position: absolute;
   right: 6px;
@@ -1108,19 +1278,20 @@
 }
 .product-editor-card .field {
   margin-bottom: 0;
+  min-width: 0;
 }
 .product-editor-card .field > label,
 .product-image-panel > label {
   color: var(--owin-ink);
   display: block;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 650;
   margin-bottom: 6px;
 }
 .product-editor-card .input {
-  font-size: 14px;
-  min-height: 40px;
-  padding: 10px 12px;
+  font-size: var(--fs-md);
+  min-height: var(--control-h);
+  padding: 10px 14px;
 }
 .product-editor-card textarea.input {
   min-height: 78px;
@@ -1129,8 +1300,8 @@
 .product-editor-top {
   align-items: start;
   display: grid;
-  gap: 18px;
-  grid-template-columns: 188px minmax(0, 1fr);
+  gap: 16px;
+  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
 }
 .product-image-panel .dropzone {
   align-items: center;
@@ -1197,7 +1368,7 @@
 .product-note-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.2fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
 }
 .product-editor-flags {
   display: flex;
@@ -1212,36 +1383,48 @@
 .product-editor-section-grid {
   align-items: start;
   display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.95fr);
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
 }
 .product-spec-panel .toolbar {
   margin: 0 0 10px !important;
 }
 .spec-table-head,
 .spec-editor-row {
-  align-items: end;
+  align-items: center;
   display: grid;
   gap: 8px;
-  /* [tay kéo] [Tên đủ rộng] [Giá trị] [xóa] — kéo thả để đổi thứ tự, bỏ nút lên/xuống. */
-  grid-template-columns: 30px minmax(132px, 0.85fr) minmax(180px, 1.45fr) 40px;
+  /* [kéo] [tên] [giá trị] [xóa] */
+  grid-template-columns: 36px minmax(0, 0.9fr) minmax(0, 1.4fr) 40px;
+  min-width: 0;
 }
 .spec-table-head {
   color: var(--owin-ink-muted);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.03em;
-  padding: 0 2px 4px;
+  padding: 0 4px 6px;
   text-transform: uppercase;
 }
 .spec-row-list {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 .spec-editor-row {
   border: 1px solid var(--owin-border);
-  border-radius: 12px;
+  border-radius: var(--r-sm);
   padding: 8px;
+  background: #fff;
+  min-width: 0;
+  overflow: hidden;
+}
+.spec-editor-row .autosuggest,
+.spec-editor-row .field,
+.accessory-item-line .autosuggest,
+.accessory-item-line .field,
+.extra-accessory-line .autosuggest,
+.extra-accessory-line .field {
+  min-width: 0;
 }
 .spec-editor-row .field > label,
 .extra-accessory-line .field > label,
@@ -1271,7 +1454,7 @@
 }
 .summary-metric span {
   color: var(--owin-ink-muted);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1279,18 +1462,18 @@
 .summary-metric strong {
   color: var(--owin-primary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 16px;
+  font-size: var(--fs-lg);
 }
 .summary-metric small {
   color: var(--owin-ink-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 .summary-metric-strong {
   background: #f7fbff;
 }
 .summary-metric-strong strong {
   color: var(--owin-action);
-  font-size: 18px;
+  font-size: var(--fs-xl);
 }
 .product-editor-actions {
   margin: 0;
@@ -1322,68 +1505,92 @@
   color: var(--owin-action);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  font-weight: 700;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 750;
   cursor: pointer;
-  padding: 6px 4px;
+  padding: 8px 6px;
+  min-height: 36px;
+  border-radius: var(--r-xs);
 }
-.btn-link:hover { color: var(--owin-action-hover); }
-.accessory-items { display: grid; gap: 8px; margin-bottom: 10px; }
+.btn-link:hover { color: var(--owin-action-hover); background: rgba(0, 102, 204, 0.06); }
+.accessory-items { display: grid; gap: 8px; margin-bottom: 12px; }
 .accessory-item-line {
   display: grid;
-  /* [tay kéo] [số thứ tự] [tên] [SL] [xóa] */
-  grid-template-columns: 24px 24px minmax(0, 1fr) 72px 36px;
+  /* [kéo] [stt] [tên] [SL] [xóa] — SL cố định, không phình */
+  grid-template-columns: 36px 32px minmax(0, 1fr) 76px 40px;
   gap: 8px;
-  align-items: end;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--owin-border);
+  border-radius: var(--r-sm);
+  padding: 6px 8px;
+  background: #fafbfc;
 }
 .accessory-item-line .field,
 .extra-accessory-line .field,
 .legacy-accessory-row .field { margin-bottom: 0; }
-/* Ô SL (type=number) không được tràn/đè sang ô tên: ép nằm gọn trong cột. */
 .accessory-item-line .field,
 .accessory-item-line .field .input,
-.accessory-item-line input { min-width: 0; max-width: 100%; box-sizing: border-box; }
-.accessory-item-line { overflow: hidden; }
-/* Tên phụ kiện gọn lại (font nhỏ, dòng thấp) để không lấn phần thông số kỹ thuật. */
-.accessory-editor-panel .accessory-item-line .input,
-.accessory-editor-panel > .field .input {
-  font-size: 13px;
-  min-height: 36px;
-  padding: 7px 10px;
+.accessory-item-line input,
+.accessory-item-line .autosuggest-control .input {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
-.accessory-item-line { gap: 6px; }
+/* Cùng cỡ chữ với thông số — không làm phụ kiện “bé xíu” */
+.accessory-editor-panel .accessory-item-line .input,
+.accessory-editor-panel > .field .input,
+.spec-editor-row .input {
+  font-size: var(--fs-md) !important;
+  min-height: var(--control-h-sm) !important;
+  padding: 8px 12px !important;
+  border-radius: var(--r-sm) !important;
+}
+.accessory-item-line .field:has(input[type='number']) {
+  width: 76px;
+  max-width: 76px;
+}
+.accessory-item-line input[type='number'] {
+  width: 100%;
+  text-align: center;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
 .line-index {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
   background: rgba(0, 102, 204, 0.1);
   color: var(--owin-action);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   align-self: center;
+  flex: 0 0 auto;
 }
 .fixed-package-grid {
   display: grid;
-  grid-template-columns: minmax(92px, 0.8fr) minmax(150px, 1.1fr) minmax(150px, 1.1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
 }
 .readonly-money {
-  min-height: 46px;
+  min-height: var(--control-h);
   width: 100%;
-  border-radius: var(--ios-radius-sm);
-  background: var(--ios-gray6);
+  border-radius: var(--r-sm);
+  background: var(--owin-soft);
   color: var(--owin-primary);
   font-weight: 800;
+  font-size: var(--fs-md);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 12px 14px;
+  padding: 10px 14px;
   white-space: nowrap;
 }
 .muted-money { color: var(--owin-ink-muted); justify-content: center; }
@@ -1487,6 +1694,16 @@
     grid-template-columns: 1fr;
   }
 }
+@media (max-width: 900px) {
+  .product-editor-section-grid,
+  .product-basic-grid,
+  .product-note-grid {
+    grid-template-columns: 1fr;
+  }
+  .product-basic-grid > :nth-child(2) {
+    grid-column: auto;
+  }
+}
 @media (max-width: 760px) {
   .product-editor-top,
   .product-note-grid,
@@ -1494,11 +1711,26 @@
     grid-template-columns: 1fr;
   }
   .product-image-panel {
-    max-width: 220px;
+    max-width: min(220px, 100%);
   }
   .summary-metric + .summary-metric {
     border-left: 0;
     border-top: 1px solid var(--owin-border);
+  }
+  .spec-table-head,
+  .spec-editor-row {
+    grid-template-columns: 36px minmax(0, 1fr) 40px;
+  }
+  .spec-table-head span:nth-child(3),
+  .spec-editor-row > .autosuggest:nth-of-type(2),
+  .spec-editor-row > .field:nth-of-type(2) {
+    /* value field wraps under name on narrow phones */
+  }
+  .spec-editor-row {
+    grid-template-columns: 36px minmax(0, 1fr) 40px;
+    grid-template-areas:
+      'drag key del'
+      'drag val del';
   }
 }
 .quote-lines-editor {
@@ -1538,11 +1770,14 @@
   margin-bottom: 8px;
 }
 @media (max-width: 760px) {
-  .accessory-item-line,
+  .accessory-item-line {
+    grid-template-columns: 32px minmax(0, 1fr) 72px 40px;
+    gap: 6px;
+  }
+  .accessory-item-line .line-index { display: none; }
   .fixed-package-grid {
     grid-template-columns: 1fr;
   }
-  .line-index { display: none; }
   .extra-accessory-head,
   .quote-lines-head { display: none; }
   .extra-accessory-line,
@@ -1565,6 +1800,43 @@
   .quote-detail-item strong {
     grid-column: 2;
   }
+  .quote-item-config-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .tool-content {
+    padding: 12px 12px 28px;
+  }
+  .admin-page-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .product-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .product-header-actions .btn {
+    flex: 1 1 140px;
+  }
+  .tool-topnav {
+    flex-wrap: wrap;
+    min-height: 0;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .tool-nav {
+    order: 3;
+    width: 100%;
+    padding-bottom: 2px;
+  }
+  .tool-nav-item {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: var(--fs-sm);
+  }
+  .tool-nav-item span { font-size: var(--fs-sm); }
+  .account-menu-identity { display: none; }
 }
 
 /* Pick-card: hover nâng nhẹ */
@@ -1855,63 +2127,37 @@
 .quote-item-card-editing {
   border-color: rgba(10, 132, 255, 0.28);
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.06);
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--r-md);
 }
 .quote-item-card-editing .quote-item-card-header {
-  gap: 10px;
-  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  grid-template-columns: minmax(88px, 100px) minmax(0, 1fr);
   padding-bottom: 10px;
 }
-.quote-item-card-editing .quote-item-card-main { gap: 7px; }
-.quote-item-card-editing .quote-item-basic-grid,
-.quote-item-card-editing .quote-item-meta-grid { gap: 7px; }
-.quote-item-card-editing .quote-card-section { padding: 9px; }
 .quote-item-card-editing .editor-panel {
-  border-radius: 12px;
-  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  padding: 12px;
 }
-.quote-item-card-editing .editor-toolbar { margin-bottom: 5px; }
-.quote-item-card-editing .btn-link { padding: 3px 2px; }
-.quote-item-card-editing .spec-table-head { padding-bottom: 2px; }
-.quote-item-card-editing .spec-row-list,
-.quote-item-card-editing .accessory-items { gap: 4px; }
-.quote-item-card-editing .spec-editor-row {
-  border-radius: 9px;
-  gap: 5px;
-  padding: 5px;
+/* Keep form controls readable — do NOT shrink fonts inside quote editor */
+.quote-item-card-editing .input,
+.quote-item-card-editing .readonly-money,
+.quote-item-card-editing .accessory-item-line .input,
+.quote-item-card-editing .spec-editor-row .input {
+  font-size: var(--fs-md) !important;
+  min-height: var(--control-h-sm) !important;
+  padding: 8px 12px !important;
 }
-/* Tên thông số rộng hơn (min 128px) để tên dài như "Độ dày" không bị cắt. */
 .quote-item-card-editing .spec-table-head,
 .quote-item-card-editing .spec-editor-row {
-  grid-template-columns: 30px minmax(128px, 1fr) minmax(150px, 1.25fr) 40px;
-}
-.quote-item-card-editing .input,
-.quote-item-card-editing .readonly-money {
-  font-size: 13px;
-  min-height: 34px;
-  padding: 6px 9px;
+  grid-template-columns: 36px minmax(0, 0.9fr) minmax(0, 1.35fr) 40px;
 }
 .quote-item-card-editing .accessory-item-line {
-  gap: 4px;
-  grid-template-columns: 24px 24px minmax(0, 1fr) 72px 34px;
+  grid-template-columns: 36px 32px minmax(0, 1fr) 76px 40px;
 }
-.quote-item-card-editing .line-index {
-  height: 22px;
-  width: 22px;
-}
-.quote-item-card-editing .row-action-group .icon-btn,
-.quote-item-card-editing .drag-handle {
-  height: 28px;
-  min-height: 28px;
-  width: 28px;
-}
-.quote-item-card-editing .fixed-package-grid { gap: 7px; }
-.quote-item-card-editing .quote-item-config-grid { gap: 8px; }
-.quote-item-card-editing .quote-item-summary-strip { border-radius: 11px; }
-.quote-item-card-editing .summary-metric { padding: 9px 12px; }
-.quote-item-card-editing .summary-metric strong { font-size: 14px; }
-.quote-item-card-editing .summary-metric-strong strong { font-size: 16px; }
+.quote-item-card-editing .summary-metric strong { font-size: var(--fs-lg); }
+.quote-item-card-editing .summary-metric-strong strong { font-size: var(--fs-xl); }
 .quote-item-locked-row {
   align-items: center;
   display: grid;
