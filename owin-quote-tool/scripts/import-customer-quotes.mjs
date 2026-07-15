@@ -30,16 +30,23 @@ const ANON = process.env.VITE_SUPABASE_ANON_KEY || '';
 const EMAIL = process.env.OWIN_ADMIN_EMAIL || 'hoanganhowin@gmail.com';
 const PASSWORD = process.env.OWIN_ADMIN_PASSWORD || 'hoanganhowin';
 
-const FILES = [
+const ALL_FILES = [
   {
     path: '/home/thanhvu/chị oanh -kì anh pa9.docx',
     code: 'OWIN-BG-20260708-OANH',
+    key: 'oanh',
   },
   {
     path: '/home/thanhvu/A Công Nguyên PA 4 (1).docx',
     code: 'OWIN-BG-20260708-NGUYEN',
+    key: 'nguyen',
   },
 ];
+/** OWIN_IMPORT_ONLY=oanh|nguyen — mặc định cả hai. */
+const ONLY = String(process.env.OWIN_IMPORT_ONLY || '')
+  .trim()
+  .toLowerCase();
+const FILES = ONLY ? ALL_FILES.filter((f) => f.key === ONLY || f.code.toLowerCase().includes(ONLY)) : ALL_FILES;
 
 function unescapeXml(text) {
   return text
@@ -507,10 +514,30 @@ async function upsertQuote(supabase, quote) {
   return { status: 'applied', id: proposed.id };
 }
 
+async function softDeleteMrsOanhQuotes(supabase) {
+  const { data, error } = await supabase
+    .from('quotes')
+    .select('id, code, customer_name, deleted_at')
+    .ilike('customer_name', '%Oanh%');
+  if (error) throw new Error(`List Oanh quotes: ${error.message}`);
+  const rows = data || [];
+  console.log(`Mrs Oanh quotes found: ${rows.length}`);
+  for (const row of rows) {
+    const retired = `OLD-${row.code}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const { error: upErr } = await supabase
+      .from('quotes')
+      .update({ code: retired, deleted_at: new Date().toISOString() })
+      .eq('id', row.id);
+    if (upErr) throw new Error(`Delete ${row.code}: ${upErr.message}`);
+    console.log(`  soft-deleted ${row.code} → ${retired}${row.deleted_at ? ' (was already deleted)' : ''}`);
+  }
+}
+
 async function main() {
   const url = process.env.VITE_SUPABASE_URL || URL;
   const anon = process.env.VITE_SUPABASE_ANON_KEY || ANON;
   if (!anon) throw new Error('Missing VITE_SUPABASE_ANON_KEY');
+  if (!FILES.length) throw new Error(`No import files match OWIN_IMPORT_ONLY=${ONLY || '(all)'}`);
 
   const supabase = createClient(url, anon);
   const { error: authError } = await supabase.auth.signInWithPassword({
@@ -519,10 +546,21 @@ async function main() {
   });
   if (authError) throw new Error(`Login failed: ${authError.message}`);
 
+  // OWIN_DELETE_OANH=1 → xóa hết báo giá Mrs Oanh trước khi import.
+  if (process.env.OWIN_DELETE_OANH === '1' || process.env.OWIN_DELETE_OANH === 'true') {
+    await softDeleteMrsOanhQuotes(supabase);
+  }
+
   for (const file of FILES) {
     const buffer = readFileSync(file.path);
     const parsed = parseDocx(buffer);
     let quote = buildQuote(parsed, file.code);
+    // Force display name for Oanh import
+    if (file.key === 'oanh' && !/oanh/i.test(quote.customerName || '')) {
+      quote.customerName = 'Mrs Oanh';
+      quote.snapshot.customerName = 'Mrs Oanh';
+      quote.snapshotJson = JSON.stringify(quote.snapshot);
+    }
     quote = await attachCatalogImages(supabase, quote);
     const result = await upsertQuote(supabase, quote);
     console.log(
