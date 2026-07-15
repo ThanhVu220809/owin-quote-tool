@@ -75,26 +75,36 @@ export function ProductList({
           </thead>
           <tbody>
             {products.map((p, index) => (
-              <tr key={p.id} data-ma={p.code} {...(reorderable ? rowProps(index) : {})}>
+              <tr
+                key={p.id}
+                data-ma={p.code}
+                className={reorderable ? 'product-row product-row-reorderable' : 'product-row'}
+                {...(reorderable ? rowProps(index) : {})}
+              >
                 {reorderable && (
-                  <td className="product-drag-cell">
+                  <td className="product-drag-cell" data-col="drag">
                     <DragHandle {...handleProps(index)} label={`Kéo để đổi thứ tự ${p.name}`} />
                   </td>
                 )}
-                <td>
+                <td data-col="image">
                   <button className="product-image-button" onClick={() => onPreview(p)} aria-label={`Xem ảnh ${p.code}`}>
                     <ProductThumb imagePath={p.coverImagePath} fill thumb />
                   </button>
                 </td>
-                <td>
+                <td data-col="name">
                   <div className="product-name">{p.name}</div>
                   <div className="product-sub">{p.code}</div>
+                  <div className="product-row-mobile-meta">
+                    <span>{p.category}</span>
+                    <span>{unitLabel(p.unit)}</span>
+                    {p.rawSizeText ? <span>{p.rawSizeText}</span> : null}
+                  </div>
                 </td>
-                <td>{p.category}</td>
-                <td>{unitLabel(p.unit)}</td>
-                <td>{p.rawSizeText || '—'}</td>
-                <td className="num">{formatVND(p.unitPriceVnd)}</td>
-                <td>
+                <td data-col="category">{p.category}</td>
+                <td data-col="unit">{unitLabel(p.unit)}</td>
+                <td data-col="size">{p.rawSizeText || '—'}</td>
+                <td className="num" data-col="price">{formatVND(p.unitPriceVnd)}</td>
+                <td data-col="actions">
                   <div className="product-table-actions">
                     <button className="icon-btn" onClick={() => onPreview(p)} aria-label={`Xem ${p.code}`}>
                       <Eye size={16} />

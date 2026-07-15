@@ -1619,22 +1619,23 @@ function QuoteListPanel({
             </thead>
             <tbody>
               {filteredHistory.map((quote) => (
-                <tr key={quote.id}>
-                  <td>
+                <tr key={quote.id} className="quote-history-row">
+                  <td data-col="code">
                     <button className="quote-code-button" onClick={() => onView(quote)}>
                       {quote.code}
                     </button>
+                    <div className="quote-history-mobile-date">{formatShortDate(quote.createdAt)}</div>
                   </td>
-                  <td>
+                  <td data-col="customer">
                     <div className="quote-customer-name">{quote.customerName || 'Khách chưa đặt tên'}</div>
                     <div className="quote-customer-meta">{quote.customerPhone || quote.customerAddress || ''}</div>
                   </td>
-                  <td className="num">{formatVND(quote.subtotalProductVnd)}</td>
-                  <td className="num">{formatVND(quote.subtotalAccessoryVnd)}</td>
-                  <td className="num total-cell">{formatVND(quote.roundedTotalVnd)}</td>
-                  <td><span className={`quote-status-pill quote-status-${quote.status.toLowerCase()}`}>{statusLabel(quote.status)}</span></td>
-                  <td>{formatShortDate(quote.createdAt)}</td>
-                  <td>
+                  <td className="num" data-col="product">{formatVND(quote.subtotalProductVnd)}</td>
+                  <td className="num" data-col="accessory">{formatVND(quote.subtotalAccessoryVnd)}</td>
+                  <td className="num total-cell" data-col="total">{formatVND(quote.roundedTotalVnd)}</td>
+                  <td data-col="status"><span className={`quote-status-pill quote-status-${quote.status.toLowerCase()}`}>{statusLabel(quote.status)}</span></td>
+                  <td data-col="date">{formatShortDate(quote.createdAt)}</td>
+                  <td data-col="actions">
                     <div className="quote-actions">
                       <button className="icon-btn" onClick={() => onView(quote)} aria-label="Xem báo giá">
                         <Eye size={16} />
