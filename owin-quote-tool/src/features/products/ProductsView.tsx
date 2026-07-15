@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, Pencil, Plus, Search, X, Percent } from 'lucide-react';
+import { ArrowLeft, BookOpen, Plus, Search, X, Percent } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { useProducts } from './useProducts';
 import { bulkAdjustProductPrices, getProductRecord, reorderProducts } from './productStore';
@@ -7,10 +7,14 @@ import { reorderList } from '@/components/DragReorder';
 import { sortProductsByColor } from '@/lib/products/productSort';
 import { ProductForm, type ProductFormSaveOptions } from './ProductForm';
 import { ProductList } from './ProductList';
-import { ProductThumb } from './ProductThumb';
+import { ProductPreviewCard } from './ProductPreviewCard';
 import { rememberProductSuggestions } from '@/lib/suggestions';
 import { generateProductCode } from '@/lib/products/productCode';
 import { useSuggestions } from '@/lib/useSuggestions';
+import {
+  buildAccessoryPackageCatalog,
+  findOrphanAccessoryNames,
+} from '@/lib/accessoryPackages';
 import { formatVND } from '@/utils/format';
 import { sortCategoryNames } from '@/config/categoryOrder';
 
@@ -129,6 +133,15 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
   const [bulkSaving, setBulkSaving] = useState(false);
   const productFormCloseRef = useRef<(() => Promise<void>) | null>(null);
 
+  const packageCatalog = useMemo(
+    () => buildAccessoryPackageCatalog(productRecords),
+    [productRecords],
+  );
+  const orphanAccessoryNames = useMemo(
+    () => findOrphanAccessoryNames(productRecords, packageCatalog),
+    [productRecords, packageCatalog],
+  );
+
   // Field-specific suggestion pools (no noisy global bucket for all fields).
   const suggestions = useMemo(
     () => ({
@@ -196,14 +209,17 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
       accessoryPackageName: [
         ...(seededSuggestions.accessory_package_name ?? []),
         ...fixedPackageNames(productRecords),
+        ...packageCatalog.map((pkg) => pkg.name),
       ],
       // Extra accessories only — separate from fixed package.
       extraAccessoryName: [
         ...(seededSuggestions.extra_accessory_name ?? []),
         ...extraAccessoryNames(productRecords),
       ],
+      packageCatalog,
+      orphanAccessoryNames,
     }),
-    [productRecords, seededSuggestions],
+    [productRecords, seededSuggestions, packageCatalog, orphanAccessoryNames],
   );
 
   const openNew = () => {
@@ -499,45 +515,14 @@ export function ProductsView({ onOpenCatalogue }: { onOpenCatalogue?: () => void
       )}
 
       {previewProduct && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setPreviewProduct(null)}>
-          <div className="product-preview-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <div className="product-preview-header">
-              <div>
-                <div className="product-name">{previewProduct.name}</div>
-                <div className="product-sub">{previewProduct.category} · {formatVND(previewProduct.unitPriceVnd)}</div>
-              </div>
-              <button className="icon-btn" onClick={() => setPreviewProduct(null)} aria-label="Đóng xem ảnh">
-                <X size={17} />
-              </button>
-            </div>
-            <div className="product-preview-body">
-              <div className="product-preview-image">
-                <ProductThumb imagePath={previewProduct.coverImagePath} fill />
-              </div>
-              <div className="product-preview-meta">
-                <div>
-                  <span>Danh mục</span>
-                  <strong>{previewProduct.category}</strong>
-                </div>
-                <div>
-                  <span>Đơn vị</span>
-                  <strong>{previewProduct.unit === 'BO' ? 'Bộ' : previewProduct.unit === 'METER' ? 'md' : 'm²'}</strong>
-                </div>
-                <div>
-                  <span>Kích thước mẫu</span>
-                  <strong>{previewProduct.rawSizeText || '—'}</strong>
-                </div>
-                <div>
-                  <span>Đơn giá</span>
-                  <strong>{formatVND(previewProduct.unitPriceVnd)}</strong>
-                </div>
-                <button className="btn btn-primary" onClick={() => openEdit(previewProduct)}>
-                  <Pencil size={16} style={{ verticalAlign: '-3px' }} /> Chỉnh sửa sản phẩm
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProductPreviewCard
+          product={previewProduct}
+          onClose={() => setPreviewProduct(null)}
+          onEdit={(product) => {
+            setPreviewProduct(null);
+            openEdit(product);
+          }}
+        />
       )}
     </section>
   );

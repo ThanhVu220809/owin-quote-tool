@@ -20,6 +20,7 @@ import {
   serializeFixedAccessoriesJson,
 } from '@/lib/quote/accessoryDrafts';
 import { DEFAULT_SPEC_KEYS, suggestionTypesForSpecKey } from '@/lib/suggestions';
+import type { AccessoryPackageTemplate } from '@/lib/accessoryPackages';
 import { generateProductCode } from '@/lib/products/productCode';
 import { DragHandle, reorderList, useDragReorder } from '@/components/DragReorder';
 import { SerialTaskQueue } from './serialTaskQueue';
@@ -55,6 +56,8 @@ interface Suggestions {
   accessoryName: string[];
   accessoryPackageName?: string[];
   extraAccessoryName?: string[];
+  packageCatalog?: AccessoryPackageTemplate[];
+  orphanAccessoryNames?: string[];
 }
 
 interface Props {
@@ -554,6 +557,8 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
           suggestions={{
             accessoryName: suggestions.accessoryName,
             packageName: suggestions.accessoryPackageName,
+            packageCatalog: suggestions.packageCatalog,
+            orphanAccessoryNames: suggestions.orphanAccessoryNames,
           }}
         />
       </div>

@@ -1,7 +1,7 @@
 /* Existing effects intentionally reset local view state after async store updates. */
 /* eslint-disable react-hooks/set-state-in-effect, no-useless-assignment */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Copy, Eye, FileDown, ImagePlus, LoaderCircle, Package, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, FileDown, FileUp, ImagePlus, LoaderCircle, Package, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -31,6 +31,7 @@ import {
 import { useSuggestions } from '@/lib/useSuggestions';
 import { exportQuotePDF } from '@/features/export/pdfExport';
 import { ProductThumb, OWIN_LOGO } from '@/features/products/ProductThumb';
+import { ProductPreviewCard } from '@/features/products/ProductPreviewCard';
 import { ImageLightbox } from '@/components/ImageLightbox';
 import { resolveImageUrl } from '@/utils/imagePaths';
 import { compressAndUploadQuoteImage, ImageError } from '@/utils/imageStorage';
@@ -41,6 +42,12 @@ import {
   serializeExtraAccessoriesJson,
   serializeFixedAccessoriesJson,
 } from '@/lib/quote/accessoryDrafts';
+import {
+  buildAccessoryPackageCatalog,
+  findOrphanAccessoryNames,
+  type AccessoryPackageTemplate,
+} from '@/lib/accessoryPackages';
+import { importQuoteFromDocx } from '@/lib/quote/importQuoteFromDocx';
 import { deleteQuote, getAllQuotes, saveQuoteRecord } from './quoteStore';
 import { subscribeToQuotes } from '@/features/supabase/quotesRepo';
 import { documentsEqual } from '@/features/supabase/threeWayMerge';
@@ -306,6 +313,14 @@ function snapshotToInputs(quote: QuoteRecord): QuoteItemInput[] {
 export function QuoteView() {
   const { productRecords, loading } = useProducts();
   const { suggestions: seededSuggestions, refreshSuggestions } = useSuggestions(QUOTE_SUGGESTION_TYPES);
+  const packageCatalog = useMemo(
+    () => buildAccessoryPackageCatalog(productRecords),
+    [productRecords],
+  );
+  const orphanAccessoryNames = useMemo(
+    () => findOrphanAccessoryNames(productRecords, packageCatalog),
+    [productRecords, packageCatalog],
+  );
   const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
   const [detailQuote, setDetailQuote] = useState<QuoteRecord | null>(null);
   const [history, setHistory] = useState<QuoteRecord[]>([]);
@@ -513,6 +528,39 @@ export function QuoteView() {
     setView('form');
     setDetailQuote(null);
     scrollPageTop();
+  };
+
+  const importWordInputRef = useRef<HTMLInputElement>(null);
+  const [importingWord, setImportingWord] = useState(false);
+
+  const handleImportWord = async (file: File) => {
+    setImportingWord(true);
+    setMessage('');
+    try {
+      const draft = await importQuoteFromDocx(file);
+      resetForm();
+      setCustomerName(draft.customerName);
+      setCustomerAddress(draft.customerAddress);
+      setQuoteDate(draft.quoteDate || todayInputValue());
+      const keys = draft.items.map(() => makeItemUiKey());
+      setItems(draft.items.map((item) => confirmNormalizeItem(item)));
+      setItemUiKeys(keys);
+      setExpandedItemKeys(new Set());
+      setView('form');
+      setDetailQuote(null);
+      setMessage(
+        `Đã import ${draft.items.length} hạng mục từ Word${draft.customerName ? ` · KH: ${draft.customerName}` : ''}. Kiểm tra rồi bấm Lưu.`,
+      );
+      scrollPageTop();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? `Import Word thất bại: ${error.message}`
+          : 'Import Word thất bại. Kiểm tra đúng file báo giá OWIN.',
+      );
+    } finally {
+      setImportingWord(false);
+    }
   };
 
   const appendItem = (item: QuoteItemInput, options?: { expand?: boolean }) => {
@@ -1135,32 +1183,47 @@ export function QuoteView() {
 
   if (view === 'list') {
     return (
-      <QuoteListPanel
-        history={history}
-        filteredHistory={filteredHistory}
-        quoteSearch={quoteSearch}
-        quoteStatusFilter={quoteStatusFilter}
-        message={message}
-        loading={historyLoading}
-        error={historyError}
-        onSearch={setQuoteSearch}
-        onStatusFilter={setQuoteStatusFilter}
-        onCreate={openNewQuote}
-        onView={openDetail}
-        onEdit={loadQuote}
-        onDuplicate={(quote) => loadQuote(quote, true)}
-        onDelete={(quote) => void deleteSavedQuote(quote)}
-        onRetry={() => {
-          setHistoryError('');
-          setHistoryLoading(true);
-          void refreshHistory()
-            .then(() => setHistoryLoading(false))
-            .catch((error) => {
-              setHistoryLoading(false);
-              setHistoryError(operationError('Không thể tải danh sách báo giá từ Supabase', error));
-            });
-        }}
-      />
+      <>
+        <input
+          ref={importWordInputRef}
+          type="file"
+          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          style={{ display: 'none' }}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void handleImportWord(file);
+            event.target.value = '';
+          }}
+        />
+        <QuoteListPanel
+          history={history}
+          filteredHistory={filteredHistory}
+          quoteSearch={quoteSearch}
+          quoteStatusFilter={quoteStatusFilter}
+          message={message}
+          loading={historyLoading}
+          error={historyError}
+          importingWord={importingWord}
+          onSearch={setQuoteSearch}
+          onStatusFilter={setQuoteStatusFilter}
+          onCreate={openNewQuote}
+          onImportWord={() => importWordInputRef.current?.click()}
+          onView={openDetail}
+          onEdit={loadQuote}
+          onDuplicate={(quote) => loadQuote(quote, true)}
+          onDelete={(quote) => void deleteSavedQuote(quote)}
+          onRetry={() => {
+            setHistoryError('');
+            setHistoryLoading(true);
+            void refreshHistory()
+              .then(() => setHistoryLoading(false))
+              .catch((error) => {
+                setHistoryLoading(false);
+                setHistoryError(operationError('Không thể tải danh sách báo giá từ Supabase', error));
+              });
+          }}
+        />
+      </>
     );
   }
 
@@ -1296,6 +1359,8 @@ export function QuoteView() {
                 locked={locked}
                 calculated={calculated.items[index]}
                 suggestions={seededSuggestions}
+                packageCatalog={packageCatalog}
+                orphanAccessoryNames={orphanAccessoryNames}
                 dragHandleProps={itemDrag.handleProps(index)}
                 onUpdate={(patch) => updateItem(index, patch)}
                 onDimension={(lineIndex, patch) => updateDimension(index, lineIndex, patch)}
@@ -1342,6 +1407,12 @@ export function QuoteView() {
   );
 }
 
+function unitLabelShort(unit: ProductRecord['unit']): string {
+  if (unit === 'BO') return 'Bộ';
+  if (unit === 'METER') return 'md';
+  return 'm²';
+}
+
 function ProductPickerModal({
   isOpen,
   search,
@@ -1366,40 +1437,14 @@ function ProductPickerModal({
   onClose: () => void;
 }) {
   const [categoriesCollapsed, setCategoriesCollapsed] = useState(false);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [previewPath, setPreviewPath] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [detailProduct, setDetailProduct] = useState<ProductRecord | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
       setCategoriesCollapsed(false);
-      setLightboxOpen(false);
-      setPreviewPath(null);
-      setPreviewUrl(null);
+      setDetailProduct(null);
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    let revoked: string | null = null;
-    let active = true;
-    if (!lightboxOpen) {
-      setPreviewUrl(null);
-      return undefined;
-    }
-    if (!previewPath) {
-      setPreviewUrl(OWIN_LOGO);
-      return undefined;
-    }
-    void resolveImageUrl(previewPath).then((resolved) => {
-      if (!active) return;
-      if (resolved.revoke) revoked = resolved.url;
-      setPreviewUrl(resolved.url || OWIN_LOGO);
-    });
-    return () => {
-      active = false;
-      if (revoked) URL.revokeObjectURL(revoked);
-    };
-  }, [lightboxOpen, previewPath]);
 
   if (!isOpen) return null;
 
@@ -1411,7 +1456,7 @@ function ProductPickerModal({
             <div className="quote-picker-icon"><Package size={20} /></div>
             <div>
               <h2>Chọn sản phẩm</h2>
-              <p>{productCount} sản phẩm · bấm ảnh để xem lớn · bấm thẻ để chọn</p>
+              <p>{productCount} sản phẩm · bấm ảnh để xem chi tiết · bấm thẻ để chọn nhanh</p>
             </div>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Đóng chọn sản phẩm">
@@ -1471,13 +1516,12 @@ function ProductPickerModal({
                     className="quote-picker-thumb image-fit-frame"
                     onClick={(event) => {
                       event.stopPropagation();
-                      setPreviewPath(product.coverImagePath || null);
-                      setLightboxOpen(true);
+                      setDetailProduct(product);
                       setCategoriesCollapsed(true);
                     }}
-                    aria-label={`Xem ảnh ${product.name}`}
+                    aria-label={`Xem chi tiết ${product.name}`}
                   >
-                    <ProductThumb imagePath={product.coverImagePath} fill />
+                    <ProductThumb imagePath={product.coverImagePath} fill thumb />
                   </button>
                   <button
                     type="button"
@@ -1486,6 +1530,10 @@ function ProductPickerModal({
                   >
                     <strong>{product.name}</strong>
                     {product.category ? <span className="quote-picker-meta">{product.category}</span> : null}
+                    <span className="quote-picker-price">
+                      {formatVND(product.unitPriceVnd)}
+                      <small>/{unitLabelShort(product.unit)}</small>
+                    </span>
                     <span className="quote-picker-choose">Chọn</span>
                   </button>
                 </div>
@@ -1494,16 +1542,17 @@ function ProductPickerModal({
           )}
         </div>
       </div>
-      <ImageLightbox
-        open={lightboxOpen}
-        src={previewUrl}
-        alt="Ảnh sản phẩm"
-        onClose={() => {
-          setLightboxOpen(false);
-          setPreviewPath(null);
-          setPreviewUrl(null);
-        }}
-      />
+      {detailProduct && (
+        <ProductPreviewCard
+          product={detailProduct}
+          onClose={() => setDetailProduct(null)}
+          onSelect={(product) => {
+            setDetailProduct(null);
+            onSelect(product.id);
+          }}
+          selectLabel="Thêm vào báo giá"
+        />
+      )}
     </div>
   );
 }
@@ -1516,9 +1565,11 @@ function QuoteListPanel({
   message,
   loading,
   error,
+  importingWord,
   onSearch,
   onStatusFilter,
   onCreate,
+  onImportWord,
   onView,
   onEdit,
   onDuplicate,
@@ -1532,9 +1583,11 @@ function QuoteListPanel({
   message: string;
   loading: boolean;
   error: string;
+  importingWord?: boolean;
   onSearch: (value: string) => void;
   onStatusFilter: (value: QuoteRecord['status'] | '') => void;
   onCreate: () => void;
+  onImportWord?: () => void;
   onView: (quote: QuoteRecord) => void;
   onEdit: (quote: QuoteRecord) => void;
   onDuplicate: (quote: QuoteRecord) => void;
@@ -1548,9 +1601,19 @@ function QuoteListPanel({
           <h1 className="app-title">Danh sách báo giá</h1>
           <p className="app-subtitle">Hồ sơ báo giá chi tiết nhôm kính hệ OWIN · {history.length} báo giá</p>
         </div>
-        <button className="btn btn-primary" onClick={onCreate}>
-          <Plus size={18} style={{ verticalAlign: '-3px' }} /> Tạo báo giá mới
-        </button>
+        <div className="product-header-actions">
+          <button className="btn btn-ghost" type="button" onClick={onImportWord} disabled={importingWord}>
+            {importingWord ? (
+              <LoaderCircle size={17} className="spin" style={{ verticalAlign: '-3px' }} />
+            ) : (
+              <FileUp size={17} style={{ verticalAlign: '-3px' }} />
+            )}{' '}
+            {importingWord ? 'Đang import…' : 'Import từ Word'}
+          </button>
+          <button className="btn btn-primary" onClick={onCreate}>
+            <Plus size={18} style={{ verticalAlign: '-3px' }} /> Tạo báo giá mới
+          </button>
+        </div>
       </div>
 
       {message && <div className="product-toast">{message}</div>}
@@ -2089,6 +2152,8 @@ function QuoteItemCard({
   locked,
   calculated,
   suggestions,
+  packageCatalog = [],
+  orphanAccessoryNames = [],
   onUpdate,
   onDimension,
   onAccessory,
@@ -2106,6 +2171,8 @@ function QuoteItemCard({
   locked: boolean;
   calculated: ReturnType<typeof calculateQuote>['items'][number] | undefined;
   suggestions: Record<string, string[]>;
+  packageCatalog?: AccessoryPackageTemplate[];
+  orphanAccessoryNames?: string[];
   onUpdate: (patch: Partial<QuoteItemInput>) => void;
   onDimension: (lineIndex: number, patch: Partial<DimensionInput>) => void;
   onAccessory: (accIndex: number, patch: Partial<AccessoryInput>) => void;
@@ -2179,13 +2246,29 @@ function QuoteItemCard({
     };
   }, [imagePath]);
 
+  const accessorySummary = (() => {
+    if (usesPackageAccessories) {
+      const names = fixedDraft.items.map((row) => row.name.trim()).filter(Boolean);
+      const extras = extraDraft.map((row) => row.name.trim()).filter(Boolean);
+      const all = [...names, ...extras];
+      if (fixedDraft.name.trim()) return `${fixedDraft.name}${all.length ? ` · ${all.slice(0, 3).join(', ')}` : ''}`;
+      return all.slice(0, 4).join(', ') || '';
+    }
+    return item.accessories.map((acc) => acc.name).filter(Boolean).slice(0, 4).join(', ');
+  })();
+  const descBits = [
+    item.category || item.groupName || '',
+    item.description || '',
+    ...(item.specs ?? []).filter((s) => s.value).slice(0, 2).map((s) => `${s.key}: ${s.value}`),
+  ].filter(Boolean);
+
   if (locked) {
     return (
       <div className="card quote-item-card quote-item-card-locked">
-        <div className="quote-item-locked-row">
+        <div className="quote-item-locked-row quote-item-locked-row-rich">
           <button
             type="button"
-            className="quote-item-thumb quote-item-thumb-btn quote-item-thumb-compact"
+            className="quote-item-thumb quote-item-thumb-btn quote-item-thumb-rich"
             onClick={() => setLightboxOpen(true)}
             aria-label="Xem ảnh lớn"
             title="Bấm để xem ảnh lớn"
@@ -2203,6 +2286,14 @@ function QuoteItemCard({
               <span className="quote-item-locked-index">#{index + 1}</span>
               <strong>{item.itemName || 'Hạng mục'}</strong>
             </div>
+            {descBits.length > 0 && (
+              <div className="quote-item-locked-desc">{descBits.join(' · ')}</div>
+            )}
+            {accessorySummary && (
+              <div className="quote-item-locked-acc">
+                <span>PK</span> {accessorySummary}
+              </div>
+            )}
             <div className="quote-item-locked-meta">
               <span className="quote-item-locked-total">{formatVND(calculated?.itemTotalVnd ?? 0)}</span>
             </div>
@@ -2450,7 +2541,12 @@ function QuoteItemCard({
               suggestions.fixed_accessory_item,
               suggestions.accessory_name,
             ),
-            packageName: suggestions.accessory_package_name ?? [],
+            packageName: [
+              ...(suggestions.accessory_package_name ?? []),
+              ...packageCatalog.map((pkg) => pkg.name),
+            ],
+            packageCatalog,
+            orphanAccessoryNames,
           }}
         />
       </div>

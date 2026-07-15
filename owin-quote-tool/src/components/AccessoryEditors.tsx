@@ -1,9 +1,14 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { ProductUnit } from '@/types/models';
 import { AutoSuggestInput } from './AutoSuggestInput';
 import { CurrencyInput } from './CurrencyInput';
 import { DragHandle, reorderList, useDragReorder } from './DragReorder';
 import { formatVND } from '@/utils/format';
+import {
+  isBlankOrDefaultPackageItems,
+  resolvePackageItemsByName,
+  type AccessoryPackageTemplate,
+} from '@/lib/accessoryPackages';
 import {
   addEmptyAccessoryDraft,
   addEmptyFixedAccessoryItem,
@@ -17,10 +22,46 @@ import {
 interface AccessoryEditorSuggestions {
   accessoryName: string[];
   packageName?: string[];
+  /** Catalog of known packages → item name templates (no prices). */
+  packageCatalog?: AccessoryPackageTemplate[];
+  /** Accessory names that appear outside standard sets. */
+  orphanAccessoryNames?: string[];
 }
 
 function reindexExtraAccessories(rows: ExtraAccessoryDraft[]): ExtraAccessoryDraft[] {
   return rows.map((item, sortOrder) => ({ ...item, sortOrder }));
+}
+
+function newItemId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `row-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function applyPackageName(
+  draft: FixedAccessoryDraft,
+  name: string,
+  catalog: readonly AccessoryPackageTemplate[] | undefined,
+  forceItems: boolean,
+): FixedAccessoryDraft {
+  const nextName = name;
+  const canReplace = forceItems || isBlankOrDefaultPackageItems(draft.items);
+  if (!canReplace) {
+    return updateFixedAccessoryDraft(draft, { name: nextName });
+  }
+  const suggested = resolvePackageItemsByName(nextName, catalog ?? []);
+  if (suggested.length === 0) {
+    return updateFixedAccessoryDraft(draft, { name: nextName });
+  }
+  return updateFixedAccessoryDraft(draft, {
+    name: nextName,
+    items: suggested.map((item) => ({
+      id: newItemId(),
+      name: item.name,
+      quantity: item.quantity,
+    })),
+  });
 }
 
 export function FixedAccessoryPackageEditor({
@@ -35,9 +76,24 @@ export function FixedAccessoryPackageEditor({
   title?: string;
 }) {
   const total = calculateFixedAccessoryDraftTotal(value);
+  const catalog = suggestions.packageCatalog ?? [];
+  const orphans = suggestions.orphanAccessoryNames ?? [];
   const patch = (next: Partial<FixedAccessoryDraft>) => onChange(updateFixedAccessoryDraft(value, next));
   const { handleProps, rowProps } = useDragReorder((from, to) =>
     patch({ items: reorderList(value.items, from, to) }),
+  );
+
+  const applySuggestedItems = (force: boolean) => {
+    onChange(applyPackageName(value, value.name, catalog, force));
+  };
+
+  const canSuggestFromName =
+    value.name.trim().length > 0 &&
+    resolvePackageItemsByName(value.name, catalog).length > 0;
+
+  // Item name suggestions: fixed package items + orphans (to fold them into a set).
+  const itemNameSuggestions = Array.from(
+    new Set([...(suggestions.accessoryName ?? []), ...orphans].filter(Boolean)),
   );
 
   return (
@@ -45,6 +101,16 @@ export function FixedAccessoryPackageEditor({
       <div className="toolbar editor-toolbar">
         <div className="section-label">{title}</div>
         <div className="spacer" />
+        {canSuggestFromName && (
+          <button
+            className="btn-link"
+            type="button"
+            title="Điền món theo tên bộ (chỉ chuẩn hoá TÊN, không đụng giá)"
+            onClick={() => applySuggestedItems(true)}
+          >
+            <Sparkles size={15} /> Gợi ý món theo tên bộ
+          </button>
+        )}
         <button
           className="btn-link"
           type="button"
@@ -58,10 +124,22 @@ export function FixedAccessoryPackageEditor({
         label="Tên bộ phụ kiện"
         fieldKey="accessory_package_name"
         value={value.name}
-        onChange={(name) => patch({ name })}
+        onChange={(name) => onChange(applyPackageName(value, name, catalog, false))}
         suggestions={suggestions.packageName ?? []}
         placeholder="Gợi ý tên bộ (không lẫn món phụ kiện)…"
       />
+      {canSuggestFromName && isBlankOrDefaultPackageItems(value.items) && (
+        <div className="hint accessory-package-hint">
+          Đã có mẫu món cho bộ này — gõ/chọn tên bộ để tự điền, hoặc bấm “Gợi ý món theo tên bộ”.
+          Chỉ chuẩn hoá <strong>tên</strong>, không ép đơn giá.
+        </div>
+      )}
+      {orphans.length > 0 && (
+        <div className="hint accessory-orphan-hint">
+          Phụ kiện ngoài bộ chuẩn (có thể gộp): {orphans.slice(0, 8).join(' · ')}
+          {orphans.length > 8 ? ` · +${orphans.length - 8}` : ''}
+        </div>
+      )}
 
       <div className="accessory-items">
         {value.items.length === 0 ? (
@@ -79,7 +157,7 @@ export function FixedAccessoryPackageEditor({
                   const items = value.items.map((row, i) => (i === index ? { ...row, name } : row));
                   patch({ items });
                 }}
-                suggestions={suggestions.accessoryName}
+                suggestions={itemNameSuggestions}
                 placeholder="Khóa, Bản lề, Tay nắm…"
               />
               <div className="field">

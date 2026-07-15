@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardCopy, Download, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
-import { openImageLightbox } from '@/components/ImageLightbox';
+import { openImageLightbox } from '@/components/imageLightboxStore';
 import {
   calculateAluminumEstimatorRow,
   calculateAluminumEstimatorTotals,
@@ -630,33 +630,37 @@ function AluminumActions({
 }) {
   return (
     <div className="aluminum-actions">
-      <button className="btn btn-primary" type="button" onClick={onExportWordCurrent}>
-        <FileText size={16} /> Word hệ này
-      </button>
-      <button className="btn btn-primary" type="button" onClick={onExportWordAll}>
-        <FileText size={16} /> Word tất cả
-      </button>
-      <button className="btn btn-ghost" type="button" onClick={onPrintPdfCurrent}>
-        <Printer size={16} /> In hệ này
-      </button>
-      <button className="btn btn-ghost" type="button" onClick={onPrintPdfAll}>
-        <Printer size={16} /> In tất cả
-      </button>
-      <button className="btn btn-ghost" type="button" onClick={onCopyTotal}>
-        <ClipboardCopy size={16} /> Copy tổng
-      </button>
-      <button className="btn btn-ghost" type="button" onClick={onCopyCurrentSystem}>
-        <ClipboardCopy size={16} /> Copy hệ
-      </button>
-      <button className="btn btn-ghost" type="button" onClick={onExportCsv}>
-        <Download size={16} /> CSV
-      </button>
-      <button className="btn btn-ghost" type="button" onClick={onClearCurrentSystem}>
-        <RotateCcw size={16} /> Xóa hệ
-      </button>
-      <button className="btn btn-danger" type="button" onClick={onClearAll}>
-        <Trash2 size={16} /> Xóa hết
-      </button>
+      <div className="aluminum-actions-group" role="group" aria-label="Xuất file">
+        <button className="btn btn-primary" type="button" onClick={onExportWordCurrent} title="Xuất Word hệ đang chọn">
+          <FileText size={16} /> Word
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={onExportWordAll} title="Xuất Word tất cả hệ">
+          Word tất cả
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={onPrintPdfCurrent} title="In / PDF hệ đang chọn">
+          <Printer size={16} /> In
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={onPrintPdfAll} title="In / PDF tất cả hệ">
+          In tất cả
+        </button>
+      </div>
+      <div className="aluminum-actions-group aluminum-actions-secondary" role="group" aria-label="Tiện ích">
+        <button className="btn btn-ghost" type="button" onClick={onCopyCurrentSystem} title="Copy bảng hệ đang chọn">
+          <ClipboardCopy size={16} /> Copy
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={onCopyTotal} title="Copy tổng tất cả hệ">
+          Copy tổng
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={onExportCsv} title="Xuất CSV">
+          <Download size={16} /> CSV
+        </button>
+        <button className="btn btn-ghost" type="button" onClick={onClearCurrentSystem} title="Xóa số liệu hệ đang chọn">
+          <RotateCcw size={16} /> Xóa hệ
+        </button>
+        <button className="btn btn-danger" type="button" onClick={onClearAll} title="Xóa toàn bộ số liệu">
+          <Trash2 size={16} /> Xóa hết
+        </button>
+      </div>
       {copyStatus && <span className="aluminum-status">{copyStatus}</span>}
     </div>
   );
