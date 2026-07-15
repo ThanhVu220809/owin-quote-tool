@@ -15,10 +15,20 @@ describe('parseSmartNumber', () => {
     expect(parseSmartNumber('', { mode: 'int' })).toBe(0);
   });
 
-  it('currency strips separators', () => {
+  it('currency strips thousand separators (not decimal)', () => {
     expect(parseSmartNumber('1.234.567', { mode: 'currency' })).toBe(1_234_567);
+    expect(parseSmartNumber('1.023', { mode: 'currency' })).toBe(1023);
+    expect(parseSmartNumber('1.023.000', { mode: 'currency' })).toBe(1_023_000);
+    expect(parseSmartNumber('36064000', { mode: 'currency' })).toBe(36_064_000);
     expect(parseSmartNumber('abc', { mode: 'currency' })).toBe(0);
     expect(parseSmartNumber('12a3', { mode: 'currency' })).toBe(123);
+  });
+
+  it('allows long VND amounts (not locked to 4 digits)', () => {
+    expect(parseSmartNumber('1023000', { mode: 'currency' })).toBe(1_023_000);
+    expect(parseSmartNumber('999999999', { mode: 'currency' })).toBe(999_999_999);
+    expect(formatSmartNumber(1_023_000, { mode: 'currency' })).toBe('1.023.000');
+    expect(formatSmartNumber(36_064_000, { mode: 'currency' })).toBe('36.064.000');
   });
 
   it('decimal accepts comma and dot', () => {
@@ -27,9 +37,9 @@ describe('parseSmartNumber', () => {
     expect(parseSmartNumber('2.20', { mode: 'decimal' })).toBe(2.2);
   });
 
-  it('int truncates', () => {
+  it('int truncates via digits', () => {
     expect(parseSmartNumber('12', { mode: 'int' })).toBe(12);
-    expect(parseSmartNumber('3.9', { mode: 'int' })).toBe(39); // digits only after strip
+    expect(parseSmartNumber('3.9', { mode: 'int' })).toBe(39);
   });
 
   it('respects min/max', () => {
@@ -56,8 +66,9 @@ describe('formatSmartNumber', () => {
 });
 
 describe('sanitizeSmartDraft', () => {
-  it('currency groups thousands while typing', () => {
-    expect(sanitizeSmartDraft('1234567', 'currency')).toBe('1.234.567');
+  it('currency keeps raw digits while typing (no live dots)', () => {
+    expect(sanitizeSmartDraft('1234567', 'currency')).toBe('1234567');
+    expect(sanitizeSmartDraft('1.023.000', 'currency')).toBe('1023000');
     expect(sanitizeSmartDraft('', 'currency')).toBe('');
   });
 

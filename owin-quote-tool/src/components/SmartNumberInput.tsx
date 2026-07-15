@@ -22,10 +22,10 @@ type Props = Omit<
 };
 
 /**
- * Ô số thông minh:
- * - Xóa hết → 0 (calc), ô để trống để gõ tiếp
- * - Không dùng type=number (tránh browser chặn xóa/ép 0)
- * - Format khi blur; khi focus giữ draft người dùng
+ * Ô số thông minh — không khoá 4 chữ số.
+ * - Xóa hết → 0 (calc), ô trống để gõ tiếp
+ * - Tiền: gõ thuần 1023000 → blur thành 1.023.000
+ * - Không select-all (tránh gõ đè mất số)
  */
 export function SmartNumberInput({
   value,
@@ -41,7 +41,7 @@ export function SmartNumberInput({
   ...props
 }: Props) {
   const opts = { mode, decimals, min, max };
-  /** null = không đang gõ (hiển thị từ value); string = draft người dùng */
+  /** null = không đang gõ; string = draft */
   const [draft, setDraft] = useState<string | null>(null);
 
   const display =
@@ -60,35 +60,32 @@ export function SmartNumberInput({
       type="text"
       inputMode={mode === 'decimal' ? 'decimal' : 'numeric'}
       autoComplete="off"
+      // Không giới hạn độ dài HTML — tiền VN có thể 8–12 chữ số
+      maxLength={undefined}
       placeholder={placeholder}
       value={display}
       onFocus={(event) => {
-        // Bắt đầu draft từ giá trị hiện tại — 0 → "" để gõ số mới ngay.
-        const start =
-          value == null || !Number.isFinite(value) || value === 0
-            ? ''
-            : formatSmartNumber(value, opts);
+        // Draft = chữ số thuần khi đang sửa tiền/int (không chấm nghìn).
+        let start = '';
+        if (value != null && Number.isFinite(value) && value !== 0) {
+          if (mode === 'currency' || mode === 'int') {
+            start = String(Math.trunc(Math.abs(value)));
+            if (value < 0) start = `-${start}`;
+          } else {
+            start = formatSmartNumber(value, opts);
+          }
+        }
         setDraft(start);
         onFocus?.(event);
-        // Select all so typing replaces (optional power UX)
-        requestAnimationFrame(() => {
-          try {
-            event.target.select();
-          } catch {
-            /* ignore */
-          }
-        });
       }}
       onChange={(event) => {
         const cleaned = sanitizeSmartDraft(event.target.value, mode);
         setDraft(cleaned);
-        // Live commit number (empty → 0) so totals update while typing
         commit(cleaned);
       }}
       onBlur={(event) => {
         const n = commit(draft ?? '');
         setDraft(null);
-        // Ensure parent sees clamped value; display reformats via value prop
         onChange(n);
         onBlur?.(event);
       }}

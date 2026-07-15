@@ -4,13 +4,18 @@
  * Rules:
  * - Xóa hết → 0 (parse empty = 0)
  * - Khi đang gõ: giữ chuỗi draft, không ép "0" chặn nhập tiếp
- * - Tiền: chỉ chữ số, format chấm nghìn khi blur
+ * - Tiền: chỉ chữ số khi gõ; format chấm nghìn khi blur
  * - Số thập phân: chấp nhận "," hoặc "."
+ * - Không giới hạn 4 chữ số (VND tới ~15 chữ số an toàn)
  */
 
 import { formatSoVND } from '@/utils/format';
 
 export type SmartNumberMode = 'int' | 'decimal' | 'currency';
+
+/** VND thực tế không cần quá 15 chữ số; tránh Number overflow. */
+export const MAX_CURRENCY_DIGITS = 15;
+export const MAX_INT_DIGITS = 12;
 
 export interface SmartNumberOptions {
   mode?: SmartNumberMode;
@@ -36,14 +41,16 @@ export function parseSmartNumber(
 
   let n: number;
   if (mode === 'currency' || mode === 'int') {
-    // Chỉ lấy chữ số (và dấu trừ đầu nếu có). Bỏ chấm/phẩy phân cách.
+    // Chỉ lấy chữ số (và dấu trừ đầu nếu có). Bỏ chấm/phẩy phân cách nghìn.
+    // "1.023.000" → 1023000  |  "1.023" → 1023  (không phải 1.023 thập phân)
     const neg = text.startsWith('-');
-    const digits = text.replace(/\D/g, '');
+    let digits = text.replace(/\D/g, '');
     if (!digits) return clampFinite(0, options);
+    const cap = mode === 'currency' ? MAX_CURRENCY_DIGITS : MAX_INT_DIGITS;
+    if (digits.length > cap) digits = digits.slice(0, cap);
     n = Number(digits);
     if (neg) n = -n;
   } else {
-    // decimal: "1.234,5" (EU) hoặc "1,234.5" (US) hoặc "1.5" / "1,5"
     n = parseDecimalLoose(text);
   }
 
@@ -67,34 +74,21 @@ function parseDecimalLoose(text: string): number {
   const hasDot = s.includes('.');
 
   if (hasComma && hasDot) {
-    // Dấu xuất hiện sau cùng = thập phân
     const lastComma = s.lastIndexOf(',');
     const lastDot = s.lastIndexOf('.');
     if (lastComma > lastDot) {
-      // 1.234,56
       s = s.replace(/\./g, '').replace(',', '.');
     } else {
-      // 1,234.56
       s = s.replace(/,/g, '');
     }
   } else if (hasComma) {
-    // Một dấu phẩy: thập phân VN "1,5" hoặc nghìn "1,234" (3 digits after → nghìn)
-    const parts = s.split(',');
-    if (parts.length === 2 && parts[1].length === 3 && parts[0].length > 0 && !parts[0].includes('.')) {
-      // ambiguous: treat as thousand only if no decimal intent — prefer decimal for quote dims
-      // e.g. "1,5" height → 1.5; "1,500" could be 1.5 or 1500. For dims use decimal.
-      s = parts[0] + '.' + parts[1];
-    } else {
-      s = s.replace(',', '.');
-    }
+    s = s.replace(',', '.');
   } else if (hasDot) {
-    // Nhiều chấm → nghìn; một chấm → thập phân hoặc nghìn 1.500
     const parts = s.split('.');
     if (parts.length > 2) {
-      // 1.234.567
+      // 1.234.567 nghìn VN → bỏ chấm
       s = s.replace(/\./g, '');
     }
-    // single dot kept as decimal (1.5 → 1.5; 1.500 → 1.5)
   }
 
   const n = Number(s);
@@ -121,36 +115,29 @@ export function formatSmartNumber(
   if (mode === 'int') return String(Math.trunc(n));
 
   const decimals = options.decimals ?? 3;
-  // Trim trailing zeros but keep meaningful decimals
   const fixed = n.toFixed(decimals);
   return fixed.replace(/\.?0+$/, '');
 }
 
 /**
- * Sanitize live typing draft without forcing a number into the field.
- * Returns the cleaned draft string (may be "" while user cleared everything).
+ * Sanitize live typing draft.
+ * Currency/int: digits only (no live dots — dots chỉ lúc blur, tránh cảm giác "khoá 4 số").
  */
 export function sanitizeSmartDraft(raw: string, mode: SmartNumberMode): string {
   if (mode === 'currency' || mode === 'int') {
-    // Allow optional leading minus + digits only; drop other chars.
     const neg = raw.trimStart().startsWith('-');
-    const digits = raw.replace(/\D/g, '');
+    let digits = raw.replace(/\D/g, '');
+    const cap = mode === 'currency' ? MAX_CURRENCY_DIGITS : MAX_INT_DIGITS;
+    if (digits.length > cap) digits = digits.slice(0, cap);
     if (!digits) return neg ? '-' : '';
-    // Live thousand separators for currency (readability while typing)
-    if (mode === 'currency') {
-      const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      return neg ? `-${grouped}` : grouped;
-    }
     return neg ? `-${digits}` : digits;
   }
 
-  // decimal: keep digits, one separators set, optional minus
   let s = raw.replace(/\s/g, '');
   const neg = s.startsWith('-');
   if (neg) s = s.slice(1);
   s = s.replace(/[^\d.,]/g, '');
 
-  // Keep only first decimal separator (prefer last typed kind)
   let seenSep = false;
   let out = '';
   for (const ch of s) {

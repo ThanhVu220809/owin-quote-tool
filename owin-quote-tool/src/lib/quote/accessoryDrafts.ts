@@ -44,7 +44,19 @@ export const DEFAULT_FIXED_ACCESSORY_NAME = 'Bộ phụ kiện đi kèm';
 
 function numberOr(value: unknown, fallback: number): number {
   if (value === null || value === undefined || value === '') return fallback;
-  const parsed = Number(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
+  // "1.023.000" (format VN) → Number() = NaN; strip separators first.
+  const raw = String(value).trim();
+  if (!raw) return fallback;
+  if (/[.\s,]/.test(raw) && /\d/.test(raw)) {
+    const neg = raw.startsWith('-');
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return fallback;
+    const n = Number(digits);
+    if (!Number.isFinite(n)) return fallback;
+    return neg ? -n : n;
+  }
+  const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
