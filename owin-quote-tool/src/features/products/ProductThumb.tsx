@@ -23,6 +23,7 @@ export function ProductThumb({
   item,
   products = NO_PRODUCTS,
   thumb = false,
+  previewable = true,
 }: {
   imageId?: string;
   imagePath?: string | null;
@@ -32,6 +33,11 @@ export function ProductThumb({
   products?: ProductRecord[];
   /** Dùng bản thumbnail nhẹ (~400px) cho list/bảng giá; tự fallback về master nếu thiếu. */
   thumb?: boolean;
+  /**
+   * Khi true (mặc định): bấm ảnh mở lightbox xem lớn.
+   * Tắt khi parent tự xử lý click (vd. chọn file khi đang sửa hạng mục).
+   */
+  previewable?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -94,6 +100,7 @@ export function ProductThumb({
   const displayUrl = thumbUrl ?? masterUrl ?? OWIN_LOGO;
   const sizeStyle = fill ? { width: '95%', height: '95%' } : { width: size, height: size };
   const className = fill ? 'ph image-fit-contain' : 'product-thumb image-fit-contain';
+  const canPreview = Boolean(previewable && masterUrl);
 
   return (
     <img
@@ -104,8 +111,15 @@ export function ProductThumb({
       decoding="async"
       data-image-loading={resolving ? 'true' : 'false'}
       aria-busy={resolving}
-      style={{ ...sizeStyle, cursor: masterUrl ? 'zoom-in' : undefined }}
-      onClick={masterUrl ? (e) => { e.stopPropagation(); openImageLightbox(masterUrl); } : undefined}
+      style={{ ...sizeStyle, cursor: canPreview ? 'zoom-in' : undefined }}
+      onClick={
+        canPreview
+          ? (e) => {
+              e.stopPropagation();
+              openImageLightbox(masterUrl!);
+            }
+          : undefined
+      }
       onError={() => {
         setResolving(false);
         // thumb thiếu → thử master; master lỗi → logo.

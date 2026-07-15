@@ -2191,15 +2191,18 @@ function QuoteItemCard({
       const names = fixedDraft.items.map((row) => row.name.trim()).filter(Boolean);
       const extras = extraDraft.map((row) => row.name.trim()).filter(Boolean);
       const all = [...names, ...extras];
-      if (fixedDraft.name.trim()) return `${fixedDraft.name}${all.length ? ` · ${all.slice(0, 3).join(', ')}` : ''}`;
-      return all.slice(0, 4).join(', ') || '';
+      if (fixedDraft.name.trim()) return `${fixedDraft.name}${all.length ? ` · ${all.join(', ')}` : ''}`;
+      return all.join(', ') || '';
     }
-    return item.accessories.map((acc) => acc.name).filter(Boolean).slice(0, 4).join(', ');
+    return item.accessories.map((acc) => acc.name).filter(Boolean).join(', ');
   })();
+  // Thu gọn: hiện đủ mô tả + thông số (không cắt ".....").
   const descBits = [
     item.category || item.groupName || '',
     item.description || '',
-    ...(item.specs ?? []).filter((s) => s.value).slice(0, 2).map((s) => `${s.key}: ${s.value}`),
+    ...(item.specs ?? []).filter((s) => s.key || s.value).map((s) =>
+      s.key && s.value ? `${s.key}: ${s.value}` : s.key || s.value,
+    ),
   ].filter(Boolean);
 
   if (locked) {
@@ -2278,7 +2281,7 @@ function QuoteItemCard({
           aria-label="Chọn ảnh từ máy"
           title="Bấm để chọn ảnh từ máy"
         >
-          <ProductThumb item={item} products={products} imagePath={imagePath} fill />
+          <ProductThumb item={item} products={products} imagePath={imagePath} fill previewable={false} />
           <span className="quote-item-thumb-overlay">
             {imageBusy ? <LoaderCircle size={16} className="spin" /> : <ImagePlus size={16} />}
           </span>
