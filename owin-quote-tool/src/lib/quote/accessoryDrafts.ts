@@ -45,19 +45,20 @@ export const DEFAULT_FIXED_ACCESSORY_NAME = 'Bộ phụ kiện đi kèm';
 function numberOr(value: unknown, fallback: number): number {
   if (value === null || value === undefined || value === '') return fallback;
   if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
-  // "1.023.000" (format VN) → Number() = NaN; strip separators first.
   const raw = String(value).trim();
   if (!raw) return fallback;
-  if (/[.\s,]/.test(raw) && /\d/.test(raw)) {
-    const neg = raw.startsWith('-');
-    const digits = raw.replace(/\D/g, '');
-    if (!digits) return fallback;
-    const n = Number(digits);
+  const neg = raw.startsWith('-');
+  const body = neg ? raw.slice(1) : raw;
+  // VN thousands: 1.023.000 or 1.023 — only when every group is 3 digits after first.
+  if (/^\d{1,3}(\.\d{3})+$/.test(body)) {
+    const n = Number(body.replace(/\./g, ''));
     if (!Number.isFinite(n)) return fallback;
     return neg ? -n : n;
   }
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  // Decimal "8,96" / "8.96"
+  const asDecimal = Number(body.replace(',', '.'));
+  if (Number.isFinite(asDecimal)) return neg ? -asDecimal : asDecimal;
+  return fallback;
 }
 
 function parseJsonMaybe<T>(value: unknown, fallback: T): T {
@@ -234,7 +235,10 @@ export function normalizeAccessoryDraft(
   const unit = normalizeUnit(input.unit || 'BO') as ProductUnit;
   // Blank/new accessory rows default to quantity 0 (not 1).
   const quantity = Math.max(0, numberOr(input.quantity, 0));
-  const weight = unit === 'BO' ? 0 : numberOr(input.weight, quantity);
+  // m²/md: nếu KL trống/0 mà có SL → dùng SL làm KL (thành tiền = SL × đơn giá).
+  const rawWeight = unit === 'BO' ? 0 : numberOr(input.weight, NaN);
+  const weight =
+    unit === 'BO' ? 0 : Number.isFinite(rawWeight) && rawWeight > 0 ? rawWeight : quantity;
   const unitPrice = numberOr(input.unitPrice, 0);
   const amount = calculateAccessoryDraftTotal({ unit, quantity, weight, unitPrice });
   return {

@@ -300,7 +300,13 @@ export function ExtraAccessoriesEditor({
                   min={0}
                   value={item.quantity}
                   onChange={(quantity) =>
-                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity }))
+                    onChange(
+                      updateAccessoryDraftAtIndex(value, index, {
+                        quantity,
+                        // m²/md: gõ SL cũng điền KL để thành tiền = SL × đơn giá
+                        ...(item.unit !== 'BO' ? { weight: quantity } : {}),
+                      }),
+                    )
                   }
                   placeholder="0"
                 />
@@ -317,7 +323,12 @@ export function ExtraAccessoriesEditor({
                     min={0}
                     value={item.weight}
                     onChange={(weight) =>
-                      onChange(updateAccessoryDraftAtIndex(value, index, { weight }))
+                      onChange(
+                        updateAccessoryDraftAtIndex(value, index, {
+                          weight,
+                          quantity: weight > 0 ? weight : item.quantity,
+                        }),
+                      )
                     }
                     placeholder="0"
                   />

@@ -156,16 +156,21 @@ export function calculateQuoteItem(item: QuoteItemInput, sortOrder: number): Cal
       extras.forEach((extra) => {
         const acc = extra as Record<string, unknown>;
         const unit = normalizeUnit(String(acc.unit || 'BO'));
-        const quantity = parseQuoteNumber(acc.quantity, 1);
+        const quantity = parseQuoteNumber(acc.quantity, 0);
         const weight = roundQuantity3(parseQuoteNumber(acc.weight ?? acc.kl, 0));
         const unitPrice = parseQuoteNumber(acc.unitPriceVnd ?? acc.unitPrice, 0);
-        const basis = isWeightBasedAccessoryUnit(unit) ? weight : quantity;
         const totalLineVnd = calculateExtraAccessoryLineTotal({
           unit,
           quantity,
           weight,
           unitPriceVnd: unitPrice,
         });
+        // basis hiển thị = cùng logic nhân đơn giá (KL ưu tiên, không thì SL)
+        const basis = isWeightBasedAccessoryUnit(unit)
+          ? weight > 0
+            ? weight
+            : quantity
+          : quantity;
         accessorySubtotalVnd += totalLineVnd;
         calculatedAccessories.push({
           enabled: true,

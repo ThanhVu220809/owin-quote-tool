@@ -124,6 +124,27 @@ function parsePackageDescription(desc) {
   return { packageName: packageName || 'Bộ phụ kiện đi kèm', itemNames };
 }
 
+/** Parse "- Màu: Vân Gỗ Trắc" lines from Word description → specs[]. */
+function parseSpecsFromDescription(desc) {
+  const specs = [];
+  const lines = String(desc || '')
+    .replace(/\r/g, '')
+    .split(/\n|•/)
+    .map((line) => line.replace(/^[-–—\s]+/, '').trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    const m = line.match(/^([^:]{1,40})\s*:\s*(.+)$/);
+    if (!m) continue;
+    const key = m[1].trim();
+    const value = m[2].trim();
+    // Skip product title lines without real key/value
+    if (!key || !value) continue;
+    if (/^cửa\b/i.test(key) && key.length > 20) continue;
+    specs.push({ key, value, sortOrder: specs.length });
+  }
+  return specs;
+}
+
 function extractGrid(xml) {
   const rows = xml.match(/<w:tr\b[\s\S]*?<\/w:tr>/g) || [];
   return rows.map((row) => {
@@ -230,7 +251,8 @@ function parseDocx(buffer) {
     const unitRaw = (row[4] || '').trim();
     const widthM = parseDim(row[5]);
     const heightM = parseDim(row[6]);
-    const qty = parseIntSafe(row[7]);
+    // SL có thể thập phân (8,96 md) — không dùng parseInt.
+    const qty = parseDim(row[7]) ?? parseIntSafe(row[7]);
     const weight = parseDim(row[8]);
     const price = parseMoney(row[9]);
 
@@ -277,14 +299,18 @@ function parseDocx(buffer) {
       continue;
     }
     if (isPhao) {
-      const quantity = qty || weight || 1;
-      const amount = Math.round(price * quantity);
+      const unit = normalizeUnit(unitRaw, 'BO');
+      // md/m²: độ dài/diện tích nằm ở SL hoặc KL trong Word
+      const measure = Number(qty || weight || 0) || 0;
+      const quantity = unit === 'BO' ? Math.max(1, qty || 1) : measure || 1;
+      const kl = unit === 'BO' ? 0 : measure || quantity;
+      const amount = Math.round(price * (unit === 'BO' ? quantity : kl || quantity));
       current.extras.push({
         id: crypto.randomUUID(),
         name: desc.split('\n')[0].trim(),
-        unit: normalizeUnit(unitRaw, 'BO'),
+        unit,
         quantity,
-        weight: 0,
+        weight: kl,
         unitPrice: price,
         amount,
         sortOrder: current.extras.length,
@@ -380,7 +406,7 @@ function buildQuote(parsed, code) {
       unit: p.unit,
       description: p.description,
       unitPriceVnd: p.unitPriceVnd,
-      specs: [],
+      specs: parseSpecsFromDescription(p.description || p.name),
       dimensions: dims,
       accessories: [],
       fixedAccessoryPackage: fixed,

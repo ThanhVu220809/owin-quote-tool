@@ -11,14 +11,27 @@ export function isWeightBasedAccessoryUnit(unit: ExtraAccessoryPricingInput['uni
   return isAreaUnit(unit) || isMeterUnit(unit);
 }
 
+/**
+ * Cơ sở nhân đơn giá phụ kiện phát sinh:
+ * - Bộ (BO): luôn dùng SL
+ * - m² / md: ưu tiên KL nếu > 0, không thì dùng SL
+ *   (tránh nhập SL mà thành tiền = 0 vì KL đang 0)
+ */
+export function accessoryPricingBasis(input: ExtraAccessoryPricingInput): number {
+  const quantity = Math.max(0, parseQuoteNumber(input.quantity, 0));
+  const weight = Math.max(0, roundQuantity3(parseQuoteNumber(input.weight, 0)));
+  if (isWeightBasedAccessoryUnit(input.unit)) {
+    return weight > 0 ? weight : quantity;
+  }
+  return quantity;
+}
+
 export function calculateExtraAccessoryLineTotal(input: ExtraAccessoryPricingInput): number {
-  const quantity = parseQuoteNumber(input.quantity, 1);
-  const weight = roundQuantity3(parseQuoteNumber(input.weight, 0));
   const unitPrice = parseQuoteNumber(
     input.unitPriceVnd !== undefined ? input.unitPriceVnd : input.unitPrice,
     0,
   );
-  const basis = isWeightBasedAccessoryUnit(input.unit) ? weight : quantity;
+  const basis = accessoryPricingBasis(input);
   return roundMoneyToVnd(basis * unitPrice);
 }
 
