@@ -1189,13 +1189,18 @@
 .accessory-item-line {
   display: grid;
   /* [tay kéo] [số thứ tự] [tên] [SL] [xóa] */
-  grid-template-columns: 26px 26px minmax(0, 1fr) 78px 40px;
+  grid-template-columns: 24px 24px minmax(0, 1fr) 72px 36px;
   gap: 8px;
   align-items: end;
 }
 .accessory-item-line .field,
 .extra-accessory-line .field,
 .legacy-accessory-row .field { margin-bottom: 0; }
+/* Ô SL (type=number) không được tràn/đè sang ô tên: ép nằm gọn trong cột. */
+.accessory-item-line .field,
+.accessory-item-line .field .input,
+.accessory-item-line input { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.accessory-item-line { overflow: hidden; }
 /* Tên phụ kiện gọn lại (font nhỏ, dòng thấp) để không lấn phần thông số kỹ thuật. */
 .accessory-editor-panel .accessory-item-line .input,
 .accessory-editor-panel > .field .input {
