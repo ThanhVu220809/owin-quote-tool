@@ -104,7 +104,8 @@ describe('importQuoteFromDocx', () => {
       quantity: 2,
       unitPriceVnd: 1_500_000,
     });
-    expect(draft.items[0].accessories.length).toBeGreaterThan(0);
+    expect(draft.items[0].fixedAccessoryPackage).toBeTruthy();
+    expect(String(draft.items[0].fixedAccessoryPackage)).toMatch(/phụ kiện|Kinlong|Thủy Lực/i);
     expect(draft.items[0].extraAccessories).toContain('Phào');
   });
 

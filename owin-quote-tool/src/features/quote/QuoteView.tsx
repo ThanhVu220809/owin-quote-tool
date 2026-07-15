@@ -1,7 +1,7 @@
 /* Existing effects intentionally reset local view state after async store updates. */
 /* eslint-disable react-hooks/set-state-in-effect, no-useless-assignment */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Copy, Eye, FileDown, FileUp, ImagePlus, LoaderCircle, Package, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, FileDown, ImagePlus, LoaderCircle, Package, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -47,7 +47,6 @@ import {
   findOrphanAccessoryNames,
   type AccessoryPackageTemplate,
 } from '@/lib/accessoryPackages';
-import { importQuoteFromDocx } from '@/lib/quote/importQuoteFromDocx';
 import { deleteQuote, getAllQuotes, saveQuoteRecord } from './quoteStore';
 import { subscribeToQuotes } from '@/features/supabase/quotesRepo';
 import { documentsEqual } from '@/features/supabase/threeWayMerge';
@@ -528,39 +527,6 @@ export function QuoteView() {
     setView('form');
     setDetailQuote(null);
     scrollPageTop();
-  };
-
-  const importWordInputRef = useRef<HTMLInputElement>(null);
-  const [importingWord, setImportingWord] = useState(false);
-
-  const handleImportWord = async (file: File) => {
-    setImportingWord(true);
-    setMessage('');
-    try {
-      const draft = await importQuoteFromDocx(file);
-      resetForm();
-      setCustomerName(draft.customerName);
-      setCustomerAddress(draft.customerAddress);
-      setQuoteDate(draft.quoteDate || todayInputValue());
-      const keys = draft.items.map(() => makeItemUiKey());
-      setItems(draft.items.map((item) => confirmNormalizeItem(item)));
-      setItemUiKeys(keys);
-      setExpandedItemKeys(new Set());
-      setView('form');
-      setDetailQuote(null);
-      setMessage(
-        `Đã import ${draft.items.length} hạng mục từ Word${draft.customerName ? ` · KH: ${draft.customerName}` : ''}. Kiểm tra rồi bấm Lưu.`,
-      );
-      scrollPageTop();
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? `Import Word thất bại: ${error.message}`
-          : 'Import Word thất bại. Kiểm tra đúng file báo giá OWIN.',
-      );
-    } finally {
-      setImportingWord(false);
-    }
   };
 
   const appendItem = (item: QuoteItemInput, options?: { expand?: boolean }) => {
@@ -1183,47 +1149,32 @@ export function QuoteView() {
 
   if (view === 'list') {
     return (
-      <>
-        <input
-          ref={importWordInputRef}
-          type="file"
-          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          style={{ display: 'none' }}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void handleImportWord(file);
-            event.target.value = '';
-          }}
-        />
-        <QuoteListPanel
-          history={history}
-          filteredHistory={filteredHistory}
-          quoteSearch={quoteSearch}
-          quoteStatusFilter={quoteStatusFilter}
-          message={message}
-          loading={historyLoading}
-          error={historyError}
-          importingWord={importingWord}
-          onSearch={setQuoteSearch}
-          onStatusFilter={setQuoteStatusFilter}
-          onCreate={openNewQuote}
-          onImportWord={() => importWordInputRef.current?.click()}
-          onView={openDetail}
-          onEdit={loadQuote}
-          onDuplicate={(quote) => loadQuote(quote, true)}
-          onDelete={(quote) => void deleteSavedQuote(quote)}
-          onRetry={() => {
-            setHistoryError('');
-            setHistoryLoading(true);
-            void refreshHistory()
-              .then(() => setHistoryLoading(false))
-              .catch((error) => {
-                setHistoryLoading(false);
-                setHistoryError(operationError('Không thể tải danh sách báo giá từ Supabase', error));
-              });
-          }}
-        />
-      </>
+      <QuoteListPanel
+        history={history}
+        filteredHistory={filteredHistory}
+        quoteSearch={quoteSearch}
+        quoteStatusFilter={quoteStatusFilter}
+        message={message}
+        loading={historyLoading}
+        error={historyError}
+        onSearch={setQuoteSearch}
+        onStatusFilter={setQuoteStatusFilter}
+        onCreate={openNewQuote}
+        onView={openDetail}
+        onEdit={loadQuote}
+        onDuplicate={(quote) => loadQuote(quote, true)}
+        onDelete={(quote) => void deleteSavedQuote(quote)}
+        onRetry={() => {
+          setHistoryError('');
+          setHistoryLoading(true);
+          void refreshHistory()
+            .then(() => setHistoryLoading(false))
+            .catch((error) => {
+              setHistoryLoading(false);
+              setHistoryError(operationError('Không thể tải danh sách báo giá từ Supabase', error));
+            });
+        }}
+      />
     );
   }
 
@@ -1565,11 +1516,9 @@ function QuoteListPanel({
   message,
   loading,
   error,
-  importingWord,
   onSearch,
   onStatusFilter,
   onCreate,
-  onImportWord,
   onView,
   onEdit,
   onDuplicate,
@@ -1583,11 +1532,9 @@ function QuoteListPanel({
   message: string;
   loading: boolean;
   error: string;
-  importingWord?: boolean;
   onSearch: (value: string) => void;
   onStatusFilter: (value: QuoteRecord['status'] | '') => void;
   onCreate: () => void;
-  onImportWord?: () => void;
   onView: (quote: QuoteRecord) => void;
   onEdit: (quote: QuoteRecord) => void;
   onDuplicate: (quote: QuoteRecord) => void;
@@ -1602,14 +1549,6 @@ function QuoteListPanel({
           <p className="app-subtitle">Hồ sơ báo giá chi tiết nhôm kính hệ OWIN · {history.length} báo giá</p>
         </div>
         <div className="product-header-actions">
-          <button className="btn btn-ghost" type="button" onClick={onImportWord} disabled={importingWord}>
-            {importingWord ? (
-              <LoaderCircle size={17} className="spin" style={{ verticalAlign: '-3px' }} />
-            ) : (
-              <FileUp size={17} style={{ verticalAlign: '-3px' }} />
-            )}{' '}
-            {importingWord ? 'Đang import…' : 'Import từ Word'}
-          </button>
           <button className="btn btn-primary" onClick={onCreate}>
             <Plus size={18} style={{ verticalAlign: '-3px' }} /> Tạo báo giá mới
           </button>

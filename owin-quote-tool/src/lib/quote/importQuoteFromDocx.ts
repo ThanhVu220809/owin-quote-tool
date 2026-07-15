@@ -48,17 +48,40 @@ function joinCellText(tcXml: string): string {
 }
 
 function parseDim(value: string | undefined): number | null {
-  const raw = String(value || '')
-    .trim()
-    .replace(',', '.');
+  let raw = String(value || '').trim();
   if (!raw) return null;
+  // Door/window sizes are meters, almost always < 20:
+  // - "2,4" / "2,40" → decimal comma
+  // - "2.950" / "1.800" → decimal meters (NOT thousands)
+  // - "1.234,5" (rare) → thousand dots + decimal comma
+  if (/^\d{1,3}(\.\d{3})+,\d+$/.test(raw)) {
+    raw = raw.replace(/\./g, '').replace(',', '.');
+  } else if (raw.includes(',') && !raw.includes('.')) {
+    raw = raw.replace(',', '.');
+  }
   const n = Number(raw);
-  return Number.isFinite(n) ? Math.round(n * 10_000) / 10_000 : null;
+  if (!Number.isFinite(n)) return null;
+  // Guard: a 2.95m opening must never become 2950m.
+  if (n > 50) return Math.round((n / 1000) * 10_000) / 10_000;
+  return Math.round(n * 10_000) / 10_000;
 }
 
 function parseMoney(value: string | undefined): number {
   const digits = String(value || '').replace(/[^\d]/g, '');
   return digits ? Number(digits) : 0;
+}
+
+/** Split "Bộ PK X: - Món 1 - Món 2" into package title + item names. */
+function parsePackageDescription(desc: string): { packageName: string; itemNames: string[] } {
+  const cleaned = desc.replace(/\r/g, '').trim();
+  const colon = cleaned.indexOf(':');
+  const packageName = (colon >= 0 ? cleaned.slice(0, colon) : cleaned).trim();
+  const rest = colon >= 0 ? cleaned.slice(colon + 1) : '';
+  const itemNames = rest
+    .split(/\n|•|·|;|(?:\s[-–—]\s)/)
+    .map((part) => part.replace(/^[-–—•\s]+/, '').trim())
+    .filter((part) => part && !/^phụ kiện$/i.test(part));
+  return { packageName: packageName || 'Bộ phụ kiện đi kèm', itemNames };
 }
 
 function parseIntSafe(value: string | undefined): number {
@@ -203,15 +226,35 @@ export async function importQuoteFromDocx(
     const current = products[products.length - 1];
 
     if (isAcc) {
-      const name = desc.split(':')[0].trim();
-      const note = desc.includes(':') ? desc.split(':').slice(1).join(':').trim() : null;
-      current.accessories.push({
-        name,
-        note,
-        quantityPerSet: qty || 1,
-        unitPriceVnd: price,
-        isEnabled: true,
-      });
+      const { packageName, itemNames } = parsePackageDescription(desc);
+      if (itemNames.length > 0) {
+        // Expand bullet list into individual package items (qty on package row is package count).
+        for (const itemName of itemNames) {
+          current.accessories.push({
+            name: itemName,
+            note: packageName,
+            quantityPerSet: 0,
+            unitPriceVnd: 0,
+            isEnabled: true,
+          });
+        }
+        // Keep package unit price on a synthetic first row marker via note + trailing price row.
+        current.accessories.push({
+          name: packageName,
+          note: '__PACKAGE_PRICE__',
+          quantityPerSet: qty || 1,
+          unitPriceVnd: price,
+          isEnabled: true,
+        });
+      } else {
+        current.accessories.push({
+          name: packageName,
+          note: null,
+          quantityPerSet: qty || 1,
+          unitPriceVnd: price,
+          isEnabled: true,
+        });
+      }
       continue;
     }
 
@@ -249,25 +292,35 @@ export async function importQuoteFromDocx(
 
   const items: QuoteItemInput[] = products.map((product, index) => {
     const base = createCustomQuoteItem(product.code || `IMP-${index + 1}`);
-    const packageUnitPrice = product.accessories.reduce(
-      (sum, acc) => sum + (acc.unitPriceVnd || 0),
-      0,
-    );
+    const priceMarker = product.accessories.find((acc) => acc.note === '__PACKAGE_PRICE__');
+    const itemRows = product.accessories.filter((acc) => acc.note !== '__PACKAGE_PRICE__');
+    const packageUnitPrice =
+      priceMarker?.unitPriceVnd ||
+      product.accessories.reduce((sum, acc) => sum + (acc.unitPriceVnd || 0), 0);
+    const packageQuantity = Math.max(1, Number(priceMarker?.quantityPerSet || 1));
     const packageName =
-      product.accessories.find((acc) => /bộ/i.test(acc.name))?.name ||
-      (product.accessories.length > 0 ? 'Bộ phụ kiện đi kèm' : '');
+      priceMarker?.name ||
+      itemRows.find((acc) => /bộ/i.test(acc.name))?.name ||
+      (itemRows.length > 0 ? 'Bộ phụ kiện đi kèm' : '');
+    const packageItems = itemRows
+      .filter((acc) => acc.name && acc.name !== packageName)
+      .map((acc) => ({
+        name: acc.name,
+        quantity: Number(acc.quantityPerSet) || 0,
+      }));
     const fixedFromAccessories =
-      product.accessories.length > 0
+      packageName || packageItems.length > 0 || packageUnitPrice > 0
         ? JSON.stringify({
-            name: packageName,
-            items: product.accessories.map((acc) => ({
-              name: acc.name,
-              quantity: acc.quantityPerSet,
-            })),
-            packageQuantity: 1,
+            name: packageName || 'Bộ phụ kiện đi kèm',
+            items: packageItems.length > 0
+              ? packageItems
+              : itemRows.map((acc) => ({ name: acc.name, quantity: Number(acc.quantityPerSet) || 0 })),
+            packageQuantity,
             unit: 'BO',
             unitPrice: packageUnitPrice,
             unitPriceVnd: packageUnitPrice,
+            total: packageQuantity * packageUnitPrice,
+            totalVnd: packageQuantity * packageUnitPrice,
           })
         : null;
 
@@ -289,7 +342,7 @@ export async function importQuoteFromDocx(
               unitPriceVnd: dim.unitPriceVnd ?? product.unitPriceVnd,
             }))
           : [{ unit: product.unit, widthM: null, heightM: null, quantity: 1, unitPriceVnd: product.unitPriceVnd }],
-      accessories: product.accessories,
+      accessories: [],
       fixedAccessoryPackage: fixedFromAccessories,
       extraAccessories:
         product.extra.length > 0 ? JSON.stringify(product.extra) : null,
