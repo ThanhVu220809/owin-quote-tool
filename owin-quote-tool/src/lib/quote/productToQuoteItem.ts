@@ -1,5 +1,7 @@
 import type { ProductRecord, ProductUnit, QuoteItemInput } from '@/types/models';
 import { calculateExtraAccessoryLineTotal, normalizeUnit, roundQuantity3 } from '@/lib/quote-engine';
+import { normalizeCategoryName } from '@/config/categoryOrder';
+import { titleCaseVi } from '@/utils/titleCase';
 import { parseFixedAccessoriesJson, serializeFixedAccessoriesJson } from './accessoryDrafts';
 
 export function parseProductSizeText(rawSizeText: string | null | undefined): {
@@ -89,17 +91,19 @@ export function createQuoteItemFromProduct(
   const heightM = unit === 'BO' ? null : size.height ?? 1.5;
   const unitPriceVnd = normalizeProductPriceForQuote(product, widthM, heightM);
 
+  const itemName = titleCaseVi(product.name) || product.name;
+  const category = normalizeCategoryName(product.category);
   return {
     sourceType: 'PRODUCT',
     productId: product.id,
     sourceProductId: product.id,
     productCode: quoteItemCode,
-    productName: product.name,
+    productName: itemName,
     quoteItemCode,
-    itemName: product.name,
+    itemName,
     productType: null,
-    category: product.category,
-    groupName: product.category,
+    category,
+    groupName: category,
     coverImagePath: product.coverImagePath,
     image: product.coverImagePath,
     imageReference: product.coverImagePath,

@@ -106,7 +106,7 @@ describe('soft deletes and timestamps', () => {
     await saveProduct({ ...remote, name: 'Ordered edited', sortOrder: 1 });
 
     expect(productDb.get(product.id)?.sortOrder).toBe(9);
-    expect(productDb.get(product.id)?.name).toBe('Ordered edited');
+    expect(productDb.get(product.id)?.name).toBe('Ordered Edited');
   });
 });
 

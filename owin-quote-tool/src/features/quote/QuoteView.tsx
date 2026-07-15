@@ -14,6 +14,8 @@ import type {
 } from '@/types/models';
 import { useProducts } from '@/features/products/useProducts';
 import { formatVND } from '@/utils/format';
+import { titleCaseVi } from '@/utils/titleCase';
+import { normalizeCategoryName } from '@/config/categoryOrder';
 import { AutoSuggestInput } from '@/components/AutoSuggestInput';
 import { CurrencyInput } from '@/components/CurrencyInput';
 import { DragHandle, reorderList, useDragReorder } from '@/components/DragReorder';
@@ -448,14 +450,22 @@ export function QuoteView() {
   }, []);
 
   const categories = useMemo(
-    () => Array.from(new Set(productRecords.map((product) => product.category).filter(Boolean))).sort(),
+    () =>
+      Array.from(
+        new Set(
+          productRecords
+            .map((product) => normalizeCategoryName(product.category))
+            .filter(Boolean),
+        ),
+      ).sort(),
     [productRecords],
   );
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     return productRecords.filter((product) => {
-      const categoryOk = !categoryFilter || product.category === categoryFilter;
+      const categoryOk =
+        !categoryFilter || normalizeCategoryName(product.category) === categoryFilter;
       const text = `${product.code} ${product.name} ${product.category}`.toLowerCase();
       return categoryOk && (!q || text.includes(q));
     });
@@ -1281,12 +1291,19 @@ export function QuoteView() {
       <div className="card" style={{ marginTop: 16 }}>
         <div className="section-label">Hạng mục báo giá ({items.length})</div>
         {(() => {
-          const cats = Array.from(new Set(items.map((it) => (it.category || it.groupName || '').trim()).filter(Boolean)));
-          if (cats.length < 2) return null;
+          // Title Case + gộp trùng (Cửa chính / Cửa Chính → 1 tab).
+          const uniqueCats = Array.from(
+            new Set(
+              items
+                .map((it) => normalizeCategoryName(it.category || it.groupName || ''))
+                .filter(Boolean),
+            ),
+          );
+          if (uniqueCats.length < 2) return null;
           return (
             <div className="tool-nav no-print" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 10 }} role="tablist">
               <button type="button" className={`tool-nav-item ${itemCategoryFilter === 'all' ? 'active' : ''}`} onClick={() => setItemCategoryFilter('all')}>Tất cả</button>
-              {cats.map((c) => (
+              {uniqueCats.map((c) => (
                 <button key={c} type="button" className={`tool-nav-item ${itemCategoryFilter === c ? 'active' : ''}`} onClick={() => setItemCategoryFilter(c)}>{c}</button>
               ))}
             </div>
@@ -1300,7 +1317,10 @@ export function QuoteView() {
               const uiKey = itemUiKeys[index] || `fallback-${index}`;
               const locked = !expandedItemKeys.has(uiKey);
               // Tab lọc: bỏ qua hạng mục không thuộc loại đang chọn (index giữ nguyên cho sửa/xóa).
-              if (itemCategoryFilter !== 'all' && (item.category || item.groupName || '').trim() !== itemCategoryFilter) return null;
+              if (
+                itemCategoryFilter !== 'all' &&
+                normalizeCategoryName(item.category || item.groupName || '') !== itemCategoryFilter
+              ) return null;
               return (
               <div key={uiKey} className="quote-item-drop" {...itemDrag.rowProps(index)}>
               <QuoteItemCard
@@ -1480,7 +1500,9 @@ function ProductPickerModal({
                     onClick={() => onSelect(product.id)}
                   >
                     <strong>{product.name}</strong>
-                    {product.category ? <span className="quote-picker-meta">{product.category}</span> : null}
+                    {product.category ? (
+                      <span className="quote-picker-meta">{normalizeCategoryName(product.category)}</span>
+                    ) : null}
                     <span className="quote-picker-price">
                       {formatVND(product.unitPriceVnd)}
                       <small>/{unitLabelShort(product.unit)}</small>
@@ -2209,7 +2231,7 @@ function QuoteItemCard({
           >
             <div className="quote-item-locked-title">
               <span className="quote-item-locked-index">#{index + 1}</span>
-              <strong>{item.itemName || 'Hạng mục'}</strong>
+              <strong>{titleCaseVi(item.itemName || '') || 'Hạng Mục'}</strong>
             </div>
             <div className="quote-item-locked-meta">
               <span className="quote-item-locked-total">{formatVND(calculated?.itemTotalVnd ?? 0)}</span>

@@ -1,6 +1,8 @@
 import { Copy, Eye, Package, Pencil, Trash2 } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { formatVND } from '@/utils/format';
+import { normalizeCategoryName } from '@/config/categoryOrder';
+import { titleCaseVi } from '@/utils/titleCase';
 import { DragHandle, useDragReorder } from '@/components/DragReorder';
 import { ProductThumb } from './ProductThumb';
 
@@ -92,15 +94,15 @@ export function ProductList({
                   </button>
                 </td>
                 <td data-col="name">
-                  <div className="product-name">{p.name}</div>
+                  <div className="product-name">{titleCaseVi(p.name) || p.name}</div>
                   <div className="product-sub">{p.code}</div>
                   <div className="product-row-mobile-meta">
-                    <span>{p.category}</span>
+                    <span>{normalizeCategoryName(p.category)}</span>
                     <span>{unitLabel(p.unit)}</span>
                     {p.rawSizeText ? <span>{p.rawSizeText}</span> : null}
                   </div>
                 </td>
-                <td data-col="category">{p.category}</td>
+                <td data-col="category">{normalizeCategoryName(p.category)}</td>
                 <td data-col="unit">{unitLabel(p.unit)}</td>
                 <td data-col="size">{p.rawSizeText || '—'}</td>
                 <td className="num" data-col="price">{formatVND(p.unitPriceVnd)}</td>

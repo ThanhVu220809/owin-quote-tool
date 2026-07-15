@@ -455,7 +455,7 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
               value={category}
               onChange={setCategory}
               suggestions={suggestions.category}
-              placeholder="Cửa chính"
+              placeholder="Cửa Chính"
             />
             <AutoSuggestInput
               label="Tên sản phẩm"

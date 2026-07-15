@@ -27,6 +27,8 @@ import {
   setHostedProductOrder,
 } from '@/features/supabase/productsRepo';
 import { mergeTopLevel } from '@/features/supabase/threeWayMerge';
+import { normalizeCategoryName } from '@/config/categoryOrder';
+import { titleCaseVi } from '@/utils/titleCase';
 
 const DEFAULT_CATEGORY = 'Khác';
 
@@ -229,9 +231,9 @@ export function normalizeProductRecord(input: ProductInput, numericIdFallback = 
     id: normalizeString(input.id, code),
     numericId: normalizeNumber(input.numericId, numericIdFallback),
     code,
-    name,
+    name: titleCaseVi(name) || name,
     slug: normalizeString(input.slug, slugifyVi(name) || code.toLowerCase()),
-    category: normalizeString(input.category, DEFAULT_CATEGORY) || DEFAULT_CATEGORY,
+    category: normalizeCategoryName(normalizeString(input.category, DEFAULT_CATEGORY) || DEFAULT_CATEGORY),
     unit,
     unitPriceVnd: normalizeNumber(input.unitPriceVnd ?? input.donGiaGoc, 0),
     shortDesc: normalizeNullableString(input.shortDesc),

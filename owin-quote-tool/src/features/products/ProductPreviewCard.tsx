@@ -1,6 +1,8 @@
 import { Pencil, X } from 'lucide-react';
 import type { ProductRecord } from '@/types/models';
 import { formatVND } from '@/utils/format';
+import { normalizeCategoryName } from '@/config/categoryOrder';
+import { titleCaseVi } from '@/utils/titleCase';
 import { ProductThumb } from './ProductThumb';
 import { parseExtraAccessoriesJson, parseFixedAccessoriesJson } from '@/lib/quote/accessoryDrafts';
 
@@ -81,8 +83,8 @@ export function ProductPreviewCard({
       >
         <div className="product-preview-header">
           <div className="product-preview-header-text">
-            <div className="product-preview-kicker">{product.category || 'Sản phẩm'}</div>
-            <div className="product-name product-preview-title">{product.name}</div>
+            <div className="product-preview-kicker">{normalizeCategoryName(product.category) || 'Sản Phẩm'}</div>
+            <div className="product-name product-preview-title">{titleCaseVi(product.name) || product.name}</div>
             <div className="product-sub">{product.code}{product.rawSizeText ? ` · KT mẫu ${product.rawSizeText}` : ''}</div>
           </div>
           <button className="icon-btn" type="button" onClick={onClose} aria-label="Đóng">

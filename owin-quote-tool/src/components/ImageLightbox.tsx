@@ -14,14 +14,16 @@ interface Props {
   onClose: () => void;
 }
 
+/** 1× = fit khung xem (không phải pixel gốc — ảnh thanh nhôm ~100px sẽ được phóng to). */
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 3;
+const MAX_ZOOM = 6;
 const ZOOM_STEP = 0.5;
+/** Tỉ lệ lấp khung ở 1× (ảnh nhỏ kỹ thuật + ảnh SP đều fill stage). */
+const FIT_WIDTH_PCT = 92;
 
 /**
  * Fullscreen image viewer: click backdrop or X to close.
- * Real zoom in/out (1×–3×) for non-technical users inspecting product photos;
- * when enlarged the stage scrolls so any corner can be panned into view.
+ * 1× fills the stage (scales tiny aluminum drawings up); zoom multiplies that fit size.
  */
 export function ImageLightbox({ src, alt = 'Ảnh sản phẩm', open, onClose }: Props) {
   const [zoom, setZoom] = useState(MIN_ZOOM);
@@ -55,6 +57,7 @@ export function ImageLightbox({ src, alt = 'Ảnh sản phẩm', open, onClose }
   const zoomIn = () => setZoom((z) => Math.min(MAX_ZOOM, z + ZOOM_STEP));
   const canZoomOut = zoom > MIN_ZOOM;
   const canZoomIn = zoom < MAX_ZOOM;
+  const widthPct = FIT_WIDTH_PCT * zoom;
 
   return (
     <div className="image-lightbox-backdrop" role="presentation" onClick={onClose}>
@@ -80,8 +83,8 @@ export function ImageLightbox({ src, alt = 'Ảnh sản phẩm', open, onClose }
               className="icon-btn"
               onClick={() => setZoom(MIN_ZOOM)}
               disabled={zoom === MIN_ZOOM}
-              aria-label="Về kích thước gốc"
-              title="Về kích thước gốc"
+              aria-label="Vừa khung"
+              title="Vừa khung xem"
             >
               <Maximize2 size={16} />
             </button>
@@ -95,10 +98,18 @@ export function ImageLightbox({ src, alt = 'Ảnh sản phẩm', open, onClose }
             src={src || OWIN_LOGO}
             alt={alt}
             className="image-lightbox-img"
-            style={{ maxWidth: `${95 * zoom}%`, maxHeight: `calc(min(68vh, 640px) * ${zoom})` }}
+            style={{
+              // Force fill stage — native max-* left tiny aluminum PNGs as postage stamps.
+              width: `${widthPct}%`,
+              maxWidth: 'none',
+              height: 'auto',
+              maxHeight: `calc(min(78vh, 820px) * ${zoom})`,
+            }}
           />
         </div>
-        <div className="image-lightbox-hint">Nhấn nền tối hoặc nút đóng để thu nhỏ · phím +/− để phóng to/thu nhỏ</div>
+        <div className="image-lightbox-hint">
+          1× = vừa khung · phím +/− phóng to/thu nhỏ · nền tối hoặc ✕ để đóng
+        </div>
       </div>
     </div>
   );

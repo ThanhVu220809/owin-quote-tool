@@ -1,4 +1,7 @@
-const CATEGORY_ORDER = ['Cửa chính', 'Cửa phụ', 'Cửa sổ', 'Tủ', 'Phụ kiện', 'Khác'];
+import { titleCaseVi } from '@/utils/titleCase';
+
+/** Thứ tự loại cửa — luôn Title Case (Cửa Chính, Cửa Phụ, …). */
+const CATEGORY_ORDER = ['Cửa Chính', 'Cửa Phụ', 'Cửa Sổ', 'Tủ', 'Phụ Kiện', 'Khác'];
 
 export function normalizeCategoryName(value: string | null | undefined): string {
   const raw = String(value || '').trim();
@@ -8,12 +11,14 @@ export function normalizeCategoryName(value: string | null | undefined): string 
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-  if (lower.includes('noi that') || lower.includes('mat bep') || lower.includes('phu kien')) return 'Phụ kiện';
+  if (lower === 'wc' || lower === 'toilet' || lower.includes('wc ')) return 'WC';
+  if (lower.includes('noi that') || lower.includes('mat bep') || lower.includes('phu kien')) return 'Phụ Kiện';
   if (lower.includes('tu') || lower.includes('bep') || lower.includes('vach ngan')) return 'Tủ';
-  if (lower.includes('chinh') || lower.includes('thuy luc')) return 'Cửa chính';
-  if (lower.includes('cua so')) return 'Cửa sổ';
-  if (lower.includes('phu')) return 'Cửa phụ';
-  return raw;
+  if (lower.includes('chinh') || lower.includes('thuy luc')) return 'Cửa Chính';
+  if (lower.includes('cua so')) return 'Cửa Sổ';
+  if (lower.includes('phu')) return 'Cửa Phụ';
+  // Mọi loại khác: viết hoa chữ cái đầu mỗi từ.
+  return titleCaseVi(raw);
 }
 
 export function sortCategoryNames(a: string, b: string): number {
@@ -29,3 +34,5 @@ export function categoryOrderIndex(category: string): number {
   const index = CATEGORY_ORDER.indexOf(normalizeCategoryName(category));
   return index === -1 ? CATEGORY_ORDER.length : index;
 }
+
+export { CATEGORY_ORDER };
