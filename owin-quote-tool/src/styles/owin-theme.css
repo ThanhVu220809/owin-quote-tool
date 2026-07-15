@@ -2074,62 +2074,77 @@ textarea.input:focus {
   background: var(--owin-primary);
   color: #fff;
 }
-.quote-item-locked-row-rich {
-  /* Flex: thumb cố định, chữ không được tràn sang ảnh. */
+/* Thu gọn hạng mục: [ảnh nhỏ] [tên + tiền] [nút] — không hiện mô tả/PK. */
+.quote-item-locked-row-compact {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+.quote-item-locked-row-compact .quote-item-thumb-compact {
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  justify-self: start;
+}
+.quote-item-locked-row-compact .quote-item-locked-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 6px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.quote-item-locked-row-compact .quote-item-locked-title {
   display: flex;
-  align-items: stretch;
-  gap: 14px;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.quote-item-locked-row-compact .quote-item-locked-title strong {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quote-item-locked-row-compact .quote-item-locked-total {
+  font-size: 16px;
+  font-weight: 850;
+  color: var(--owin-primary);
+  font-variant-numeric: tabular-nums;
+}
+.quote-item-locked-row-compact .quote-item-locked-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+/* Legacy classes (rich) — giữ an toàn nếu còn tham chiếu cũ. */
+.quote-item-locked-row-rich {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 .quote-item-thumb-rich {
-  width: 108px;
-  min-width: 108px;
-  max-width: 108px;
-  height: 108px;
-  border-radius: 16px;
-  flex: 0 0 108px;
-  position: relative;
-  z-index: 1;
-}
-.quote-item-locked-row-rich .quote-item-locked-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  /* Không dùng margin âm — sẽ kéo chữ đè lên cột ảnh. */
-  margin: 0;
-  padding: 2px 0;
-  overflow: hidden;
-}
-.quote-item-locked-row-rich .quote-item-locked-actions {
-  flex: 0 0 auto;
-  align-self: center;
+  width: 56px;
+  min-width: 56px;
+  height: 56px;
+  border-radius: 12px;
 }
 .quote-item-locked-desc,
 .quote-item-locked-acc {
-  color: var(--owin-ink-muted);
-  font-size: 12px;
-  line-height: 1.4;
-  /* Hiển thị đủ nội dung thu gọn — không cắt bằng ellipsis. */
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: normal;
-  min-width: 0;
-}
-.quote-item-locked-acc span {
-  display: inline-block;
-  margin-right: 4px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: rgba(15, 42, 61, 0.06);
-  color: var(--owin-ink-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-.quote-item-locked-row-rich .quote-item-locked-total {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--owin-primary);
+  display: none; /* thu gọn không hiện mô tả/PK */
 }
 .quote-item-card {
   box-shadow: none;
@@ -2200,14 +2215,18 @@ textarea.input:focus {
   appearance: none;
   background: transparent;
   border: 0;
-  padding: 6px 4px;
-  margin: -6px -4px;
+  padding: 4px 6px;
+  margin: 0; /* không margin âm — dễ kéo chữ đè ảnh */
   border-radius: 12px;
   text-align: left;
   font: inherit;
   color: inherit;
   cursor: pointer;
   transition: background 0.15s ease;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 .quote-item-locked-main:hover {
   background: rgba(10, 132, 255, 0.06);
@@ -2418,20 +2437,19 @@ textarea.input:focus {
   .quote-item-thumb {
     max-width: 140px;
   }
-  /* Row thường (compact 64→56). KHÔNG áp cho -rich — tránh chữ chèn ảnh. */
-  .quote-item-locked-row:not(.quote-item-locked-row-rich) {
-    grid-template-columns: 56px minmax(0, 1fr);
-  }
+  .quote-item-locked-row,
+  .quote-item-locked-row-compact,
   .quote-item-locked-row-rich {
-    flex-wrap: wrap;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 10px;
   }
-  .quote-item-locked-row-rich .quote-item-locked-actions {
-    flex: 1 0 100%;
-    justify-content: flex-end;
-  }
-  .quote-item-locked-actions {
-    grid-column: 1 / -1;
-    justify-content: stretch;
+  .quote-item-locked-row-compact .quote-item-thumb-compact,
+  .quote-item-thumb-compact,
+  .quote-item-thumb-rich {
+    width: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+    height: 52px !important;
   }
   .quote-item-locked-actions .btn-sm {
     flex: 1;
@@ -3540,32 +3558,24 @@ textarea.input:focus {
     grid-template-columns: 72px minmax(0, 1fr) !important;
     gap: 10px;
   }
-  .quote-item-locked-row:not(.quote-item-locked-row-rich) {
-    grid-template-columns: 72px minmax(0, 1fr) !important;
-    gap: 10px;
-  }
+  .quote-item-locked-row,
+  .quote-item-locked-row-compact,
   .quote-item-locked-row-rich {
-    gap: 10px !important;
+    grid-template-columns: 48px minmax(0, 1fr) auto !important;
+    gap: 8px !important;
   }
   .quote-item-locked-actions {
-    grid-column: 1 / -1;
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
-    padding-top: 6px;
-    border-top: 1px solid var(--owin-border);
+    gap: 6px;
   }
-  .quote-item-thumb-rich {
-    width: 72px !important;
-    min-width: 72px !important;
-    max-width: 72px !important;
-    height: 72px !important;
-    flex: 0 0 72px !important;
-  }
-  .quote-item-thumb-compact {
-    width: 72px !important;
-    min-width: 72px !important;
-    height: 72px !important;
+  .quote-item-thumb-rich,
+  .quote-item-thumb-compact,
+  .quote-item-locked-row-compact .quote-item-thumb-compact {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    height: 48px !important;
   }
   .quote-item-locked-total {
     font-size: 17px !important;

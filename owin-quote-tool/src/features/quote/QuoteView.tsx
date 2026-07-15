@@ -2186,37 +2186,19 @@ function QuoteItemCard({
     };
   }, [imagePath]);
 
-  const accessorySummary = (() => {
-    if (usesPackageAccessories) {
-      const names = fixedDraft.items.map((row) => row.name.trim()).filter(Boolean);
-      const extras = extraDraft.map((row) => row.name.trim()).filter(Boolean);
-      const all = [...names, ...extras];
-      if (fixedDraft.name.trim()) return `${fixedDraft.name}${all.length ? ` · ${all.join(', ')}` : ''}`;
-      return all.join(', ') || '';
-    }
-    return item.accessories.map((acc) => acc.name).filter(Boolean).join(', ');
-  })();
-  // Thu gọn: hiện đủ mô tả + thông số (không cắt ".....").
-  const descBits = [
-    item.category || item.groupName || '',
-    item.description || '',
-    ...(item.specs ?? []).filter((s) => s.key || s.value).map((s) =>
-      s.key && s.value ? `${s.key}: ${s.value}` : s.key || s.value,
-    ),
-  ].filter(Boolean);
-
+  // Thu gọn: chỉ tên + tổng tiền (mở rộng mới xem mô tả/PK đầy đủ).
   if (locked) {
     return (
       <div className="card quote-item-card quote-item-card-locked">
-        <div className="quote-item-locked-row quote-item-locked-row-rich">
+        <div className="quote-item-locked-row quote-item-locked-row-compact">
           <button
             type="button"
-            className="quote-item-thumb quote-item-thumb-btn quote-item-thumb-rich"
+            className="quote-item-thumb quote-item-thumb-btn quote-item-thumb-compact"
             onClick={() => setLightboxOpen(true)}
             aria-label="Xem ảnh lớn"
             title="Bấm để xem ảnh lớn"
           >
-            <ProductThumb item={item} products={products} imagePath={imagePath} fill />
+            <ProductThumb item={item} products={products} imagePath={imagePath} fill thumb />
           </button>
           <button
             type="button"
@@ -2229,14 +2211,6 @@ function QuoteItemCard({
               <span className="quote-item-locked-index">#{index + 1}</span>
               <strong>{item.itemName || 'Hạng mục'}</strong>
             </div>
-            {descBits.length > 0 && (
-              <div className="quote-item-locked-desc">{descBits.join(' · ')}</div>
-            )}
-            {accessorySummary && (
-              <div className="quote-item-locked-acc">
-                <span>PK</span> {accessorySummary}
-              </div>
-            )}
             <div className="quote-item-locked-meta">
               <span className="quote-item-locked-total">{formatVND(calculated?.itemTotalVnd ?? 0)}</span>
             </div>
