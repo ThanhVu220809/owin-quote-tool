@@ -1,7 +1,14 @@
 /**
  * One-shot: import Mrs Oanh + A Công Nguyên Word quotes into Supabase.
  * Run: node scripts/import-customer-quotes.mjs
+ *
+ * Ảnh: lấy đúng ảnh trong cột "Hình" của file Word (không đoán từ catalog).
+ * Env:
+ *   OWIN_IMPORT_ONLY=oanh|nguyen
+ *   OWIN_DELETE_OANH=1
+ *   OWIN_DELETE_NGUYEN=1
  */
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,12 +132,49 @@ function extractGrid(xml) {
   });
 }
 
+/** Map rId → media path from document.xml.rels */
+function parseImageRels(zip) {
+  const relsEntry = zip.file('word/_rels/document.xml.rels');
+  if (!relsEntry) return new Map();
+  const text = relsEntry.asText();
+  const map = new Map();
+  for (const m of text.matchAll(/<Relationship\b[^>]*>/g)) {
+    const tag = m[0];
+    const id = tag.match(/\bId="([^"]+)"/)?.[1];
+    const target = tag.match(/\bTarget="([^"]+)"/)?.[1];
+    if (id && target && /media\//i.test(target)) {
+      map.set(id, target.replace(/^\.\//, ''));
+    }
+  }
+  return map;
+}
+
+/** First embedded image rId in a table cell XML. */
+function firstEmbedId(cellXml) {
+  const m = cellXml.match(/r:embed="(rId\d+)"/);
+  return m?.[1] || null;
+}
+
+function mediaExt(path) {
+  const m = String(path).toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m?.[1] || 'jpg';
+}
+
+function contentTypeForExt(ext) {
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  return 'image/jpeg';
+}
+
 function parseDocx(buffer) {
   const zip = new PizZip(buffer);
   const docEntry = zip.file('word/document.xml');
   if (!docEntry) throw new Error('missing document.xml');
   const xml = docEntry.asText();
+  const imageRels = parseImageRels(zip);
   const grid = extractGrid(xml);
+  const rawRows = xml.match(/<w:tr\b[\s\S]*?<\/w:tr>/g) || [];
 
   let customerName = '';
   let address = '';
@@ -154,6 +198,30 @@ function parseDocx(buffer) {
   const body = grid.slice(headerIndex >= 0 ? headerIndex + 1 : 1);
   const products = [];
 
+  function extractImageForCode(stt, code) {
+    for (const rawRow of rawRows) {
+      const cells = rawRow.match(/<w:tc\b[\s\S]*?<\/w:tc>/g) || [];
+      if (cells.length < 3) continue;
+      const c0 = joinCellText(cells[0]).replace(/\s+/g, ' ').trim();
+      const c1 = joinCellText(cells[1]).replace(/\s+/g, ' ').trim();
+      if (c0 !== stt || c1 !== code) continue;
+      const imageCell = cells[2] || '';
+      const embedId = firstEmbedId(imageCell);
+      if (!embedId || !imageRels.has(embedId)) return { imageBytes: null, imageName: null };
+      const mediaRel = imageRels.get(embedId);
+      const mediaPath = mediaRel.startsWith('media/') ? `word/${mediaRel}` : `word/${mediaRel}`;
+      // Bỏ logo header image1
+      if (/image1\./i.test(mediaRel)) return { imageBytes: null, imageName: null };
+      const entry = zip.file(mediaPath) || zip.file(`word/${mediaRel.replace(/^media\//, 'media/')}`);
+      if (!entry) return { imageBytes: null, imageName: null };
+      return {
+        imageBytes: entry.asUint8Array(),
+        imageName: mediaRel.split('/').pop() || `img.${mediaExt(mediaRel)}`,
+      };
+    }
+    return { imageBytes: null, imageName: null };
+  }
+
   for (const row of body) {
     if (row.length < 8) continue;
     const stt = (row[0] || '').replace(/\s+/g, ' ').trim();
@@ -176,6 +244,7 @@ function parseDocx(buffer) {
     if (isProduct) {
       const name = desc.split('\n')[0].split(' - ')[0].trim() || code;
       const unit = normalizeUnit(unitRaw, 'M2');
+      const { imageBytes, imageName } = extractImageForCode(stt, code);
       products.push({
         code,
         name,
@@ -191,6 +260,8 @@ function parseDocx(buffer) {
         packageQty: 1,
         packagePrice: 0,
         extras: [],
+        imageBytes,
+        imageName,
       });
       continue;
     }
@@ -426,7 +497,34 @@ function scoreMatch(productName, catalogName) {
   return hit;
 }
 
-async function attachCatalogImages(supabase, quote) {
+/** Upload ảnh lấy từ Word → bucket public product-images (hash dedup). */
+async function uploadDocxImage(supabase, bytes, fileName) {
+  if (!bytes || !bytes.length) return null;
+  // Bỏ ảnh quá nhỏ (logo/placeholder < 8KB) — không dùng làm ảnh SP.
+  if (bytes.length < 8_000) {
+    console.warn(`  skip tiny image ${fileName} (${bytes.length} B)`);
+    return null;
+  }
+  const ext = mediaExt(fileName);
+  const hash = createHash('sha256').update(Buffer.from(bytes)).digest('hex');
+  const path = `img/${hash}.${ext}`;
+  const contentType = contentTypeForExt(ext);
+  const { error } = await supabase.storage.from('product-images').upload(path, Buffer.from(bytes), {
+    upsert: true,
+    contentType,
+  });
+  if (error && !/already exists|Duplicate/i.test(error.message)) {
+    throw new Error(`Upload ${fileName}: ${error.message}`);
+  }
+  const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+  return data?.publicUrl || null;
+}
+
+/**
+ * Ưu tiên ảnh trong file Word (đúng PA).
+ * Chỉ fallback catalog khi dòng Word không có ảnh.
+ */
+async function attachImages(supabase, quote, products) {
   const { data, error } = await supabase
     .from('products')
     .select('data')
@@ -435,32 +533,57 @@ async function attachCatalogImages(supabase, quote) {
   if (error) throw new Error(error.message);
   const catalog = (data || []).map((row) => row.data).filter(Boolean);
 
-  for (const item of quote.snapshot.items) {
-    let best = null;
-    let bestScore = 0;
-    for (const product of catalog) {
-      const s = scoreMatch(item.itemName || '', product.name || '');
-      // Prefer same color keyword when present in description
-      const desc = String(item.description || '').toLowerCase();
-      const pname = String(product.name || '').toLowerCase();
-      let bonus = 0;
-      if (desc.includes('vân gỗ trắc') && pname.includes('trắc')) bonus += 5;
-      if (desc.includes('vân gỗ lim') && pname.includes('lim')) bonus += 5;
-      if (desc.includes('thủy lực') && pname.includes('thủy lực')) bonus += 8;
-      if (desc.includes('lùa') && pname.includes('lùa')) bonus += 6;
-      if (desc.includes('khuôn phào') && pname.includes('khuôn phào')) bonus += 4;
-      const score = s + bonus;
-      if (score > bestScore && product.coverImagePath) {
-        bestScore = score;
-        best = product;
+  for (let i = 0; i < quote.snapshot.items.length; i++) {
+    const item = quote.snapshot.items[i];
+    const src = products[i];
+    let url = null;
+
+    if (src?.imageBytes) {
+      url = await uploadDocxImage(supabase, src.imageBytes, src.imageName || `${item.productCode}.jpg`);
+      if (url) console.log(`  img Word ${item.productCode} ← ${src.imageName}`);
+    }
+
+    // Fallback catalog only if Word has no usable image
+    if (!url) {
+      let best = null;
+      let bestScore = 0;
+      for (const product of catalog) {
+        const s = scoreMatch(item.itemName || '', product.name || '');
+        const desc = String(item.description || '').toLowerCase();
+        const pname = String(product.name || '').toLowerCase();
+        let bonus = 0;
+        if (desc.includes('vân gỗ trắc') && pname.includes('trắc')) bonus += 5;
+        if (desc.includes('vân gỗ lim') && pname.includes('lim')) bonus += 5;
+        if (desc.includes('thủy lực') && pname.includes('thủy lực')) bonus += 8;
+        if (desc.includes('lùa') && pname.includes('lùa')) bonus += 6;
+        if (desc.includes('khuôn phào') && pname.includes('khuôn phào')) bonus += 4;
+        if (desc.includes('hệ 55') && pname.includes('hệ 55')) bonus += 6;
+        const score = s + bonus;
+        if (score > bestScore && product.coverImagePath) {
+          bestScore = score;
+          best = product;
+        }
+      }
+      if (best && bestScore >= 15) {
+        url = best.coverImagePath;
+        item.productId = best.id;
+        item.sourceProductId = best.id;
+        console.log(`  img catalog fallback ${item.productCode} ← ${best.name} (score ${bestScore})`);
       }
     }
-    if (best && bestScore >= 10) {
-      item.coverImagePath = best.coverImagePath;
-      item.image = best.coverImagePath;
-      item.imageReference = best.coverImagePath;
-      item.productId = best.id;
-      item.sourceProductId = best.id;
+
+    if (url) {
+      item.coverImagePath = url;
+      item.image = url;
+      item.imageReference = url;
+      item.imageOverridePath = url;
+    }
+
+    // Mirror onto quote.items[]
+    if (quote.items?.[i]) {
+      quote.items[i].imagePath = item.coverImagePath || null;
+      quote.items[i].imageReference = item.imageReference || null;
+      quote.items[i].imageOverridePath = item.imageOverridePath || null;
     }
   }
   quote.snapshotJson = JSON.stringify(quote.snapshot);
@@ -514,14 +637,14 @@ async function upsertQuote(supabase, quote) {
   return { status: 'applied', id: proposed.id };
 }
 
-async function softDeleteMrsOanhQuotes(supabase) {
+async function softDeleteByCustomer(supabase, pattern, label) {
   const { data, error } = await supabase
     .from('quotes')
     .select('id, code, customer_name, deleted_at')
-    .ilike('customer_name', '%Oanh%');
-  if (error) throw new Error(`List Oanh quotes: ${error.message}`);
+    .ilike('customer_name', pattern);
+  if (error) throw new Error(`List ${label}: ${error.message}`);
   const rows = data || [];
-  console.log(`Mrs Oanh quotes found: ${rows.length}`);
+  console.log(`${label} quotes found: ${rows.length}`);
   for (const row of rows) {
     const retired = `OLD-${row.code}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const { error: upErr } = await supabase
@@ -546,25 +669,33 @@ async function main() {
   });
   if (authError) throw new Error(`Login failed: ${authError.message}`);
 
-  // OWIN_DELETE_OANH=1 → xóa hết báo giá Mrs Oanh trước khi import.
   if (process.env.OWIN_DELETE_OANH === '1' || process.env.OWIN_DELETE_OANH === 'true') {
-    await softDeleteMrsOanhQuotes(supabase);
+    await softDeleteByCustomer(supabase, '%Oanh%', 'Mrs Oanh');
+  }
+  if (process.env.OWIN_DELETE_NGUYEN === '1' || process.env.OWIN_DELETE_NGUYEN === 'true') {
+    await softDeleteByCustomer(supabase, '%Nguyên%', 'A Công Nguyên');
+    await softDeleteByCustomer(supabase, '%Nguyen%', 'A Cong Nguyen');
   }
 
   for (const file of FILES) {
     const buffer = readFileSync(file.path);
     const parsed = parseDocx(buffer);
     let quote = buildQuote(parsed, file.code);
-    // Force display name for Oanh import
-    if (file.key === 'oanh' && !/oanh/i.test(quote.customerName || '')) {
+    if (file.key === 'oanh') {
       quote.customerName = 'Mrs Oanh';
       quote.snapshot.customerName = 'Mrs Oanh';
       quote.snapshotJson = JSON.stringify(quote.snapshot);
     }
-    quote = await attachCatalogImages(supabase, quote);
+    if (file.key === 'nguyen') {
+      quote.customerName = 'A Công Nguyên';
+      quote.snapshot.customerName = 'A Công Nguyên';
+      quote.snapshotJson = JSON.stringify(quote.snapshot);
+    }
+    quote = await attachImages(supabase, quote, parsed.products);
     const result = await upsertQuote(supabase, quote);
+    const withImg = quote.snapshot.items.filter((it) => it.coverImagePath).length;
     console.log(
-      `OK ${file.code}: KH="${quote.customerName}" · ${quote.snapshot.items.length} hạng mục · tổng=${quote.roundedTotalVnd.toLocaleString('vi-VN')} · status=${result.status || 'ok'}`,
+      `OK ${file.code}: KH="${quote.customerName}" · ${quote.snapshot.items.length} hạng mục · ảnh ${withImg}/${quote.snapshot.items.length} · tổng=${quote.roundedTotalVnd.toLocaleString('vi-VN')} · status=${result.status || 'ok'}`,
     );
     for (const item of quote.snapshot.items) {
       console.log(
