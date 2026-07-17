@@ -10,20 +10,39 @@ import {
 import type {
   AluminumCalculationRecord,
   AluminumEstimatorInputState,
+  AluminumEstimatorPriceState,
+  AluminumEstimatorQuantitiesBySystem,
   AluminumEstimatorRowsBySystem,
+  AluminumEstimatorUnitPricesByColor,
 } from '@/types/models';
 
-export type { AluminumEstimatorInputState, AluminumEstimatorRowsBySystem };
+export type {
+  AluminumEstimatorInputState,
+  AluminumEstimatorPriceState,
+  AluminumEstimatorQuantitiesBySystem,
+  AluminumEstimatorRowsBySystem,
+  AluminumEstimatorUnitPricesByColor,
+};
 
-/** Các màu chọn được cho toàn bộ thanh nhôm. */
-export const ALUMINUM_COLORS = ['Ghi Xanh', 'Vân Gỗ Trắc', 'Vân Gỗ Lim'] as const;
-export const DEFAULT_ALUMINUM_COLOR = 'Vân Gỗ Trắc';
+/** Hai màu chọn được; mỗi màu có bảng đơn giá riêng. */
+export const ALUMINUM_COLORS = ['Ghi - Cafe', 'Vân Gỗ'] as const;
+export type AluminumColor = (typeof ALUMINUM_COLORS)[number];
+export const DEFAULT_ALUMINUM_COLOR: AluminumColor = 'Vân Gỗ';
 
 export interface AluminumEstimatorPageState {
   selectedSystemId: string;
-  inputRows: AluminumEstimatorRowsBySystem;
-  /** Màu áp cho tất cả thanh (hiển thị + xuất file). */
+  /** Màu đang chọn — đơn giá hiển thị lấy từ unitPricesByColor[color]. */
   color: string;
+  /**
+   * SL theo hệ/dòng — chỉ sống trong session trình duyệt.
+   * Không ghi Supabase; mất khi refresh hoặc rời trang.
+   */
+  quantities: AluminumEstimatorQuantitiesBySystem;
+  /**
+   * Đơn giá (+ note) theo từng màu → hệ → dòng.
+   * Đây là phần được lưu và đồng bộ.
+   */
+  unitPricesByColor: AluminumEstimatorUnitPricesByColor;
   updatedAt: string | null;
 }
 
@@ -44,14 +63,37 @@ export const EMPTY_ALUMINUM_ESTIMATOR_INPUT: AluminumEstimatorInputState = {
   note: '',
 };
 
+export const EMPTY_ALUMINUM_PRICE: AluminumEstimatorPriceState = {
+  unitPrice: '',
+  note: '',
+};
+
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+/** Chuẩn hoá nhãn màu cũ (Ghi Xanh / Vân Gỗ Trắc / …) về 2 màu mới. */
+export function normalizeAluminumColor(value: unknown): AluminumColor {
+  if (typeof value !== 'string') return DEFAULT_ALUMINUM_COLOR;
+  const raw = value.trim();
+  if (!raw) return DEFAULT_ALUMINUM_COLOR;
+  if ((ALUMINUM_COLORS as readonly string[]).includes(raw)) return raw as AluminumColor;
+
+  const lower = raw.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+  if (lower.includes('ghi') || lower.includes('cafe') || lower.includes('cage') || lower.includes('xanh')) {
+    return 'Ghi - Cafe';
+  }
+  if (lower.includes('go') || lower.includes('van') || lower.includes('trac') || lower.includes('lim')) {
+    return 'Vân Gỗ';
+  }
+  return DEFAULT_ALUMINUM_COLOR;
 }
 
 export function createDefaultAluminumEstimatorState(): AluminumEstimatorPageState {
   return {
     selectedSystemId: ALUMINUM_SYSTEMS[0]?.id ?? '',
-    inputRows: {},
+    quantities: {},
+    unitPricesByColor: {},
     color: DEFAULT_ALUMINUM_COLOR,
     updatedAt: null,
   };
@@ -64,118 +106,175 @@ export function touchAluminumEstimatorState(state: AluminumEstimatorPageState): 
   };
 }
 
+/** Ô nhập của một dòng = SL session + đơn giá của màu đang chọn. */
 export function getAluminumEstimatorInput(
-  rowsBySystem: AluminumEstimatorRowsBySystem,
+  state: AluminumEstimatorPageState,
   systemId: string,
   rowId: string,
 ): AluminumEstimatorInputState {
-  return rowsBySystem[systemId]?.[rowId] ?? EMPTY_ALUMINUM_ESTIMATOR_INPUT;
+  const price = state.unitPricesByColor[state.color]?.[systemId]?.[rowId];
+  return {
+    quantity: state.quantities[systemId]?.[rowId] ?? '',
+    unitPrice: price?.unitPrice ?? '',
+    note: price?.note ?? '',
+  };
 }
 
-function normalizeInputRows(value: unknown): AluminumEstimatorRowsBySystem {
+function normalizePriceState(value: unknown): AluminumEstimatorPriceState | null {
+  if (!value || typeof value !== 'object') return null;
+  const draft = value as Partial<AluminumEstimatorPriceState & AluminumEstimatorInputState>;
+  const unitPrice = typeof draft.unitPrice === 'string' ? draft.unitPrice : '';
+  const note = typeof draft.note === 'string' ? draft.note : '';
+  if (!unitPrice && !note) return null;
+  return { unitPrice, note };
+}
+
+function normalizeUnitPricesByColor(value: unknown): AluminumEstimatorUnitPricesByColor {
   if (!value || typeof value !== 'object') return {};
 
-  const rowsBySystem: AluminumEstimatorRowsBySystem = {};
-  Object.entries(value as Record<string, unknown>).forEach(([systemId, systemRows]) => {
-    if (!systemRows || typeof systemRows !== 'object') return;
-    rowsBySystem[systemId] = {};
-    Object.entries(systemRows as Record<string, unknown>).forEach(([rowId, input]) => {
-      if (!input || typeof input !== 'object') return;
-      const draft = input as Partial<AluminumEstimatorInputState>;
-      rowsBySystem[systemId][rowId] = {
-        quantity: typeof draft.quantity === 'string' ? draft.quantity : '',
-        unitPrice: typeof draft.unitPrice === 'string' ? draft.unitPrice : '',
-        note: typeof draft.note === 'string' ? draft.note : '',
-      };
+  const byColor: AluminumEstimatorUnitPricesByColor = {};
+  Object.entries(value as Record<string, unknown>).forEach(([rawColor, systems]) => {
+    if (!systems || typeof systems !== 'object') return;
+    const color = normalizeAluminumColor(rawColor);
+    const systemMap: Record<string, Record<string, AluminumEstimatorPriceState>> = byColor[color] ?? {};
+    Object.entries(systems as Record<string, unknown>).forEach(([systemId, rows]) => {
+      if (!rows || typeof rows !== 'object') return;
+      const rowMap: Record<string, AluminumEstimatorPriceState> = systemMap[systemId] ?? {};
+      Object.entries(rows as Record<string, unknown>).forEach(([rowId, input]) => {
+        const price = normalizePriceState(input);
+        if (price) rowMap[rowId] = price;
+      });
+      if (Object.keys(rowMap).length > 0) systemMap[systemId] = rowMap;
     });
+    if (Object.keys(systemMap).length > 0) byColor[color] = systemMap;
   });
 
-  return rowsBySystem;
+  return byColor;
 }
 
-function inputStateEquals(
-  left: AluminumEstimatorInputState | undefined,
-  right: AluminumEstimatorInputState | undefined,
+/** Legacy: một bảng inputRows chung cho màu đang chọn → tách đơn giá (bỏ SL). */
+function migrateLegacyInputRows(
+  inputRows: unknown,
+  color: AluminumColor,
+): AluminumEstimatorUnitPricesByColor {
+  if (!inputRows || typeof inputRows !== 'object') return {};
+  const systemMap: Record<string, Record<string, AluminumEstimatorPriceState>> = {};
+  Object.entries(inputRows as Record<string, unknown>).forEach(([systemId, rows]) => {
+    if (!rows || typeof rows !== 'object') return;
+    const rowMap: Record<string, AluminumEstimatorPriceState> = {};
+    Object.entries(rows as Record<string, unknown>).forEach(([rowId, input]) => {
+      const price = normalizePriceState(input);
+      if (price) rowMap[rowId] = price;
+    });
+    if (Object.keys(rowMap).length > 0) systemMap[systemId] = rowMap;
+  });
+  return Object.keys(systemMap).length > 0 ? { [color]: systemMap } : {};
+}
+
+function priceEquals(
+  left: AluminumEstimatorPriceState | undefined,
+  right: AluminumEstimatorPriceState | undefined,
 ): boolean {
   if (left === right) return true;
-  if (!left || !right) return false;
-  return left.quantity === right.quantity
-    && left.unitPrice === right.unitPrice
-    && left.note === right.note;
+  if (!left || !right) return !left && !right;
+  return left.unitPrice === right.unitPrice && left.note === right.note;
 }
 
-/** Compare the editable estimator payload while deliberately ignoring sync metadata. */
+function unitPricesByColorEquals(
+  left: AluminumEstimatorUnitPricesByColor,
+  right: AluminumEstimatorUnitPricesByColor,
+): boolean {
+  const colors = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const color of colors) {
+    const leftSystems = left[color] ?? {};
+    const rightSystems = right[color] ?? {};
+    const systemIds = new Set([...Object.keys(leftSystems), ...Object.keys(rightSystems)]);
+    for (const systemId of systemIds) {
+      const leftRows = leftSystems[systemId] ?? {};
+      const rightRows = rightSystems[systemId] ?? {};
+      const rowIds = new Set([...Object.keys(leftRows), ...Object.keys(rightRows)]);
+      for (const rowId of rowIds) {
+        if (!priceEquals(leftRows[rowId], rightRows[rowId])) return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * So sánh phần được lưu (màu, hệ, đơn giá theo màu).
+ * Cố ý bỏ qua quantities — SL session không được coi là dirty lưu.
+ */
 export function aluminumEstimatorStateContentEquals(
   left: AluminumEstimatorPageState,
   right: AluminumEstimatorPageState,
 ): boolean {
   if (left.selectedSystemId !== right.selectedSystemId) return false;
-  if (left.color !== right.color) return false;
-
-  const systemIds = new Set([
-    ...Object.keys(left.inputRows),
-    ...Object.keys(right.inputRows),
-  ]);
-  for (const systemId of systemIds) {
-    const leftRows = left.inputRows[systemId] ?? {};
-    const rightRows = right.inputRows[systemId] ?? {};
-    const rowIds = new Set([...Object.keys(leftRows), ...Object.keys(rightRows)]);
-    for (const rowId of rowIds) {
-      if (!inputStateEquals(leftRows[rowId], rightRows[rowId])) return false;
-    }
-  }
-
-  return true;
+  if (normalizeAluminumColor(left.color) !== normalizeAluminumColor(right.color)) return false;
+  return unitPricesByColorEquals(left.unitPricesByColor, right.unitPricesByColor);
 }
 
 /**
- * Merge a hosted update against the last server-confirmed base.
- *
- * Rows are the conflict boundary: a locally edited/deleted row wins when the
- * same row also changed remotely, while untouched rows accept the remote value.
- * This preserves pending input on the current machine and still incorporates
- * independent edits made on another machine.
+ * Merge update từ server: đơn giá theo màu là ranh giới conflict.
+ * Quantities luôn giữ local (session), remote không mang SL.
  */
 export function mergeAluminumEstimatorStates(
   base: AluminumEstimatorPageState,
   local: AluminumEstimatorPageState,
   remote: AluminumEstimatorPageState,
 ): AluminumEstimatorPageState {
-  const inputRows: AluminumEstimatorRowsBySystem = {};
-  const systemIds = new Set([
-    ...Object.keys(base.inputRows),
-    ...Object.keys(local.inputRows),
-    ...Object.keys(remote.inputRows),
+  const unitPricesByColor: AluminumEstimatorUnitPricesByColor = {};
+  const colors = new Set([
+    ...Object.keys(base.unitPricesByColor),
+    ...Object.keys(local.unitPricesByColor),
+    ...Object.keys(remote.unitPricesByColor),
   ]);
 
-  for (const systemId of systemIds) {
-    const baseRows = base.inputRows[systemId] ?? {};
-    const localRows = local.inputRows[systemId] ?? {};
-    const remoteRows = remote.inputRows[systemId] ?? {};
-    const mergedRows: Record<string, AluminumEstimatorInputState> = {};
-    const rowIds = new Set([
-      ...Object.keys(baseRows),
-      ...Object.keys(localRows),
-      ...Object.keys(remoteRows),
+  for (const color of colors) {
+    const baseSystems = base.unitPricesByColor[color] ?? {};
+    const localSystems = local.unitPricesByColor[color] ?? {};
+    const remoteSystems = remote.unitPricesByColor[color] ?? {};
+    const mergedSystems: Record<string, Record<string, AluminumEstimatorPriceState>> = {};
+    const systemIds = new Set([
+      ...Object.keys(baseSystems),
+      ...Object.keys(localSystems),
+      ...Object.keys(remoteSystems),
     ]);
 
-    for (const rowId of rowIds) {
-      const localChanged = !inputStateEquals(localRows[rowId], baseRows[rowId]);
-      const chosen = localChanged ? localRows[rowId] : remoteRows[rowId];
-      if (chosen) mergedRows[rowId] = { ...chosen };
+    for (const systemId of systemIds) {
+      const baseRows = baseSystems[systemId] ?? {};
+      const localRows = localSystems[systemId] ?? {};
+      const remoteRows = remoteSystems[systemId] ?? {};
+      const mergedRows: Record<string, AluminumEstimatorPriceState> = {};
+      const rowIds = new Set([
+        ...Object.keys(baseRows),
+        ...Object.keys(localRows),
+        ...Object.keys(remoteRows),
+      ]);
+
+      for (const rowId of rowIds) {
+        const localChanged = !priceEquals(localRows[rowId], baseRows[rowId]);
+        const chosen = localChanged ? localRows[rowId] : remoteRows[rowId];
+        if (chosen) mergedRows[rowId] = { ...chosen };
+      }
+
+      if (Object.keys(mergedRows).length > 0) mergedSystems[systemId] = mergedRows;
     }
 
-    if (Object.keys(mergedRows).length > 0) inputRows[systemId] = mergedRows;
+    if (Object.keys(mergedSystems).length > 0) unitPricesByColor[color] = mergedSystems;
   }
 
   const selectedSystemId = local.selectedSystemId !== base.selectedSystemId
     ? local.selectedSystemId
     : remote.selectedSystemId;
   const color = local.color !== base.color ? local.color : remote.color;
+
+  // SL chỉ session: luôn giữ local; remote/base không có (hoặc rỗng).
   const mergedContent: AluminumEstimatorPageState = {
     selectedSystemId,
-    inputRows,
-    color,
+    color: normalizeAluminumColor(color),
+    quantities: local.quantities,
+    unitPricesByColor,
     updatedAt: null,
   };
 
@@ -189,13 +288,23 @@ export function mergeAluminumEstimatorStates(
 
 export function normalizeAluminumEstimatorState(value: unknown): AluminumEstimatorPageState | null {
   if (!value || typeof value !== 'object') return null;
-  const parsed = value as Partial<AluminumEstimatorPageState>;
-  if (!parsed.selectedSystemId || !parsed.inputRows) return null;
+  const parsed = value as Partial<AluminumEstimatorPageState & AluminumCalculationRecord>;
+  if (!parsed.selectedSystemId) return null;
+
+  const color = normalizeAluminumColor(parsed.color);
+  let unitPricesByColor = normalizeUnitPricesByColor(parsed.unitPricesByColor);
+
+  // Bản cũ chỉ có inputRows + 1 màu: chuyển đơn giá sang màu đó, bỏ SL.
+  if (Object.keys(unitPricesByColor).length === 0 && parsed.inputRows) {
+    unitPricesByColor = migrateLegacyInputRows(parsed.inputRows, color);
+  }
 
   return {
     selectedSystemId: parsed.selectedSystemId,
-    inputRows: normalizeInputRows(parsed.inputRows),
-    color: typeof parsed.color === 'string' && parsed.color.trim() ? parsed.color : DEFAULT_ALUMINUM_COLOR,
+    color,
+    // SL không bao giờ load từ server.
+    quantities: {},
+    unitPricesByColor,
     updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null,
   };
 }
@@ -215,7 +324,7 @@ export function normalizeAluminumCalculationRecord(value: unknown): AluminumCalc
   return {
     id: typeof parsed.id === 'string' && parsed.id.trim() ? parsed.id : ALUMINUM_ESTIMATOR_STORAGE_KEY,
     selectedSystemId: state.selectedSystemId,
-    inputRows: state.inputRows,
+    unitPricesByColor: state.unitPricesByColor,
     color: state.color,
     createdAt,
     updatedAt,
@@ -228,16 +337,24 @@ function toPageState(record: AluminumCalculationRecord): AluminumEstimatorPageSt
   if (record.deleted || record.deletedAt) return null;
   return {
     selectedSystemId: record.selectedSystemId,
-    inputRows: record.inputRows,
-    color: record.color && record.color.trim() ? record.color : DEFAULT_ALUMINUM_COLOR,
+    color: normalizeAluminumColor(record.color),
+    quantities: {},
+    unitPricesByColor: normalizeUnitPricesByColor(record.unitPricesByColor),
     updatedAt: record.updatedAt,
   };
 }
 
+/** Còn SL session > 0 (dùng UI / beforeunload nếu cần). */
 export function isAluminumEstimatorDirty(state: AluminumEstimatorPageState): boolean {
-  return Object.values(state.inputRows).some((systemRows) =>
-    Object.values(systemRows).some((input) => parseEstimatorNumber(input.quantity) > 0),
+  return Object.values(state.quantities).some((systemRows) =>
+    Object.values(systemRows).some((qty) => parseEstimatorNumber(qty) > 0),
   );
+}
+
+/** Xoá toàn bộ SL session; giữ đơn giá đã lưu theo màu. */
+export function clearAluminumEstimatorQuantities(state: AluminumEstimatorPageState): AluminumEstimatorPageState {
+  if (Object.keys(state.quantities).length === 0) return state;
+  return { ...state, quantities: {} };
 }
 
 let writeQueue: Promise<void> = Promise.resolve();
@@ -279,8 +396,9 @@ function recordFromPageState(
   return {
     id: ALUMINUM_ESTIMATOR_STORAGE_KEY,
     selectedSystemId: state.selectedSystemId,
-    inputRows: normalizeInputRows(state.inputRows),
-    color: state.color,
+    // Chỉ lưu đơn giá theo màu — không lưu SL.
+    unitPricesByColor: normalizeUnitPricesByColor(state.unitPricesByColor),
+    color: normalizeAluminumColor(state.color),
     createdAt: base.createdAt ?? updatedAt,
     updatedAt,
     deleted: undefined,
@@ -310,12 +428,26 @@ async function saveWithCas(
       base.revision,
       record,
     );
-    if (applied) return snapshotFromHosted(applied);
+    if (applied) {
+      // Giữ SL session local khi server xác nhận (server không có quantities).
+      const snap = snapshotFromHosted(applied);
+      if (snap.state) {
+        snap.state = { ...snap.state, quantities: local.quantities };
+      }
+      return snap;
+    }
 
     const remote = await readHostedSnapshot();
     const remoteState = pageStateOrDefault(remote);
     local = mergeAluminumEstimatorStates(pageStateOrDefault(base), local, remoteState);
-    if (aluminumEstimatorStateContentEquals(local, remoteState)) return remote;
+    if (aluminumEstimatorStateContentEquals(local, remoteState)) {
+      return {
+        ...remote,
+        state: remote.state
+          ? { ...remote.state, quantities: local.quantities }
+          : { ...createDefaultAluminumEstimatorState(), quantities: local.quantities },
+      };
+    }
     base = remote;
   }
 

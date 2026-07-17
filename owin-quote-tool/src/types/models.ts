@@ -379,18 +379,41 @@ export interface SuggestionRecord extends SyncEntity {
   createdAt: string;
 }
 
+/** Ô nhập UI: SL (session) + đơn giá của màu đang chọn. */
 export interface AluminumEstimatorInputState {
   quantity: string;
   unitPrice: string;
   note: string;
 }
 
+/** Đơn giá bền vững theo một dòng (không chứa SL). */
+export interface AluminumEstimatorPriceState {
+  unitPrice: string;
+  note: string;
+}
+
+/** Legacy shape: system → row → input (còn dùng khi migrate). */
 export type AluminumEstimatorRowsBySystem = Record<string, Record<string, AluminumEstimatorInputState>>;
+
+/** SL session: system → row → quantity string. Không lưu Supabase. */
+export type AluminumEstimatorQuantitiesBySystem = Record<string, Record<string, string>>;
+
+/** Đơn giá theo màu → system → row. */
+export type AluminumEstimatorUnitPricesByColor = Record<
+  string,
+  Record<string, Record<string, AluminumEstimatorPriceState>>
+>;
 
 export interface AluminumCalculationRecord extends SyncEntity {
   selectedSystemId: string;
-  inputRows: AluminumEstimatorRowsBySystem;
-  /** Màu áp cho toàn bộ thanh nhôm (Ghi Xanh / Vân Gỗ Trắc / Vân Gỗ Lim). */
+  /**
+   * @deprecated Bản cũ lưu SL+đơn giá chung một màu.
+   * Load path migrate sang unitPricesByColor (bỏ SL).
+   */
+  inputRows?: AluminumEstimatorRowsBySystem;
+  /** Đơn giá theo màu (Ghi - Cafe | Vân Gỗ), tách biệt từng màu. */
+  unitPricesByColor?: AluminumEstimatorUnitPricesByColor;
+  /** Màu đang chọn: Ghi - Cafe | Vân Gỗ. */
   color?: string;
   createdAt: string;
 }

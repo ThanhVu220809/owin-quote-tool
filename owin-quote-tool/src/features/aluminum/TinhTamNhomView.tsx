@@ -33,10 +33,12 @@ import {
   ALUMINUM_ESTIMATOR_STORAGE_KEY,
   aluminumEstimatorStateContentEquals,
   ALUMINUM_COLORS,
+  EMPTY_ALUMINUM_PRICE,
   createDefaultAluminumEstimatorState,
   getAluminumEstimatorInput,
   loadAluminumEstimatorStorage,
   mergeAluminumEstimatorStates,
+  normalizeAluminumColor,
   saveAluminumEstimatorStorage,
   touchAluminumEstimatorState,
   type AluminumEstimatorInputState,
@@ -71,7 +73,7 @@ function buildRowsForSystem(systemId: string, pageState: AluminumEstimatorPageSt
   return getDefaultAluminumEstimatorRows(systemId).map((raw) => {
     // Màu áp cho tất cả thanh theo lựa chọn ở trên.
     const source = { ...raw, color: pageState.color };
-    const input = getAluminumEstimatorInput(pageState.inputRows, source.systemId, source.rowId);
+    const input = getAluminumEstimatorInput(pageState, source.systemId, source.rowId);
     const calculated = calculateAluminumEstimatorRow(source, normalizeInput(input));
     return { source, input, calculated };
   });
@@ -333,22 +335,55 @@ export function TinhTamNhomView() {
 
   const updateRow = (rowId: string, patch: AluminumEstimatorRowPatch) => {
     if (!selectedSystem) return;
+    const systemId = selectedSystem.id;
     updatePageState((current) => {
-      const currentSystemRows = current.inputRows[selectedSystem.id] ?? {};
-      const currentInput = currentSystemRows[rowId] ?? { quantity: '', unitPrice: '', note: '' };
-      return touchAluminumEstimatorState({
-        ...current,
-        inputRows: {
-          ...current.inputRows,
-          [selectedSystem.id]: {
-            ...currentSystemRows,
-            [rowId]: {
-              ...currentInput,
-              ...patch,
-            },
-          },
-        },
-      });
+      let next: AluminumEstimatorPageState = current;
+
+      // SL chỉ session — không touch updatedAt, không kích hoạt lưu.
+      if (patch.quantity !== undefined) {
+        const systemQty = { ...(current.quantities[systemId] ?? {}) };
+        if (!patch.quantity) delete systemQty[rowId];
+        else systemQty[rowId] = patch.quantity;
+        const quantities = { ...current.quantities };
+        if (Object.keys(systemQty).length === 0) delete quantities[systemId];
+        else quantities[systemId] = systemQty;
+        next = { ...next, quantities };
+      }
+
+      // Đơn giá / note theo màu đang chọn — lưu Supabase.
+      if (patch.unitPrice !== undefined || patch.note !== undefined) {
+        const color = normalizeAluminumColor(current.color);
+        const colorBook = current.unitPricesByColor[color] ?? {};
+        const systemRows = colorBook[systemId] ?? {};
+        const prev = systemRows[rowId] ?? EMPTY_ALUMINUM_PRICE;
+        const unitPrice = patch.unitPrice !== undefined ? patch.unitPrice : prev.unitPrice;
+        const note = patch.note !== undefined ? patch.note : prev.note;
+        const nextSystemRows = { ...systemRows };
+        if (!unitPrice && !note) {
+          delete nextSystemRows[rowId];
+        } else {
+          nextSystemRows[rowId] = { unitPrice, note };
+        }
+        const nextColorBook = { ...colorBook };
+        if (Object.keys(nextSystemRows).length === 0) {
+          delete nextColorBook[systemId];
+        } else {
+          nextColorBook[systemId] = nextSystemRows;
+        }
+        const unitPricesByColor = { ...current.unitPricesByColor };
+        if (Object.keys(nextColorBook).length === 0) {
+          delete unitPricesByColor[color];
+        } else {
+          unitPricesByColor[color] = nextColorBook;
+        }
+        next = touchAluminumEstimatorState({
+          ...next,
+          color,
+          unitPricesByColor,
+        });
+      }
+
+      return next;
     });
   };
 
@@ -380,7 +415,9 @@ export function TinhTamNhomView() {
       <div className="aluminum-hero aluminum-hero-compact">
         <div>
           <h1 className="app-title">Bảng tính nhôm</h1>
-          <p className="app-subtitle">Nhập SL + đơn giá · chỉ xuất Word / In PDF (không lưu file vào hệ thống).</p>
+          <p className="app-subtitle">
+            Đơn giá theo màu được lưu · SL chỉ tạm (mất khi tải lại / rời trang) · xuất Word / In PDF.
+          </p>
         </div>
         <div className="aluminum-export-bar">
           <div className="aluminum-scope-toggle" role="group" aria-label="Phạm vi xuất">
@@ -427,7 +464,12 @@ export function TinhTamNhomView() {
                 key={color}
                 type="button"
                 className={`aluminum-color-chip${pageState.color === color ? ' active' : ''}`}
-                onClick={() => updatePageState((current) => touchAluminumEstimatorState({ ...current, color }))}
+                onClick={() => updatePageState((current) => {
+                  const nextColor = normalizeAluminumColor(color);
+                  if (normalizeAluminumColor(current.color) === nextColor) return current;
+                  // Đổi màu: đơn giá theo màu mới (đã lưu sẵn); SL session giữ nguyên.
+                  return touchAluminumEstimatorState({ ...current, color: nextColor });
+                })}
               >
                 {color}
               </button>
