@@ -166,16 +166,16 @@ export function BangGiaView() {
       <div className="preview-doc bang-gia-doc">
         <table className="bang-gia-table">
           <colgroup>
-            <col style={{ width: '3.2%' }} />
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '26.3%' }} />
             <col style={{ width: '3.5%' }} />
-            <col style={{ width: '4.3%' }} />
-            <col style={{ width: '3.8%' }} />
-            <col style={{ width: '4.1%' }} />
-            <col style={{ width: '10.6%' }} />
-            <col style={{ width: '10.6%' }} />
-            <col style={{ width: '11.6%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '29%' }} />
+            <col style={{ width: '3.5%' }} />
+            <col style={{ width: '4.5%' }} />
+            <col style={{ width: '4%' }} />
+            <col style={{ width: '4.5%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
           </colgroup>
           <thead>
             <tr>

@@ -13,7 +13,7 @@ const NO_PRODUCTS: ProductRecord[] = [];
 
 /**
  * Product image thumbnail with OWIN logo fallback when missing.
- * fill = fill parent frame with 95% contain semantics (CSS class).
+ * fill = 100% khung cha, object-fit: contain (không còn ép 95% làm ảnh “lọt thỏm” trong ô).
  */
 export function ProductThumb({
   imageId,
@@ -98,8 +98,13 @@ export function ProductThumb({
   const thumbUrl = thumb && !thumbFailed && masterUrl ? thumbUrlFor(masterUrl) : null;
   const showingThumb = Boolean(thumbUrl);
   const displayUrl = thumbUrl ?? masterUrl ?? OWIN_LOGO;
-  const sizeStyle = fill ? { width: '95%', height: '95%' } : { width: size, height: size };
-  const className = fill ? 'ph image-fit-contain' : 'product-thumb image-fit-contain';
+  // fill: lấp khung cha (contain). Fixed size: ô vuông list.
+  const sizeStyle = fill
+    ? { width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }
+    : { width: size, height: size };
+  const className = fill
+    ? 'ph image-fit-contain image-fit-fill'
+    : 'product-thumb image-fit-contain';
   const canPreview = Boolean(previewable && masterUrl);
 
   return (

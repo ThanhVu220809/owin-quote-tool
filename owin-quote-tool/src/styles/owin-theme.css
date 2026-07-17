@@ -1318,11 +1318,11 @@ textarea.input:focus {
 .product-image-panel .dropzone img,
 .product-image-panel .dropzone .image-fit-contain {
   border-radius: 12px;
-  height: 95%;
-  max-height: 95%;
-  max-width: 95%;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
-  width: 95%;
   background: #fafafa;
 }
 .dropzone-empty {
@@ -1338,7 +1338,7 @@ textarea.input:focus {
   max-width: 64% !important;
   max-height: 48% !important;
 }
-/* Shared 95% contain frame for product/quote/picker/catalogue images. */
+/* Khung ảnh: contain trong parent (mặc định 100% — không “thụt” 95% so với ô). */
 .image-fit-frame {
   align-items: center;
   display: flex;
@@ -1349,13 +1349,19 @@ textarea.input:focus {
 .image-fit-frame .image-fit-contain,
 .image-fit-contain {
   display: block;
-  height: 95%;
-  max-height: 95%;
-  max-width: 95%;
   object-fit: contain;
-  width: 95%;
-  border-radius: 12px;
+  border-radius: 10px;
   margin: auto;
+}
+/* fill mode (bảng giá / dropzone / picker): lấp khung, chỉ chừa padding của parent */
+.image-fit-fill {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  object-fit: contain !important;
 }
 .product-basic-panel {
   display: grid;
@@ -2905,46 +2911,51 @@ textarea.input:focus {
 }
 .bang-gia-table .image-cell {
   height: 1px; /* rowspan stretch */
-  min-width: 140px;
-  width: 22%;
-  padding: 8px 10px;
+  min-width: 120px;
+  width: 20%;
+  padding: 6px 8px;
   text-align: center;
   vertical-align: middle;
   background: #fafbfc;
 }
+/* Ô ảnh: khung cố định tỉ lệ; img lấp 100% khung (contain), không “thụt” so với div */
 .bang-gia-image-frame {
-  align-items: center;
   display: flex;
-  height: 100%;
+  align-items: center;
   justify-content: center;
-  min-height: 168px;
   width: 100%;
-  max-width: 220px;
+  max-width: 180px;
   margin: 0 auto;
-  padding: 6px;
-  border-radius: 12px;
+  aspect-ratio: 4 / 3;
+  min-height: 112px;
+  max-height: 160px;
+  padding: 4px;
+  border-radius: 10px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
+  overflow: hidden;
 }
 .bang-gia-table .image-cell .ph,
 .bang-gia-image-frame img,
-.bang-gia-image-frame .ph {
-  height: auto !important;
-  max-height: 200px !important;
+.bang-gia-image-frame .ph,
+.bang-gia-image-frame .image-fit-fill {
+  width: 100% !important;
+  height: 100% !important;
   max-width: 100% !important;
-  min-height: 120px;
+  max-height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
   object-fit: contain !important;
-  border-radius: 10px;
+  border-radius: 6px;
   border: none;
   background: transparent;
   display: block;
-  width: auto !important;
   margin: 0 auto;
 }
 .bang-gia-table tr.product td {
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 .bang-gia-table tr.accessory td {
   padding-top: 6px;
@@ -3693,47 +3704,50 @@ textarea.input:focus {
     -webkit-tap-highlight-color: rgba(0, 102, 204, 0.12);
   }
 
-  /* ── Density toàn app (điện thoại dọc) ── */
+  /* ── Density điện thoại: gọn, dễ chạm — không phình nút/ô ── */
   .tool-content {
-    padding: 8px 8px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 8px 8px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
   }
   .card {
-    padding: 10px 12px !important;
-    border-radius: var(--r-md) !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
   }
   .field {
     margin-bottom: 8px !important;
   }
   .field > label {
     font-size: 11px !important;
-    margin-bottom: 3px !important;
+    margin-bottom: 2px !important;
     font-weight: 700;
   }
   .input,
   select.input,
   textarea.input {
-    min-height: var(--control-h) !important;
-    padding: 8px 10px !important;
+    min-height: 38px !important;
+    padding: 7px 10px !important;
     border-radius: 10px !important;
     font-size: 16px !important; /* iOS: không zoom */
   }
   textarea.input {
-    min-height: 72px !important;
+    min-height: 64px !important;
   }
   .btn {
-    min-height: 40px !important;
-    padding: 7px 11px !important;
+    min-height: 38px !important;
+    padding: 6px 12px !important;
     font-size: 13px !important;
     border-radius: 999px !important;
   }
   .icon-btn {
-    width: 40px !important;
-    height: 40px !important;
-    min-width: 40px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
   }
   .section-label {
     font-size: 11px !important;
-    margin-bottom: 6px !important;
+    margin-bottom: 4px !important;
+  }
+  .admin-page {
+    gap: 10px;
   }
   .app-title {
     font-size: 1.1rem !important;
@@ -4424,9 +4438,9 @@ textarea.input:focus {
     padding: 6px 4px !important;
     font-size: 11px !important;
   }
-  /* Bảng giá: chữ gọn nhưng ẢNH TO — không còn 48px */
+  /* Bảng giá mobile: gọn, ảnh lấp đầy ô (không phình / không thụt) */
   .bang-gia-doc {
-    padding: 6px;
+    padding: 4px;
     margin: 0 -4px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -4434,53 +4448,55 @@ textarea.input:focus {
     background: #fff;
   }
   .bang-gia-table {
-    font-size: 11px !important;
-    min-width: 720px;
+    font-size: 10px !important;
+    min-width: 680px;
   }
   .bang-gia-table th,
   .bang-gia-table td {
-    padding: 6px 5px !important;
+    padding: 4px !important;
     line-height: 1.3 !important;
   }
   .bang-gia-table .logo-cell img {
-    max-height: 36px !important;
+    max-height: 28px !important;
     width: auto !important;
   }
   .bang-gia-table .company-cell,
   .bang-gia-table .title-cell {
-    font-size: 12px !important;
-    padding: 6px !important;
+    font-size: 11px !important;
+    padding: 4px !important;
   }
   .bang-gia-table .image-cell {
-    min-width: 120px !important;
-    width: 24% !important;
-    padding: 8px !important;
+    min-width: 96px !important;
+    width: 18% !important;
+    padding: 4px !important;
   }
   .bang-gia-image-frame {
     width: 100% !important;
-    max-width: 160px !important;
-    min-width: 110px !important;
-    min-height: 130px !important;
-    height: auto !important;
-    padding: 4px !important;
+    max-width: 120px !important;
+    min-width: 88px !important;
+    min-height: 72px !important;
+    max-height: 100px !important;
+    aspect-ratio: 4 / 3;
+    padding: 2px !important;
   }
   .bang-gia-table .image-cell .ph,
   .bang-gia-image-frame img,
-  .bang-gia-image-frame .ph {
-    width: auto !important;
-    height: auto !important;
-    min-height: 100px !important;
-    max-height: 150px !important;
+  .bang-gia-image-frame .ph,
+  .bang-gia-image-frame .image-fit-fill {
+    width: 100% !important;
+    height: 100% !important;
     max-width: 100% !important;
-    font-size: 11px !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    object-fit: contain !important;
   }
   .bang-gia-table .category-row td {
-    font-size: 11px !important;
-    padding: 6px 8px !important;
+    font-size: 10px !important;
+    padding: 4px 6px !important;
   }
   .bang-gia-table .description-cell {
-    font-size: 11px !important;
-    line-height: 1.35 !important;
+    font-size: 10px !important;
+    line-height: 1.3 !important;
   }
 
   /* Segmented unit control full-width */
@@ -4852,13 +4868,9 @@ textarea.input:focus {
     padding: 2px 3px !important;
   }
   .bang-gia-image-frame {
-    min-height: 100px !important;
-    max-width: 140px !important;
-  }
-  .bang-gia-table .image-cell .ph,
-  .bang-gia-image-frame img {
-    min-height: 80px !important;
-    max-height: 120px !important;
+    max-width: 110px !important;
+    min-height: 64px !important;
+    max-height: 88px !important;
   }
 
   /* Aluminum: dùng bảng desktop thu nhỏ thay vì card stack */
@@ -5083,19 +5095,25 @@ textarea.input:focus {
     print-color-adjust: exact;
   }
   .bang-gia-table .image-cell {
-    min-width: 28mm;
-    width: 22%;
+    min-width: 24mm;
+    width: 18%;
+    padding: 2mm !important;
   }
   .bang-gia-image-frame {
-    min-height: 32mm;
-    max-width: 42mm;
+    max-width: 36mm;
+    min-height: 22mm;
+    max-height: 30mm;
+    aspect-ratio: 4 / 3;
+    padding: 1mm;
   }
   .bang-gia-table .image-cell .ph,
-  .bang-gia-image-frame img {
-    height: auto !important;
-    max-height: 38mm !important;
+  .bang-gia-image-frame img,
+  .bang-gia-image-frame .image-fit-fill {
+    width: 100% !important;
+    height: 100% !important;
     max-width: 100% !important;
-    min-height: 24mm !important;
-    width: auto !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    object-fit: contain !important;
   }
 }
