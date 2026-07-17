@@ -3299,15 +3299,15 @@ textarea.input:focus {
 
 @media (max-width: 720px) {
   .aluminum-page {
-    gap: 8px;
+    gap: 6px;
   }
   .aluminum-hero {
-    padding: 10px 12px;
-    border-radius: 14px;
-    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    gap: 8px;
   }
   .aluminum-hero-compact .app-title {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     line-height: 1.25;
   }
   .aluminum-subtitle-full { display: none; }
@@ -3617,16 +3617,87 @@ textarea.input:focus {
 }
 
 @media (max-width: 720px) {
+  /* Mật độ dọc (portrait): ô/control nhỏ gọn, vẫn 16px input để iOS không zoom */
   :root {
-    --control-h: 46px;
-    --control-h-sm: 44px;
-    --icon-btn: 44px;
-    --fs-md: 15px;
-    --fs-title: 22px;
+    --control-h: 40px;
+    --control-h-sm: 38px;
+    --icon-btn: 40px;
+    --fs-xs: 11px;
+    --fs-sm: 12px;
+    --fs-md: 13px;
+    --fs-lg: 15px;
+    --fs-title: 18px;
+    --r-sm: 10px;
+    --r-md: 12px;
+    --r-lg: 14px;
+    --space-3: 8px;
+    --space-4: 10px;
   }
 
   html {
     -webkit-tap-highlight-color: rgba(0, 102, 204, 0.12);
+  }
+
+  /* ── Density toàn app (điện thoại dọc) ── */
+  .tool-content {
+    padding: 8px 8px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .card {
+    padding: 10px 12px !important;
+    border-radius: var(--r-md) !important;
+  }
+  .field {
+    margin-bottom: 8px !important;
+  }
+  .field > label {
+    font-size: 11px !important;
+    margin-bottom: 3px !important;
+    font-weight: 700;
+  }
+  .input,
+  select.input,
+  textarea.input {
+    min-height: var(--control-h) !important;
+    padding: 8px 10px !important;
+    border-radius: 10px !important;
+    font-size: 16px !important; /* iOS: không zoom */
+  }
+  textarea.input {
+    min-height: 72px !important;
+  }
+  .btn {
+    min-height: 40px !important;
+    padding: 7px 11px !important;
+    font-size: 13px !important;
+    border-radius: 999px !important;
+  }
+  .icon-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+  }
+  .section-label {
+    font-size: 11px !important;
+    margin-bottom: 6px !important;
+  }
+  .app-title {
+    font-size: 1.1rem !important;
+  }
+  .app-subtitle {
+    font-size: 12px !important;
+  }
+  .product-sub,
+  .muted {
+    font-size: 12px !important;
+  }
+  .autosuggest .field { margin-bottom: 0 !important; }
+  .segmented {
+    padding: 2px;
+  }
+  .segmented button {
+    min-height: 36px !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
   }
 
   /* Shell + safe areas */
@@ -3742,14 +3813,14 @@ textarea.input:focus {
   .product-table thead { display: none; }
   .product-table tbody tr.product-row {
     display: grid;
-    grid-template-columns: 78px minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
     grid-template-areas:
       'image name'
       'image price'
       'actions actions';
-    gap: 6px 12px;
+    gap: 4px 10px;
     align-items: center;
-    padding: 12px;
+    padding: 8px 10px;
     background: #fff;
     border: 1px solid var(--owin-border);
     border-radius: var(--r-md);
@@ -3791,9 +3862,9 @@ textarea.input:focus {
     padding: 3px 8px;
   }
   .product-image-button {
-    width: 78px;
-    height: 78px;
-    border-radius: 14px;
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
     overflow: hidden;
     border: 1px solid var(--owin-border);
     background: var(--owin-soft);
@@ -3801,22 +3872,28 @@ textarea.input:focus {
   }
   .product-table-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: flex-end;
     padding-top: 4px;
     border-top: 1px solid var(--owin-border);
   }
   .product-table-actions .icon-btn {
-    width: 44px;
-    height: 44px;
+    width: 38px !important;
+    height: 38px !important;
   }
   .product-name {
-    font-size: 15px;
-    line-height: 1.3;
+    font-size: 13px;
+    line-height: 1.25;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  .product-table td[data-col='price'] {
+    font-size: 14px !important;
+  }
+  .product-table {
+    border-spacing: 0 6px;
   }
 
   /* ── Quote history → cards ── */
@@ -3844,8 +3921,8 @@ textarea.input:focus {
       'customer customer'
       'total total'
       'actions actions';
-    gap: 6px 10px;
-    padding: 14px;
+    gap: 4px 8px;
+    padding: 10px;
     background: #fff;
     border: 1px solid var(--owin-border);
     border-radius: var(--r-md);
@@ -3866,11 +3943,16 @@ textarea.input:focus {
   .quote-history-table td[data-col='total'] {
     grid-area: total;
     text-align: left !important;
-    font-size: 18px !important;
+    font-size: 15px !important;
     font-weight: 850;
     color: var(--owin-primary);
-    padding-top: 4px !important;
+    padding-top: 2px !important;
   }
+  .quote-history-table {
+    border-spacing: 0 6px;
+  }
+  .quote-customer-name { font-size: 13px !important; }
+  .quote-code-button { font-size: 12px !important; }
   .quote-history-table td[data-col='actions'] { grid-area: actions; }
   .quote-history-mobile-date {
     display: block;
@@ -3897,12 +3979,13 @@ textarea.input:focus {
     border-top: 1px solid var(--owin-border);
   }
   .quote-actions .btn {
-    min-height: 44px;
-    padding: 8px 14px;
+    min-height: 38px !important;
+    padding: 6px 10px !important;
+    font-size: 12px !important;
   }
   .quote-actions .icon-btn {
-    width: 44px;
-    height: 44px;
+    width: 38px !important;
+    height: 38px !important;
   }
   .quote-code-button {
     font-size: 14px;
@@ -4013,22 +4096,39 @@ textarea.input:focus {
   .quote-line-field[data-label='']::before {
     display: none;
   }
+  .quote-line-row {
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+  .quote-line-field::before {
+    font-size: 9px !important;
+  }
   .quote-line-field .input,
   .quote-line-field .readonly-money {
-    min-height: 42px;
+    min-height: 38px !important;
     font-size: 16px !important;
+    padding: 6px 8px !important;
   }
-  .quote-line-field-wide,
+  .quote-line-field-wide {
+    grid-column: span 1;
+  }
   .quote-line-field-total {
-    grid-column: 1 / -1;
+    grid-column: span 1;
   }
   .quote-line-field-action {
     grid-column: 1 / -1;
     justify-content: flex-end;
   }
   .quote-line-field-action .icon-btn {
-    width: 44px;
-    height: 44px;
+    width: 38px !important;
+    height: 38px !important;
+  }
+  .quote-item-card {
+    padding: 8px 10px !important;
+  }
+  .readonly-money {
+    font-size: 12px !important;
+    padding: 6px 8px !important;
   }
 
   /* Quote form layout */
@@ -4054,11 +4154,11 @@ textarea.input:focus {
     gap: 8px;
   }
   .quote-form-actions .btn {
-    min-height: 44px;
+    min-height: 38px !important;
     justify-content: center;
     width: 100%;
-    padding: 8px 10px;
-    font-size: 13px;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
   }
   .quote-form-actions .btn-primary {
     grid-column: 1 / -1;
@@ -4123,7 +4223,8 @@ textarea.input:focus {
 
   /* Product create/edit: sticky save bar */
   .product-editor-card {
-    padding-bottom: 88px;
+    padding: 10px !important;
+    padding-bottom: 76px !important;
   }
   .product-editor-actions {
     position: fixed;
@@ -4132,30 +4233,30 @@ textarea.input:focus {
     bottom: 0;
     z-index: 40;
     margin: 0 !important;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
     background: rgba(255, 255, 255, 0.97);
     border-top: 1px solid var(--owin-border);
-    box-shadow: 0 -8px 24px rgba(15, 42, 61, 0.08);
+    box-shadow: 0 -6px 18px rgba(15, 42, 61, 0.08);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     display: grid !important;
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 6px;
   }
   .product-autosave-status {
-    font-size: 12px;
+    font-size: 11px;
     text-align: center;
   }
   .product-editor-action-btns {
     margin-left: 0;
     display: grid;
     grid-template-columns: 1fr 1.2fr;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
   }
   .product-editor-action-btns .btn {
     width: 100%;
-    min-height: 46px;
+    min-height: 40px !important;
     justify-content: center;
   }
   .product-summary-strip {
@@ -4163,17 +4264,26 @@ textarea.input:focus {
     gap: 0 !important;
   }
   .summary-metric {
-    padding: 10px !important;
+    padding: 8px !important;
+  }
+  .summary-metric span {
+    font-size: 10px !important;
   }
   .summary-metric strong {
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
   .summary-metric-strong {
     grid-column: 1 / -1;
   }
   .product-image-panel .dropzone {
     max-width: 100% !important;
-    min-height: 160px;
+    min-height: 120px !important;
+  }
+  .product-editor-top {
+    gap: 10px !important;
+  }
+  .spec-editor-row {
+    gap: 6px !important;
   }
 
   /* Catalogue toolbar */
@@ -4207,17 +4317,51 @@ textarea.input:focus {
   }
   .catalogue-export-actions .btn {
     width: 100%;
-    min-height: 44px;
+    min-height: 38px !important;
     justify-content: center;
-    padding: 8px 6px;
-    font-size: 12px;
+    padding: 6px 4px !important;
+    font-size: 11px !important;
   }
+  /* Bảng giá: thu nhỏ trên dọc, cuộn ngang mượt */
   .bang-gia-doc {
-    padding: 6px;
-    margin: 0 -4px;
+    padding: 4px;
+    margin: 0 -6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
+    background: #fff;
   }
   .bang-gia-table {
-    font-size: 11px;
+    font-size: 9px !important;
+    min-width: 640px;
+  }
+  .bang-gia-table th,
+  .bang-gia-table td {
+    padding: 3px 4px !important;
+    line-height: 1.25 !important;
+  }
+  .bang-gia-table .logo-cell img {
+    max-height: 28px !important;
+    width: auto !important;
+  }
+  .bang-gia-table .company-cell,
+  .bang-gia-table .title-cell {
+    font-size: 11px !important;
+    padding: 4px !important;
+  }
+  .bang-gia-image-frame {
+    width: 48px !important;
+    height: 36px !important;
+    min-width: 48px !important;
+  }
+  .bang-gia-table .image-cell .ph {
+    width: 48px !important;
+    height: 36px !important;
+    font-size: 8px !important;
+  }
+  .bang-gia-table .category-row td {
+    font-size: 10px !important;
+    padding: 4px 6px !important;
   }
 
   /* Segmented unit control full-width */
@@ -4297,7 +4441,403 @@ textarea.input:focus {
   .product-toast,
   .product-data-error {
     border-radius: var(--r-sm);
-    font-size: 14px;
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  /* Aluminum cards denser on portrait */
+  .aluminum-card {
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+  .aluminum-card-top {
+    grid-template-columns: auto 48px minmax(0, 1fr) !important;
+    gap: 6px !important;
+  }
+  .aluminum-card .aluminum-image-cell {
+    width: 48px !important;
+    height: 38px !important;
+  }
+  .aluminum-card-code { font-size: 12px !important; }
+  .aluminum-card-desc { font-size: 11px !important; }
+  .aluminum-card-fields {
+    grid-template-columns: 64px minmax(0, 1.15fr) minmax(0, 0.95fr) !important;
+    gap: 5px !important;
+  }
+  .aluminum-card-field .aluminum-qty-input,
+  .aluminum-card-field .aluminum-price-input {
+    height: 36px !important;
+    font-size: 16px !important;
+  }
+  .aluminum-card-total strong {
+    min-height: 36px !important;
+    line-height: 36px !important;
+    font-size: 12px !important;
+  }
+  .aluminum-totals-strip {
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+  .aluminum-total-chip strong {
+    font-size: 13px !important;
+  }
+  .aluminum-total-chip-all strong {
+    font-size: 14px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PHONE LANDSCAPE — “laptop thu nhỏ”: 2 cột, control thấp, ít padding
+   (màn ngang ngắn: max-height để không ảnh hưởng tablet đứng)
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 960px) and (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --control-h: 32px;
+    --control-h-sm: 30px;
+    --icon-btn: 32px;
+    --fs-xs: 10px;
+    --fs-sm: 11px;
+    --fs-md: 12px;
+    --fs-title: 15px;
+  }
+
+  .tool-topnav {
+    grid-template-columns: auto 1fr auto !important;
+    grid-template-areas: 'brand nav account' !important;
+    gap: 6px 8px !important;
+    padding: 4px 8px !important;
+    min-height: 0 !important;
+  }
+  .tool-brand-text small { display: none; }
+  .tool-brand-logo { width: 26px !important; height: 26px !important; }
+  .tool-nav {
+    grid-area: nav !important;
+    overflow-x: auto;
+    gap: 4px !important;
+    padding: 0 !important;
+  }
+  .tool-nav-item {
+    min-height: 30px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+  .tool-nav-item span { font-size: 11px !important; }
+  .tool-nav-item svg { width: 14px; height: 14px; }
+  .account-menu-trigger {
+    min-height: 30px !important;
+    padding: 2px 6px !important;
+  }
+
+  .tool-content {
+    padding: 6px 8px 10px !important;
+  }
+
+  .card {
+    padding: 8px 10px !important;
+  }
+  .field {
+    margin-bottom: 6px !important;
+  }
+  .field > label {
+    font-size: 10px !important;
+    margin-bottom: 2px !important;
+  }
+  .input,
+  select.input,
+  textarea.input {
+    min-height: 32px !important;
+    padding: 4px 8px !important;
+    font-size: 14px !important; /* landscape: ít bị zoom hơn, ưu tiên gọn */
+  }
+  .btn {
+    min-height: 32px !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+  }
+  .icon-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .app-title { font-size: 14px !important; margin-bottom: 0 !important; }
+  .app-subtitle { font-size: 11px !important; }
+
+  /* 2 cột như laptop thu nhỏ */
+  .two-col,
+  .quote-top-grid,
+  .quote-customer-grid,
+  .quote-detail-grid,
+  .quote-detail-info,
+  .product-basic-grid,
+  .product-editor-top,
+  .product-editor-section-grid,
+  .product-summary-strip,
+  .product-filter-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .product-basic-grid > :nth-child(2) {
+    grid-column: auto !important;
+  }
+  .product-image-panel {
+    max-width: none !important;
+  }
+  .product-image-panel .dropzone {
+    max-width: 100% !important;
+    min-height: 100px !important;
+  }
+
+  /* Form actions không sticky full-screen — nằm trong luồng */
+  .product-editor-card {
+    padding-bottom: 10px !important;
+  }
+  .product-editor-actions {
+    position: static !important;
+    box-shadow: none !important;
+    border-top: 1px solid var(--owin-border);
+    padding: 8px 0 0 !important;
+    background: transparent !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .product-editor-action-btns {
+    margin-left: auto;
+    display: inline-flex;
+    width: auto;
+    grid-template-columns: none;
+  }
+  .product-editor-action-btns .btn {
+    min-height: 32px !important;
+    width: auto;
+  }
+
+  .quote-form-heading {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+  .quote-form-actions {
+    display: flex !important;
+    flex-wrap: wrap;
+    grid-template-columns: none !important;
+    width: auto !important;
+    margin-left: auto;
+    gap: 6px !important;
+  }
+  .quote-form-actions .btn {
+    width: auto !important;
+    min-height: 30px !important;
+    font-size: 11px !important;
+  }
+  .quote-form-actions .btn-primary {
+    grid-column: auto !important;
+  }
+  .quote-totals-card {
+    position: static !important;
+  }
+  .quote-add-products-card {
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+  .quote-add-actions {
+    display: flex !important;
+    grid-template-columns: none !important;
+    width: auto !important;
+  }
+  .quote-add-actions .btn {
+    width: auto !important;
+    min-height: 30px !important;
+  }
+
+  /* Dimension rows: multi-col compact (giống bảng nhỏ) */
+  .quote-lines-head {
+    display: grid !important;
+    min-width: 0 !important;
+    grid-template-columns: 56px 56px 56px 48px 56px minmax(80px, 1fr) minmax(80px, 1fr) 32px !important;
+    font-size: 9px !important;
+  }
+  .quote-line-row {
+    min-width: 0 !important;
+    grid-template-columns: 56px 56px 56px 48px 56px minmax(80px, 1fr) minmax(80px, 1fr) 32px !important;
+    gap: 4px !important;
+    padding: 4px 6px !important;
+    align-items: center !important;
+  }
+  .quote-line-field::before { display: none !important; }
+  .quote-line-field-wide,
+  .quote-line-field-total,
+  .quote-line-field-action {
+    grid-column: auto !important;
+  }
+  .quote-line-field .input,
+  .quote-line-field .readonly-money {
+    min-height: 30px !important;
+    font-size: 12px !important;
+    padding: 2px 4px !important;
+  }
+
+  /* Product/quote lists: denser cards, 2-up when wide enough */
+  .product-table tbody tr.product-row {
+    grid-template-columns: 48px minmax(0, 1fr);
+    padding: 6px 8px;
+    gap: 4px 8px;
+  }
+  .product-image-button {
+    width: 48px !important;
+    height: 48px !important;
+  }
+  .product-name { font-size: 12px !important; }
+  .product-table td[data-col='price'] { font-size: 12px !important; }
+
+  .quote-history-table tbody tr.quote-history-row {
+    padding: 8px;
+    gap: 3px 6px;
+  }
+  .quote-history-table td[data-col='total'] { font-size: 13px !important; }
+
+  /* Catalogue: denser printable table */
+  .catalogue-toolbar {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    align-items: center !important;
+    gap: 6px !important;
+    padding-bottom: 8px !important;
+  }
+  .catalogue-toolbar-actions {
+    flex-direction: row !important;
+    width: auto !important;
+    margin-left: auto;
+  }
+  .catalogue-export-actions {
+    display: inline-flex !important;
+    grid-template-columns: none !important;
+    width: auto !important;
+  }
+  .catalogue-export-actions .btn {
+    width: auto !important;
+    min-height: 30px !important;
+    font-size: 11px !important;
+  }
+  .bang-gia-doc {
+    max-height: calc(100dvh - 96px);
+    overflow: auto;
+  }
+  .bang-gia-table {
+    font-size: 10px !important;
+    min-width: 700px;
+  }
+  .bang-gia-table th,
+  .bang-gia-table td {
+    padding: 2px 3px !important;
+  }
+  .bang-gia-image-frame {
+    width: 40px !important;
+    height: 30px !important;
+  }
+
+  /* Aluminum: dùng bảng desktop thu nhỏ thay vì card stack */
+  .aluminum-table-desktop {
+    display: block !important;
+  }
+  .aluminum-card-list {
+    display: none !important;
+  }
+  .aluminum-table {
+    min-width: 0 !important;
+    font-size: 11px !important;
+  }
+  .aluminum-table th,
+  .aluminum-table td {
+    padding: 3px 4px !important;
+  }
+  .aluminum-image-cell {
+    width: 48px !important;
+    height: 36px !important;
+  }
+  .aluminum-qty-input {
+    width: 52px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
+  .aluminum-price-input {
+    width: 88px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
+  .aluminum-controls {
+    grid-template-columns: 1fr auto !important;
+    gap: 6px !important;
+  }
+  .aluminum-totals-strip {
+    position: static !important;
+    flex-direction: row !important;
+    display: flex !important;
+    grid-template-columns: none !important;
+    padding: 6px 8px !important;
+  }
+  .aluminum-total-chip strong {
+    font-size: 14px !important;
+  }
+  .aluminum-hero {
+    flex-direction: row !important;
+    align-items: center !important;
+    padding: 6px 10px !important;
+    gap: 8px !important;
+  }
+  .aluminum-export-bar {
+    flex-direction: row !important;
+    width: auto !important;
+  }
+  .aluminum-export-actions {
+    display: inline-flex !important;
+    grid-template-columns: none !important;
+    width: auto !important;
+  }
+  .aluminum-export-bar .btn {
+    width: auto !important;
+    min-height: 30px !important;
+  }
+  .aluminum-scope-toggle {
+    width: auto !important;
+  }
+  .aluminum-scope-toggle button {
+    min-height: 28px !important;
+    font-size: 11px !important;
+  }
+
+  /* Modals: full height landscape */
+  .modal-backdrop,
+  .quote-picker-backdrop {
+    align-items: stretch !important;
+    padding: 4px !important;
+  }
+  .product-preview-modal,
+  .product-preview-modal-rich,
+  .bulk-price-modal,
+  .quote-picker-modal {
+    max-height: calc(100dvh - 8px) !important;
+    border-radius: 10px !important;
+    width: min(960px, 100%) !important;
+  }
+  .quote-picker-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+  .quote-picker-thumb {
+    min-height: 72px !important;
+  }
+  .product-preview-body,
+  .product-preview-body-rich {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .product-preview-image-rich {
+    min-height: 140px !important;
+  }
+  .product-preview-image-rich .ph,
+  .product-preview-image-rich img {
+    height: min(28vh, 160px) !important;
   }
 }
 
