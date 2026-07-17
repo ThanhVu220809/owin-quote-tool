@@ -410,13 +410,25 @@ export function TinhTamNhomView() {
       .catch(() => setStatus('Không xuất được Word.'));
   };
 
+  const autosaveLabel = (() => {
+    if (autosavePhase === 'loading') return 'Đang tải…';
+    if (autosavePhase === 'idle') return 'Sẵn sàng';
+    if (autosavePhase === 'pending') return 'Sắp lưu…';
+    if (autosavePhase === 'saving') return 'Đang lưu…';
+    if (autosavePhase === 'saved') return lastSavedAt ? 'Đã lưu' : 'Sẵn sàng';
+    return null;
+  })();
+
   return (
     <section className="admin-page aluminum-page">
       <div className="aluminum-hero aluminum-hero-compact">
-        <div>
+        <div className="aluminum-hero-text">
           <h1 className="app-title">Bảng tính nhôm</h1>
-          <p className="app-subtitle">
+          <p className="app-subtitle aluminum-subtitle-full">
             Đơn giá theo màu được lưu · SL chỉ tạm (mất khi tải lại / rời trang) · xuất Word / In PDF.
+          </p>
+          <p className="app-subtitle aluminum-subtitle-short">
+            Đơn giá lưu theo màu · SL tạm · Word / PDF
           </p>
         </div>
         <div className="aluminum-export-bar">
@@ -436,28 +448,33 @@ export function TinhTamNhomView() {
               Tất cả hệ
             </button>
           </div>
-          <button className="btn btn-primary" type="button" onClick={exportWord}>
-            <FileText size={16} /> Word
-          </button>
-          <button className="btn btn-ghost" type="button" onClick={printPdf}>
-            <Printer size={16} /> In PDF
-          </button>
+          <div className="aluminum-export-actions">
+            <button className="btn btn-primary" type="button" onClick={exportWord}>
+              <FileText size={16} /> Word
+            </button>
+            <button className="btn btn-ghost" type="button" onClick={printPdf}>
+              <Printer size={16} /> In PDF
+            </button>
+          </div>
           {status && <span className="aluminum-status">{status}</span>}
         </div>
       </div>
 
-      <div className="aluminum-toolbar-row">
-        <AluminumSystemTabs
-          selectedSystemId={selectedSystem?.id ?? ''}
-          rowCountsBySystem={rowCountsBySystem}
-          systemTotals={systemSummaries}
-          onSelect={(systemId) => updatePageState((current) => touchAluminumEstimatorState({
-            ...current,
-            selectedSystemId: systemId,
-          }))}
-        />
-        <div className="aluminum-color-block">
-          <span className="aluminum-color-label">Màu</span>
+      <div className="aluminum-controls">
+        <div className="aluminum-control-card aluminum-systems-card">
+          <span className="aluminum-control-label">Hệ nhôm</span>
+          <AluminumSystemTabs
+            selectedSystemId={selectedSystem?.id ?? ''}
+            rowCountsBySystem={rowCountsBySystem}
+            systemTotals={systemSummaries}
+            onSelect={(systemId) => updatePageState((current) => touchAluminumEstimatorState({
+              ...current,
+              selectedSystemId: systemId,
+            }))}
+          />
+        </div>
+        <div className="aluminum-control-card aluminum-color-block">
+          <span className="aluminum-control-label aluminum-color-label">Màu (đơn giá riêng)</span>
           <div className="aluminum-color-chips" role="group" aria-label="Chọn màu nhôm">
             {ALUMINUM_COLORS.map((color) => (
               <button
@@ -480,20 +497,15 @@ export function TinhTamNhomView() {
 
       <div className="aluminum-totals-strip">
         <div className="aluminum-total-chip">
-          <span>Tổng hệ {selectedSystem?.name ?? ''}</span>
+          <span>Hệ {selectedSystem?.name ?? ''}</span>
           <strong>{formatEstimatorMoney(currentTotals.totalAmount)} đ</strong>
         </div>
         <div className="aluminum-total-chip aluminum-total-chip-all">
-          <span>Tổng tất cả hệ</span>
+          <span>Tất cả hệ</span>
           <strong>{formatEstimatorMoney(allTotals.totalAmount)} đ</strong>
         </div>
         <span className={`aluminum-autosave aluminum-autosave-${autosavePhase}`}>
-          {autosavePhase === 'loading' && 'Đang tải…'}
-          {autosavePhase === 'idle' && 'Sẵn sàng'}
-          {autosavePhase === 'pending' && 'Sắp lưu…'}
-          {autosavePhase === 'saving' && 'Đang lưu…'}
-          {autosavePhase === 'saved' && (lastSavedAt ? 'Đã lưu' : 'Sẵn sàng')}
-          {autosavePhase === 'error' && (
+          {autosavePhase === 'error' ? (
             <>
               Lỗi lưu.{' '}
               <button
@@ -512,6 +524,8 @@ export function TinhTamNhomView() {
                 Thử lại
               </button>
             </>
+          ) : (
+            autosaveLabel
           )}
         </span>
       </div>
@@ -623,57 +637,106 @@ function AluminumTable({
     );
   };
 
-  return (
-    <div className="aluminum-table-wrap">
-      <table className="aluminum-table aluminum-table-compact">
-        <thead>
-          <tr>
-            <th>STT</th>
-            <th>Hình</th>
-            <th>Mã cây</th>
-            <th>Mô tả</th>
-            <th>SL</th>
-            <th>Đơn giá</th>
-            <th>Thành tiền</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ source, input, calculated }) => {
-            const image = getAluminumProfileImageDisplay(source.image);
-            const isActive = calculated.quantity > 0 || parseEstimatorNumber(input.unitPrice) > 0;
-            const lineTotalText = calculated.lineTotal > 0 ? `${formatEstimatorMoney(calculated.lineTotal)} đ` : '—';
+  const renderImage = (source: AluminumEstimatorRowViewModel['source']) => {
+    const image = getAluminumProfileImageDisplay(source.image);
+    return (
+      <div className="aluminum-image-cell">
+        {image.kind === 'image' ? (
+          <img
+            src={image.src}
+            alt={`Hình ${source.code}`}
+            style={{ cursor: 'zoom-in' }}
+            onClick={() => openImageLightbox(image.src)}
+          />
+        ) : (
+          <span>{image.label}</span>
+        )}
+      </div>
+    );
+  };
 
-            return (
-              <tr key={source.rowId} className={isActive ? 'active' : ''}>
-                <td className="center">{source.stt}</td>
-                <td>
-                  <div className="aluminum-image-cell">
-                    {image.kind === 'image' ? (
-                      <img
-                        src={image.src}
-                        alt={`Hình ${source.code}`}
-                        style={{ cursor: 'zoom-in' }}
-                        onClick={() => openImageLightbox(image.src)}
-                      />
-                    ) : (
-                      <span>{image.label}</span>
-                    )}
-                  </div>
-                </td>
-                <td className="code">{source.code}</td>
-                <td className="description">{source.description}</td>
-                <td className="input-cell center">
+  return (
+    <>
+      {/* Desktop / tablet ngang: bảng */}
+      <div className="aluminum-table-wrap aluminum-table-desktop">
+        <table className="aluminum-table aluminum-table-compact">
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Hình</th>
+              <th>Mã cây</th>
+              <th>Mô tả</th>
+              <th>SL</th>
+              <th>Đơn giá</th>
+              <th>Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ source, input, calculated }) => {
+              const isActive = calculated.quantity > 0 || parseEstimatorNumber(input.unitPrice) > 0;
+              const lineTotalText = calculated.lineTotal > 0
+                ? `${formatEstimatorMoney(calculated.lineTotal)} đ`
+                : '—';
+
+              return (
+                <tr key={source.rowId} className={isActive ? 'active' : ''}>
+                  <td className="center">{source.stt}</td>
+                  <td>{renderImage(source)}</td>
+                  <td className="code">{source.code}</td>
+                  <td className="description">{source.description}</td>
+                  <td className="input-cell center">
+                    {renderInput(source.rowId, 'quantity', input.quantity, `SL cây ${source.code}`, 'aluminum-qty-input')}
+                  </td>
+                  <td className="input-cell num">
+                    {renderInput(source.rowId, 'unitPrice', input.unitPrice, `Đơn giá ${source.code}`, 'aluminum-price-input')}
+                  </td>
+                  <td className={calculated.lineTotal > 0 ? 'num total' : 'num muted'}>{lineTotalText}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Điện thoại: thẻ gọn, không cuộn ngang */}
+      <div className="aluminum-card-list" aria-label="Danh sách cây nhôm">
+        {rows.map(({ source, input, calculated }) => {
+          const isActive = calculated.quantity > 0 || parseEstimatorNumber(input.unitPrice) > 0;
+          const lineTotalText = calculated.lineTotal > 0
+            ? `${formatEstimatorMoney(calculated.lineTotal)} đ`
+            : '—';
+
+          return (
+            <article
+              key={source.rowId}
+              className={`aluminum-card${isActive ? ' active' : ''}`}
+            >
+              <div className="aluminum-card-top">
+                <span className="aluminum-card-stt">{source.stt}</span>
+                {renderImage(source)}
+                <div className="aluminum-card-meta">
+                  <strong className="aluminum-card-code">{source.code}</strong>
+                  <span className="aluminum-card-desc">{source.description}</span>
+                </div>
+              </div>
+              <div className="aluminum-card-fields">
+                <label className="aluminum-card-field">
+                  <span>SL</span>
                   {renderInput(source.rowId, 'quantity', input.quantity, `SL cây ${source.code}`, 'aluminum-qty-input')}
-                </td>
-                <td className="input-cell num">
+                </label>
+                <label className="aluminum-card-field aluminum-card-field-price">
+                  <span>Đơn giá</span>
                   {renderInput(source.rowId, 'unitPrice', input.unitPrice, `Đơn giá ${source.code}`, 'aluminum-price-input')}
-                </td>
-                <td className={calculated.lineTotal > 0 ? 'num total' : 'num muted'}>{lineTotalText}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                </label>
+                <div className="aluminum-card-field aluminum-card-total">
+                  <span>Thành tiền</span>
+                  <strong className={calculated.lineTotal > 0 ? 'total' : 'muted'}>{lineTotalText}</strong>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </>
   );
 }

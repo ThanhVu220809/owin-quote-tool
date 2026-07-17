@@ -190,10 +190,11 @@ textarea.input:focus {
 .product-preview-modal,
 .quote-picker-modal,
 .aluminum-hero,
-.aluminum-tabs,
+.aluminum-control-card,
 .aluminum-color-block,
 .aluminum-totals-strip,
 .aluminum-table-wrap,
+.aluminum-card,
 .product-summary-strip {
   border-radius: var(--r-md) !important;
 }
@@ -2835,11 +2836,17 @@ textarea.input:focus {
 }
 .aluminum-hero-compact .app-title { margin-bottom: 2px; }
 .aluminum-hero-compact .app-subtitle { margin: 0; max-width: 42ch; }
+.aluminum-subtitle-short { display: none; }
 .aluminum-export-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
+  gap: 8px;
+}
+.aluminum-export-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .aluminum-export-bar .btn {
@@ -2880,28 +2887,47 @@ textarea.input:focus {
   font-weight: 650;
   white-space: nowrap;
 }
-.aluminum-toolbar-row {
+/* Hệ + màu: 2 khối tách biệt */
+.aluminum-controls {
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
 }
+.aluminum-control-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--owin-border);
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: var(--owin-shadow);
+  min-width: 0;
+}
+.aluminum-control-label {
+  color: var(--owin-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .aluminum-tabs {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  border: 1px solid var(--owin-border);
-  background: #fff;
-  border-radius: 14px;
-  padding: 6px;
-  box-shadow: var(--owin-shadow);
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
   scrollbar-width: thin;
   min-width: 0;
+  -webkit-overflow-scrolling: touch;
 }
 .aluminum-tabs button {
   flex: 0 0 auto;
-  border: none;
-  background: transparent;
+  border: 1px solid transparent;
+  background: var(--owin-bg, #f8fafc);
   color: var(--owin-ink-muted);
   border-radius: 999px;
   padding: 8px 12px;
@@ -2913,12 +2939,13 @@ textarea.input:focus {
   cursor: pointer;
 }
 .aluminum-tabs button:hover {
-  background: var(--owin-bg);
+  background: #eef2f7;
   color: var(--owin-ink);
 }
 .aluminum-tabs button.active {
   background: var(--owin-primary);
   color: #fff;
+  border-color: var(--owin-primary);
 }
 .aluminum-tabs button.active .aluminum-tab-amount {
   background: rgba(255, 255, 255, 0.22);
@@ -2934,14 +2961,10 @@ textarea.input:focus {
   white-space: nowrap;
 }
 .aluminum-color-block {
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: 8px;
-  border: 1px solid var(--owin-border);
-  background: #fff;
-  border-radius: 14px;
-  padding: 8px 10px;
-  box-shadow: var(--owin-shadow);
+  align-content: start;
+  min-width: 200px;
 }
 .aluminum-color-label {
   color: var(--owin-ink-muted);
@@ -3115,6 +3138,7 @@ textarea.input:focus {
   justify-content: center;
   padding: 4px;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+  flex-shrink: 0;
 }
 .aluminum-image-cell img {
   display: block;
@@ -3157,6 +3181,10 @@ textarea.input:focus {
   border-color: var(--owin-action);
   box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.12);
 }
+/* Mobile card list — ẩn trên desktop */
+.aluminum-card-list {
+  display: none;
+}
 .aluminum-print-root {
   display: none;
 }
@@ -3169,27 +3197,264 @@ textarea.input:focus {
   .aluminum-export-bar {
     justify-content: flex-start;
   }
-  .aluminum-toolbar-row {
+  .aluminum-controls {
     grid-template-columns: 1fr;
+  }
+  .aluminum-color-block {
+    min-width: 0;
   }
 }
 
 @media (max-width: 720px) {
+  .aluminum-page {
+    gap: 8px;
+  }
+  .aluminum-hero {
+    padding: 10px 12px;
+    border-radius: 14px;
+    gap: 10px;
+  }
+  .aluminum-hero-compact .app-title {
+    font-size: 1.15rem;
+    line-height: 1.25;
+  }
+  .aluminum-subtitle-full { display: none; }
+  .aluminum-subtitle-short {
+    display: block;
+    max-width: none;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--owin-ink-muted);
+  }
+  .aluminum-export-bar {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .aluminum-scope-toggle {
+    width: 100%;
+    display: flex;
+  }
+  .aluminum-scope-toggle button {
+    flex: 1;
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .aluminum-export-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
   .aluminum-export-bar .btn {
-    flex: 1 1 120px;
+    width: 100%;
+    min-height: 42px;
     justify-content: center;
+    font-size: 13px;
+  }
+  .aluminum-controls {
+    gap: 8px;
+  }
+  .aluminum-control-card {
+    padding: 8px 10px;
+    border-radius: 12px;
+    gap: 6px;
+  }
+  .aluminum-control-label {
+    font-size: 10px;
+  }
+  .aluminum-tabs {
+    gap: 5px;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+  }
+  .aluminum-tabs button {
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 12px;
+    gap: 5px;
+    scroll-snap-align: start;
+  }
+  .aluminum-tab-amount {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  .aluminum-color-chips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+  }
+  .aluminum-color-chip {
+    min-height: 40px;
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    padding: 8px 10px;
   }
   .aluminum-totals-strip {
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
   .aluminum-total-chip {
     border-right: none;
-    padding-right: 0;
-    flex: 1 1 140px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--owin-bg, #f8fafc);
+    border: 1px solid var(--owin-border);
+  }
+  .aluminum-total-chip span {
+    font-size: 10px;
+  }
+  .aluminum-total-chip strong {
+    font-size: 15px;
+  }
+  .aluminum-total-chip-all {
+    border: 1px solid rgba(0, 102, 204, 0.22);
+    background: rgba(0, 102, 204, 0.06);
+  }
+  .aluminum-total-chip-all strong {
+    font-size: 16px;
   }
   .aluminum-autosave {
-    margin-left: 0;
+    grid-column: 1 / -1;
+    margin: 0;
     width: 100%;
+    text-align: center;
+    font-size: 11px;
+    padding-top: 2px;
+  }
+
+  /* Ẩn bảng, hiện thẻ — không cuộn ngang */
+  .aluminum-table-desktop {
+    display: none;
+  }
+  .aluminum-card-list {
+    display: grid;
+    gap: 8px;
+  }
+  .aluminum-card {
+    border: 1px solid var(--owin-border);
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px;
+    box-shadow: var(--owin-shadow);
+    display: grid;
+    gap: 10px;
+  }
+  .aluminum-card.active {
+    background: #fffaf3;
+    border-color: #fdba74;
+    box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.12);
+  }
+  .aluminum-card-top {
+    display: grid;
+    grid-template-columns: auto 56px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+  }
+  .aluminum-card-stt {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--owin-bg, #f1f5f9);
+    color: var(--owin-ink-muted);
+    font-size: 11px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+  }
+  .aluminum-card .aluminum-image-cell {
+    width: 56px;
+    height: 44px;
+    border-radius: 8px;
+    padding: 2px;
+    margin: 0;
+  }
+  .aluminum-card .aluminum-image-cell img {
+    border-radius: 6px;
+  }
+  .aluminum-card-meta {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+  .aluminum-card-code {
+    font-size: 13px;
+    font-weight: 850;
+    color: var(--owin-ink);
+    line-height: 1.2;
+    word-break: break-word;
+  }
+  .aluminum-card-desc {
+    font-size: 12px;
+    color: var(--owin-ink-muted);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .aluminum-card-fields {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 6px;
+    align-items: end;
+  }
+  .aluminum-card-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .aluminum-card-field > span {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--owin-ink-muted);
+  }
+  .aluminum-card-field .aluminum-qty-input,
+  .aluminum-card-field .aluminum-price-input {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    font-size: 16px; /* tránh zoom iOS */
+    border-radius: 10px;
+  }
+  .aluminum-card-total {
+    text-align: right;
+  }
+  .aluminum-card-total strong {
+    display: block;
+    min-height: 40px;
+    line-height: 40px;
+    font-size: 13px;
+    font-weight: 850;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .aluminum-card-total strong.total {
+    color: var(--owin-ink);
+  }
+  .aluminum-card-total strong.muted {
+    color: var(--owin-ink-muted);
+  }
+  .aluminum-status {
+    white-space: normal;
+    width: 100%;
+    text-align: center;
   }
 }
 
@@ -3703,75 +3968,8 @@ textarea.input:focus {
     min-height: 120px;
   }
 
-  /* Aluminium */
-  .aluminum-page { gap: 10px; }
-  .aluminum-hero { padding: 12px; }
-  .aluminum-export-bar {
-    width: 100%;
-    justify-content: stretch;
-  }
-  .aluminum-scope-toggle {
-    flex: 1 1 100%;
-    justify-content: stretch;
-  }
-  .aluminum-scope-toggle button {
-    flex: 1;
-    min-height: 40px;
-  }
-  .aluminum-export-bar .btn {
-    flex: 1 1 calc(50% - 6px);
-    min-height: 44px;
-  }
-  .aluminum-tabs {
-    padding: 6px;
-  }
-  .aluminum-tabs button {
-    min-height: 42px;
-    padding: 8px 12px;
-  }
-  .aluminum-color-block {
-    flex-wrap: wrap;
-    width: 100%;
-  }
-  .aluminum-color-chips {
-    width: 100%;
-  }
-  .aluminum-color-chip {
-    flex: 1 1 auto;
-    min-height: 40px;
-    text-align: center;
-  }
-  .aluminum-totals-strip {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-  .aluminum-total-chip {
-    border-right: none;
-    padding: 0;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--owin-border);
-  }
-  .aluminum-total-chip-all {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-  .aluminum-total-chip strong {
-    font-size: 22px;
-  }
-  .aluminum-total-chip-all strong {
-    font-size: 26px;
-  }
-  .aluminum-table {
-    min-width: 640px;
-    font-size: 12px;
-  }
-  .aluminum-image-cell {
-    width: 72px;
-    height: 54px;
-  }
-  .aluminum-qty-input { width: 64px; }
-  .aluminum-price-input { width: 100px; }
+  /* Aluminium mobile layout lives in the dedicated ≤720 block above
+     (card list, sticky totals, separated control cards). */
 
   /* Catalogue / bang gia */
   .bang-gia-table-wrap {
@@ -3809,6 +4007,22 @@ textarea.input:focus {
   }
   .product-header-actions .btn {
     flex: 1 1 100%;
+  }
+  .aluminum-card-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+  .aluminum-card-total {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+  .aluminum-card-total strong {
+    min-height: auto;
+    line-height: 1.3;
+    padding-top: 2px;
+  }
+  .aluminum-total-chip strong,
+  .aluminum-total-chip-all strong {
+    font-size: 14px;
   }
 }
 
