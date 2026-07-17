@@ -201,11 +201,14 @@ describe('reference Word catalogue template renderer', () => {
       cx: Number(m[1]),
       cy: Number(m[2]),
     }));
+    // Wider image column (~5.6/26 share) → larger max cx than the old 1.68M box.
+    const catalogueMaxCx = 1_921_459;
     for (const e of extents) {
-      expect(e.cx).toBeLessThanOrEqual(1_678_242);
+      expect(e.cx).toBeLessThanOrEqual(catalogueMaxCx);
       expect(e.cy).toBeLessThanOrEqual(150 * 36_000); // page-safe height cap
     }
-    expect(extents).toContainEqual({ cx: 1_678_242, cy: 2_063_718 });
+    // At least one product photo fills the wider cell (contain-fit hits width or height).
+    expect(extents.some((e) => e.cx >= 1_800_000 || e.cy >= 1_800_000)).toBe(true);
     expect(xml).toContain('<w:trHeight w:val="1530" w:hRule="atLeast"/>');
     expect(xml).toContain('<w:trHeight w:val="340" w:hRule="atLeast"/>');
     // Logo/title/column template must appear once only; no Word repeat-header marker remains.

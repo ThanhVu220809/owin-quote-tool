@@ -259,81 +259,87 @@ export function ExtraAccessoriesEditor({
           <div className="extra-accessory-head">
             <span />
             <span>Tên phụ kiện</span>
-            <span>DV</span>
-            <span>SL</span>
-            <span>KL</span>
-            <span>Đơn giá</span>
-            <span>Thành tiền</span>
+            <span className="extra-acc-metrics-head">
+              <span>DV</span>
+              <span>SL</span>
+              <span>KL</span>
+              <span>Đơn giá</span>
+              <span>Thành tiền</span>
+            </span>
             <span />
           </div>
           {value.map((item, index) => (
             <div key={item.id} className="extra-accessory-line" data-row-id={item.id} {...rowProps(index)}>
               <DragHandle {...handleProps(index)} label="Kéo để đổi thứ tự phụ kiện" />
-              <AutoSuggestInput
-                label="Tên phụ kiện phát sinh"
-                fieldKey="extra_accessory_name"
-                value={item.name}
-                onChange={(name) => onChange(updateAccessoryDraftAtIndex(value, index, { name }))}
-                suggestions={suggestions.accessoryName}
-                placeholder="Phào, Nẹp, Ray…"
-              />
-              <div className="field">
-                <label>DV</label>
-                <select
-                  className="input"
-                  value={item.unit}
-                  onChange={(event) =>
-                    onChange(updateAccessoryDraftAtIndex(value, index, { unit: event.target.value as ProductUnit }))
-                  }
-                >
-                  <option value="BO">Bộ</option>
-                  <option value="M2">m²</option>
-                  <option value="METER">md</option>
-                </select>
-              </div>
-              <div className="field">
-                <label>SL</label>
-                {/* SL = số cái (thường 1), không phải md/m² */}
-                <SmartNumberInput
-                  className="input"
-                  mode="int"
-                  min={0}
-                  value={item.quantity}
-                  onChange={(quantity) =>
-                    onChange(updateAccessoryDraftAtIndex(value, index, { quantity }))
-                  }
-                  placeholder="1"
+              <div className="extra-acc-name">
+                <AutoSuggestInput
+                  label="Tên"
+                  fieldKey="extra_accessory_name"
+                  value={item.name}
+                  onChange={(name) => onChange(updateAccessoryDraftAtIndex(value, index, { name }))}
+                  suggestions={suggestions.accessoryName}
+                  placeholder="Phào, Nẹp, Ray…"
                 />
               </div>
-              <div className="field">
-                <label>KL</label>
-                {item.unit === 'BO' ? (
-                  <div className="readonly-money muted-money">—</div>
-                ) : (
-                  /* KL = md hoặc m² để nhân đơn giá */
+              <div className="extra-acc-metrics">
+                <div className="field">
+                  <label>DV</label>
+                  <select
+                    className="input"
+                    value={item.unit}
+                    onChange={(event) =>
+                      onChange(updateAccessoryDraftAtIndex(value, index, { unit: event.target.value as ProductUnit }))
+                    }
+                  >
+                    <option value="BO">Bộ</option>
+                    <option value="M2">m²</option>
+                    <option value="METER">md</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>SL</label>
+                  {/* SL = số cái (thường 1), không phải md/m² */}
                   <SmartNumberInput
                     className="input"
-                    mode="decimal"
-                    decimals={3}
+                    mode="int"
                     min={0}
-                    value={item.weight}
-                    onChange={(weight) =>
-                      onChange(updateAccessoryDraftAtIndex(value, index, { weight }))
+                    value={item.quantity}
+                    onChange={(quantity) =>
+                      onChange(updateAccessoryDraftAtIndex(value, index, { quantity }))
                     }
-                    placeholder="0"
+                    placeholder="1"
                   />
-                )}
-              </div>
-              <div className="field">
-                <label>Đơn giá</label>
-                <CurrencyInput
-                  value={item.unitPrice}
-                  onChange={(unitPrice) => onChange(updateAccessoryDraftAtIndex(value, index, { unitPrice }))}
-                />
-              </div>
-              <div className="field">
-                <label>Thành tiền</label>
-                <div className="readonly-money">{formatVND(item.amount)}</div>
+                </div>
+                <div className="field">
+                  <label>KL</label>
+                  {item.unit === 'BO' ? (
+                    <div className="readonly-money muted-money">—</div>
+                  ) : (
+                    /* KL = md hoặc m² để nhân đơn giá */
+                    <SmartNumberInput
+                      className="input"
+                      mode="decimal"
+                      decimals={3}
+                      min={0}
+                      value={item.weight}
+                      onChange={(weight) =>
+                        onChange(updateAccessoryDraftAtIndex(value, index, { weight }))
+                      }
+                      placeholder="0"
+                    />
+                  )}
+                </div>
+                <div className="field">
+                  <label>Đơn giá</label>
+                  <CurrencyInput
+                    value={item.unitPrice}
+                    onChange={(unitPrice) => onChange(updateAccessoryDraftAtIndex(value, index, { unitPrice }))}
+                  />
+                </div>
+                <div className="field">
+                  <label>Thành tiền</label>
+                  <div className="readonly-money">{formatVND(item.amount)}</div>
+                </div>
               </div>
               <div className="row-action-group">
                 <button

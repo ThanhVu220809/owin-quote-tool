@@ -166,16 +166,16 @@ export function BangGiaView() {
       <div className="preview-doc bang-gia-doc">
         <table className="bang-gia-table">
           <colgroup>
+            <col style={{ width: '3.2%' }} />
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '26.3%' }} />
             <col style={{ width: '3.5%' }} />
-            <col style={{ width: '19.9%' }} />
-            <col style={{ width: '28.1%' }} />
-            <col style={{ width: '3.5%' }} />
-            <col style={{ width: '4.5%' }} />
-            <col style={{ width: '3.9%' }} />
             <col style={{ width: '4.3%' }} />
-            <col style={{ width: '10.7%' }} />
-            <col style={{ width: '10.7%' }} />
-            <col style={{ width: '10.8%' }} />
+            <col style={{ width: '3.8%' }} />
+            <col style={{ width: '4.1%' }} />
+            <col style={{ width: '10.6%' }} />
+            <col style={{ width: '10.6%' }} />
+            <col style={{ width: '11.6%' }} />
           </colgroup>
           <thead>
             <tr>
@@ -241,7 +241,8 @@ function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
         {isProduct && (
           <td rowSpan={row.imageRowSpan} className="image-cell">
             <div className="bang-gia-image-frame">
-              <ProductThumb imagePath={row.imagePath} fill thumb />
+              {/* Master (không thumb) để ảnh bảng giá to và nét khi in/xem. */}
+              <ProductThumb imagePath={row.imagePath} fill thumb={false} />
             </div>
           </td>
         )}
