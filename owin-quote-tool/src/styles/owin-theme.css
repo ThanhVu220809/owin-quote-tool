@@ -4473,9 +4473,9 @@ textarea.input:focus {
   }
   .catalogue-export-actions .btn {
     width: 100%;
-    min-height: 38px !important;
+    min-height: 32px !important;
     justify-content: center;
-    padding: 6px 4px !important;
+    padding: 4px 3px !important;
     font-size: 11px !important;
   }
   /* Bảng giá mobile: gọn, ảnh lấp đầy ô (không phình / không thụt) */
@@ -4605,59 +4605,120 @@ textarea.input:focus {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Inputs always 16px on iOS to avoid zoom — keep readable */
+  /* iOS no-zoom: 16px chữ nhưng ô vẫn thấp nhờ padding nhỏ */
   .input,
   select.input,
   textarea.input {
     font-size: 16px !important;
   }
 
-  /* Toast / errors */
   .product-toast,
   .product-data-error {
-    border-radius: var(--r-sm);
-    font-size: 12px;
-    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    padding: 6px 8px;
   }
 
-  /* Aluminum cards denser on portrait */
+  /* Tính nhôm dọc: thẻ gọn, ô SL/giá thấp */
   .aluminum-card {
-    padding: 8px !important;
-    gap: 8px !important;
-  }
-  .aluminum-card-top {
-    grid-template-columns: auto 48px minmax(0, 1fr) !important;
+    padding: 6px !important;
     gap: 6px !important;
   }
-  .aluminum-card .aluminum-image-cell {
-    width: 48px !important;
-    height: 38px !important;
+  .aluminum-card-top {
+    grid-template-columns: auto 40px minmax(0, 1fr) !important;
+    gap: 4px !important;
   }
-  .aluminum-card-code { font-size: 12px !important; }
-  .aluminum-card-desc { font-size: 11px !important; }
+  .aluminum-card .aluminum-image-cell {
+    width: 40px !important;
+    height: 32px !important;
+  }
+  .aluminum-card-code { font-size: 11px !important; }
+  .aluminum-card-desc { font-size: 10px !important; }
   .aluminum-card-fields {
-    grid-template-columns: 64px minmax(0, 1.15fr) minmax(0, 0.95fr) !important;
-    gap: 5px !important;
+    grid-template-columns: 52px minmax(0, 1.15fr) minmax(0, 0.9fr) !important;
+    gap: 4px !important;
+  }
+  .aluminum-card-field > span {
+    font-size: 8px !important;
   }
   .aluminum-card-field .aluminum-qty-input,
   .aluminum-card-field .aluminum-price-input {
-    height: 36px !important;
+    height: 30px !important;
+    min-height: 30px !important;
     font-size: 16px !important;
+    padding: 2px 4px !important;
   }
   .aluminum-card-total strong {
-    min-height: 36px !important;
-    line-height: 36px !important;
-    font-size: 12px !important;
+    min-height: 30px !important;
+    line-height: 30px !important;
+    font-size: 11px !important;
   }
   .aluminum-totals-strip {
-    padding: 8px !important;
-    gap: 6px !important;
+    padding: 6px !important;
+    gap: 4px !important;
+  }
+  .aluminum-total-chip {
+    padding: 6px 8px !important;
   }
   .aluminum-total-chip strong {
-    font-size: 13px !important;
+    font-size: 12px !important;
   }
   .aluminum-total-chip-all strong {
-    font-size: 14px !important;
+    font-size: 13px !important;
+  }
+  .aluminum-control-card {
+    padding: 6px 8px !important;
+  }
+  .aluminum-tabs button {
+    min-height: 28px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+  .aluminum-color-chip {
+    min-height: 30px !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+  .aluminum-export-bar .btn {
+    min-height: 30px !important;
+    font-size: 11px !important;
+  }
+  .aluminum-scope-toggle button {
+    min-height: 28px !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+}
+
+/* Dọc hẹp hơn (phone portrait thực tế) — ép thêm 1 nấc */
+@media (max-width: 720px) and (orientation: portrait) {
+  :root {
+    --control-h: 30px;
+    --control-h-sm: 28px;
+    --icon-btn: 28px;
+  }
+  .input,
+  select.input {
+    min-height: 30px !important;
+    padding: 3px 6px !important;
+  }
+  .btn {
+    min-height: 30px !important;
+  }
+  .extra-acc-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .extra-acc-metrics .field:nth-child(4) {
+    grid-column: 1 / 3;
+  }
+  .extra-acc-metrics .field:nth-child(5) {
+    grid-column: 3 / 4;
+  }
+  .product-header-actions .btn,
+  .admin-page-heading .btn {
+    min-height: 30px !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
   }
 }
 
