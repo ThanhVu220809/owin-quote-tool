@@ -4723,81 +4723,119 @@ textarea.input:focus {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PHONE LANDSCAPE — “laptop thu nhỏ”: 2 cột, control thấp, ít padding
-   (màn ngang ngắn: max-height để không ảnh hưởng tablet đứng)
+   ĐIỆN THOẠI / TABLET NHỎ — NGANG
+   - màn ngang thấp (phone), HOẶC touch landscape ≤1024
+   - Ô/nút nhỏ như dọc, layout 2 cột laptop-thu-nhỏ
    ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 960px) and (orientation: landscape) and (max-height: 520px) {
+@media (max-width: 1024px) and (orientation: landscape) and (max-height: 620px),
+       (max-width: 960px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
   :root {
-    --control-h: 32px;
-    --control-h-sm: 30px;
-    --icon-btn: 32px;
-    --fs-xs: 10px;
-    --fs-sm: 11px;
-    --fs-md: 12px;
-    --fs-title: 15px;
+    --control-h: 28px;
+    --control-h-sm: 26px;
+    --icon-btn: 26px;
+    --fs-xs: 9px;
+    --fs-sm: 10px;
+    --fs-md: 11px;
+    --fs-title: 14px;
   }
 
   .tool-topnav {
     grid-template-columns: auto 1fr auto !important;
     grid-template-areas: 'brand nav account' !important;
-    gap: 6px 8px !important;
-    padding: 4px 8px !important;
+    gap: 4px 6px !important;
+    padding: 3px 6px !important;
     min-height: 0 !important;
   }
   .tool-brand-text small { display: none; }
-  .tool-brand-logo { width: 26px !important; height: 26px !important; }
+  .tool-brand-logo { width: 22px !important; height: 22px !important; }
+  .tool-brand-text strong { font-size: 12px !important; }
   .tool-nav {
     grid-area: nav !important;
     overflow-x: auto;
-    gap: 4px !important;
+    gap: 3px !important;
     padding: 0 !important;
   }
   .tool-nav-item {
-    min-height: 30px !important;
-    padding: 4px 8px !important;
-    font-size: 11px !important;
+    min-height: 26px !important;
+    padding: 2px 7px !important;
+    font-size: 10px !important;
+    gap: 2px !important;
   }
-  .tool-nav-item span { font-size: 11px !important; }
-  .tool-nav-item svg { width: 14px; height: 14px; }
+  .tool-nav-item span { font-size: 10px !important; }
+  .tool-nav-item svg { width: 12px !important; height: 12px !important; }
   .account-menu-trigger {
-    min-height: 30px !important;
-    padding: 2px 6px !important;
+    min-height: 26px !important;
+    padding: 1px 4px !important;
   }
 
   .tool-content {
-    padding: 6px 8px 10px !important;
+    padding: 4px 6px 8px !important;
   }
+  .admin-page { gap: 6px !important; }
 
   .card {
-    padding: 8px 10px !important;
+    padding: 6px 8px !important;
+    border-radius: 8px !important;
   }
   .field {
-    margin-bottom: 6px !important;
+    margin-bottom: 4px !important;
   }
   .field > label {
-    font-size: 10px !important;
-    margin-bottom: 2px !important;
+    font-size: 9px !important;
+    margin-bottom: 1px !important;
   }
   .input,
   select.input,
   textarea.input {
-    min-height: 32px !important;
-    padding: 4px 8px !important;
-    font-size: 14px !important; /* landscape: ít bị zoom hơn, ưu tiên gọn */
+    min-height: 28px !important;
+    padding: 2px 6px !important;
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+    border-radius: 6px !important;
+  }
+  textarea.input {
+    min-height: 44px !important;
   }
   .btn {
-    min-height: 32px !important;
-    padding: 4px 10px !important;
-    font-size: 11px !important;
+    min-height: 28px !important;
+    padding: 2px 8px !important;
+    font-size: 10px !important;
+    gap: 3px !important;
+  }
+  .btn svg {
+    width: 12px !important;
+    height: 12px !important;
   }
   .icon-btn {
-    width: 32px !important;
-    height: 32px !important;
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    min-height: 26px !important;
+    padding: 2px !important;
   }
-  .app-title { font-size: 14px !important; margin-bottom: 0 !important; }
-  .app-subtitle { font-size: 11px !important; }
+  .icon-btn svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+  .readonly-money {
+    min-height: 28px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+  }
+  .section-label {
+    font-size: 9px !important;
+    margin-bottom: 2px !important;
+  }
+  .app-title { font-size: 13px !important; margin-bottom: 0 !important; }
+  .app-subtitle { font-size: 10px !important; }
+  .product-sub, .muted { font-size: 10px !important; }
+  .segmented button {
+    min-height: 24px !important;
+    padding: 2px 5px !important;
+    font-size: 10px !important;
+  }
 
-  /* 2 cột như laptop thu nhỏ */
+  /* 2 cột laptop-thu-nhỏ */
   .two-col,
   .quote-top-grid,
   .quote-customer-grid,
@@ -4809,7 +4847,7 @@ textarea.input:focus {
   .product-summary-strip,
   .product-filter-card {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
   .product-basic-grid > :nth-child(2) {
     grid-column: auto !important;
@@ -4819,40 +4857,88 @@ textarea.input:focus {
   }
   .product-image-panel .dropzone {
     max-width: 100% !important;
-    min-height: 100px !important;
+    min-height: 72px !important;
   }
-
-  /* Form actions không sticky full-screen — nằm trong luồng */
   .product-editor-card {
-    padding-bottom: 10px !important;
+    padding: 6px !important;
+    padding-bottom: 6px !important;
   }
   .product-editor-actions {
     position: static !important;
     box-shadow: none !important;
     border-top: 1px solid var(--owin-border);
-    padding: 8px 0 0 !important;
+    padding: 6px 0 0 !important;
     background: transparent !important;
     display: flex !important;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
   .product-editor-action-btns {
     margin-left: auto;
     display: inline-flex;
     width: auto;
     grid-template-columns: none;
+    gap: 6px;
   }
   .product-editor-action-btns .btn {
-    min-height: 32px !important;
+    min-height: 28px !important;
     width: auto;
+  }
+  .product-autosave-status { font-size: 10px !important; }
+  .summary-metric { padding: 4px 6px !important; }
+  .summary-metric span { font-size: 8px !important; }
+  .summary-metric strong { font-size: 11px !important; }
+
+  .extra-accessory-head { display: none !important; }
+  .extra-accessory-line {
+    min-width: 0 !important;
+    grid-template-columns: 22px minmax(120px, 1fr) minmax(0, 2fr) 26px !important;
+    gap: 4px !important;
+    padding: 4px 6px !important;
+    align-items: end !important;
+  }
+  .extra-acc-name label {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+  }
+  .extra-acc-metrics {
+    grid-column: auto !important;
+    grid-template-columns: 48px 44px 52px minmax(70px, 1fr) minmax(80px, 1fr) !important;
+    gap: 3px !important;
+  }
+  .extra-acc-metrics .field > label {
+    font-size: 8px !important;
+    margin-bottom: 0 !important;
+  }
+  .extra-acc-metrics .input,
+  .extra-acc-metrics .readonly-money,
+  .extra-acc-metrics select.input {
+    min-height: 26px !important;
+    padding: 1px 3px !important;
+    font-size: 12px !important;
+  }
+  .fixed-package-grid {
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 4px !important;
+  }
+  .spec-editor-row {
+    grid-template-columns: 24px minmax(0, 1fr) 26px !important;
+    gap: 4px !important;
+  }
+  .accessory-item-line {
+    grid-template-columns: 24px minmax(0, 1fr) 52px 26px !important;
+    gap: 4px !important;
   }
 
   .quote-form-heading {
     flex-direction: row !important;
     align-items: center !important;
     flex-wrap: wrap;
-    gap: 6px !important;
+    gap: 4px !important;
   }
   .quote-form-actions {
     display: flex !important;
@@ -4860,45 +4946,56 @@ textarea.input:focus {
     grid-template-columns: none !important;
     width: auto !important;
     margin-left: auto;
-    gap: 6px !important;
+    gap: 4px !important;
   }
   .quote-form-actions .btn {
     width: auto !important;
-    min-height: 30px !important;
-    font-size: 11px !important;
+    min-height: 26px !important;
+    font-size: 10px !important;
+    padding: 2px 6px !important;
   }
   .quote-form-actions .btn-primary {
     grid-column: auto !important;
   }
   .quote-totals-card {
     position: static !important;
+    padding: 6px !important;
   }
   .quote-add-products-card {
     flex-direction: row !important;
     align-items: center !important;
+    gap: 6px !important;
   }
   .quote-add-actions {
     display: flex !important;
     grid-template-columns: none !important;
     width: auto !important;
+    gap: 4px !important;
   }
   .quote-add-actions .btn {
     width: auto !important;
-    min-height: 30px !important;
+    min-height: 26px !important;
+  }
+  .toolbar {
+    gap: 4px !important;
+    margin-bottom: 6px !important;
+  }
+  .toolbar .btn {
+    min-height: 26px !important;
   }
 
-  /* Dimension rows: multi-col compact (giống bảng nhỏ) */
+  /* Dimension: 1 hàng bảng nhỏ */
   .quote-lines-head {
     display: grid !important;
     min-width: 0 !important;
-    grid-template-columns: 56px 56px 56px 48px 56px minmax(80px, 1fr) minmax(80px, 1fr) 32px !important;
-    font-size: 9px !important;
+    grid-template-columns: 48px 48px 48px 40px 48px minmax(70px, 1fr) minmax(70px, 1fr) 26px !important;
+    font-size: 8px !important;
   }
   .quote-line-row {
     min-width: 0 !important;
-    grid-template-columns: 56px 56px 56px 48px 56px minmax(80px, 1fr) minmax(80px, 1fr) 32px !important;
-    gap: 4px !important;
-    padding: 4px 6px !important;
+    grid-template-columns: 48px 48px 48px 40px 48px minmax(70px, 1fr) minmax(70px, 1fr) 26px !important;
+    gap: 3px !important;
+    padding: 3px 4px !important;
     align-items: center !important;
   }
   .quote-line-field::before { display: none !important; }
@@ -4909,37 +5006,47 @@ textarea.input:focus {
   }
   .quote-line-field .input,
   .quote-line-field .readonly-money {
-    min-height: 30px !important;
-    font-size: 12px !important;
-    padding: 2px 4px !important;
+    min-height: 26px !important;
+    font-size: 11px !important;
+    padding: 1px 3px !important;
+  }
+  .quote-item-card {
+    padding: 4px 6px !important;
   }
 
-  /* Product/quote lists: denser cards, 2-up when wide enough */
   .product-table tbody tr.product-row {
-    grid-template-columns: 48px minmax(0, 1fr);
-    padding: 6px 8px;
-    gap: 4px 8px;
-  }
-  .product-image-button {
-    width: 48px !important;
-    height: 48px !important;
-  }
-  .product-name { font-size: 12px !important; }
-  .product-table td[data-col='price'] { font-size: 12px !important; }
-
-  .quote-history-table tbody tr.quote-history-row {
-    padding: 8px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 4px 6px;
     gap: 3px 6px;
   }
-  .quote-history-table td[data-col='total'] { font-size: 13px !important; }
+  .product-image-button {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .product-name { font-size: 11px !important; }
+  .product-table td[data-col='price'] { font-size: 11px !important; }
+  .product-table-actions .icon-btn {
+    width: 26px !important;
+    height: 26px !important;
+  }
 
-  /* Catalogue: denser printable table */
+  .quote-history-table tbody tr.quote-history-row {
+    padding: 6px;
+    gap: 2px 4px;
+  }
+  .quote-history-table td[data-col='total'] { font-size: 12px !important; }
+  .quote-actions .btn {
+    min-height: 26px !important;
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+  }
+
   .catalogue-toolbar {
     flex-direction: row !important;
     flex-wrap: wrap;
     align-items: center !important;
-    gap: 6px !important;
-    padding-bottom: 8px !important;
+    gap: 4px !important;
+    padding-bottom: 6px !important;
   }
   .catalogue-toolbar-actions {
     flex-direction: row !important;
@@ -4950,31 +5057,39 @@ textarea.input:focus {
     display: inline-flex !important;
     grid-template-columns: none !important;
     width: auto !important;
+    gap: 4px !important;
   }
   .catalogue-export-actions .btn {
     width: auto !important;
-    min-height: 30px !important;
-    font-size: 11px !important;
+    min-height: 26px !important;
+    font-size: 10px !important;
   }
   .bang-gia-doc {
-    max-height: calc(100dvh - 96px);
+    max-height: calc(100dvh - 72px);
     overflow: auto;
   }
   .bang-gia-table {
-    font-size: 10px !important;
-    min-width: 700px;
+    font-size: 9px !important;
+    min-width: 640px;
   }
   .bang-gia-table th,
   .bang-gia-table td {
-    padding: 2px 3px !important;
+    padding: 2px !important;
   }
   .bang-gia-image-frame {
-    max-width: 110px !important;
-    min-height: 64px !important;
-    max-height: 88px !important;
+    max-width: 88px !important;
+    min-height: 52px !important;
+    max-height: 68px !important;
+  }
+  .bang-gia-image-frame img,
+  .bang-gia-image-frame .ph,
+  .bang-gia-image-frame .image-fit-fill {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
   }
 
-  /* Aluminum: dùng bảng desktop thu nhỏ thay vì card stack */
+  /* Tính nhôm: bảng gọn */
   .aluminum-table-desktop {
     display: block !important;
   }
@@ -4983,45 +5098,62 @@ textarea.input:focus {
   }
   .aluminum-table {
     min-width: 0 !important;
-    font-size: 11px !important;
+    font-size: 10px !important;
   }
   .aluminum-table th,
   .aluminum-table td {
-    padding: 3px 4px !important;
+    padding: 2px 3px !important;
   }
   .aluminum-image-cell {
-    width: 48px !important;
-    height: 36px !important;
+    width: 40px !important;
+    height: 30px !important;
   }
   .aluminum-qty-input {
-    width: 52px !important;
-    height: 28px !important;
-    font-size: 12px !important;
+    width: 44px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    font-size: 11px !important;
+    padding: 0 3px !important;
   }
   .aluminum-price-input {
-    width: 88px !important;
-    height: 28px !important;
-    font-size: 12px !important;
+    width: 72px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    font-size: 11px !important;
+    padding: 0 3px !important;
   }
   .aluminum-controls {
     grid-template-columns: 1fr auto !important;
-    gap: 6px !important;
+    gap: 4px !important;
+  }
+  .aluminum-control-card {
+    padding: 4px 6px !important;
+  }
+  .aluminum-tabs button {
+    min-height: 24px !important;
+    padding: 2px 6px !important;
+    font-size: 10px !important;
+  }
+  .aluminum-color-chip {
+    min-height: 24px !important;
+    padding: 2px 6px !important;
+    font-size: 10px !important;
   }
   .aluminum-totals-strip {
     position: static !important;
     flex-direction: row !important;
     display: flex !important;
     grid-template-columns: none !important;
-    padding: 6px 8px !important;
+    padding: 4px 6px !important;
   }
   .aluminum-total-chip strong {
-    font-size: 14px !important;
+    font-size: 12px !important;
   }
   .aluminum-hero {
     flex-direction: row !important;
     align-items: center !important;
-    padding: 6px 10px !important;
-    gap: 8px !important;
+    padding: 4px 8px !important;
+    gap: 6px !important;
   }
   .aluminum-export-bar {
     flex-direction: row !important;
@@ -5034,17 +5166,18 @@ textarea.input:focus {
   }
   .aluminum-export-bar .btn {
     width: auto !important;
-    min-height: 30px !important;
+    min-height: 24px !important;
+    font-size: 10px !important;
   }
   .aluminum-scope-toggle {
     width: auto !important;
   }
   .aluminum-scope-toggle button {
-    min-height: 28px !important;
-    font-size: 11px !important;
+    min-height: 24px !important;
+    font-size: 10px !important;
+    padding: 2px 6px !important;
   }
 
-  /* Modals: full height landscape */
   .modal-backdrop,
   .quote-picker-backdrop {
     align-items: stretch !important;
@@ -5055,26 +5188,26 @@ textarea.input:focus {
   .bulk-price-modal,
   .quote-picker-modal {
     max-height: calc(100dvh - 8px) !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     width: min(960px, 100%) !important;
   }
   .quote-picker-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 6px !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 4px !important;
   }
   .quote-picker-thumb {
-    min-height: 72px !important;
+    min-height: 56px !important;
   }
   .product-preview-body,
   .product-preview-body-rich {
     grid-template-columns: 1fr 1fr !important;
   }
   .product-preview-image-rich {
-    min-height: 140px !important;
+    min-height: 100px !important;
   }
   .product-preview-image-rich .ph,
   .product-preview-image-rich img {
-    height: min(28vh, 160px) !important;
+    height: min(24vh, 120px) !important;
   }
 }
 
