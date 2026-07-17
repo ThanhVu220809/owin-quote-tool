@@ -21,14 +21,18 @@ import {
 import { isSupabaseConfigured } from '@/features/supabase/supabaseClient';
 
 /**
- * Master target: ~1600px WebP (sharp on any screen, incl. retina/4K when zoomed)
- * at ~150KB, EXIF orientation baked in. A separate ~400px thumbnail is produced by
- * imagesRepo for fast list/catalogue rendering.
+ * Master image (lưu Storage / lightbox / Word / zoom):
+ * - Cạnh dài tối đa 3840px (chuẩn 4K UHD) — ảnh nhỏ hơn giữ nguyên độ phân giải.
+ * - quality cao + maxSizeMB lớn để browser-image-compression KHÔNG hạ quality
+ *   xuống mức mờ (bản cũ maxSizeMB 0.25 + 1600px khiến ảnh bị “đục”).
+ * - WebP + EXIF orientation.
+ *
+ * Thumbnail list/bảng giá (~480px) tạo riêng trong imagesRepo — không đụng master.
  */
 export const COMPRESS_OPTIONS = {
-  maxSizeMB: 0.25,
-  maxWidthOrHeight: 1600,
-  initialQuality: 0.82,
+  maxSizeMB: 8,
+  maxWidthOrHeight: 3840,
+  initialQuality: 0.93,
   fileType: 'image/webp',
   // Keep customer/product bytes inside this app process; do not load a worker
   // program from a third-party CDN at runtime.

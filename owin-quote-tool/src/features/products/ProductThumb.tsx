@@ -31,7 +31,7 @@ export function ProductThumb({
   fill?: boolean;
   item?: ImageItem;
   products?: ProductRecord[];
-  /** Dùng bản thumbnail nhẹ (~400px) cho list/bảng giá; tự fallback về master nếu thiếu. */
+  /** Dùng bản thumbnail nhẹ cho list/bảng giá; tự fallback về master nếu thiếu. Lightbox luôn master. */
   thumb?: boolean;
   /**
    * Khi true (mặc định): bấm ảnh mở lightbox xem lớn.

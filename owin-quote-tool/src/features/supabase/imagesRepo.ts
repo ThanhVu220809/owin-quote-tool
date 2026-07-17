@@ -6,14 +6,17 @@
 import imageCompression from 'browser-image-compression';
 import { supabase, PRODUCT_IMAGE_BUCKET, QUOTE_IMAGE_BUCKET } from './supabaseClient';
 
-/** Tạo bản thumbnail (~400px, WebP) cho list/bảng giá tải nhanh. */
+/**
+ * Thumbnail chỉ cho list/bảng giá (không phải ảnh lưu chính).
+ * Master vẫn full quality; thumb chỉ thu nhỏ để cuộn list nhanh.
+ */
 async function makeThumbBlob(blob: Blob): Promise<Blob> {
   const file = blob instanceof File ? blob : new File([blob], 'image', { type: blob.type || 'image/webp' });
   return imageCompression(file, {
-    maxWidthOrHeight: 400,
-    initialQuality: 0.72,
+    maxWidthOrHeight: 640,
+    initialQuality: 0.82,
     fileType: 'image/webp',
-    maxSizeMB: 0.05,
+    maxSizeMB: 0.2,
     useWebWorker: true,
   });
 }

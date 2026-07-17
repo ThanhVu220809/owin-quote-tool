@@ -57,9 +57,10 @@ export function productCoverPath(code: string, name: string): string {
 }
 
 /**
- * URL bản thumbnail (~400px) của 1 ảnh master trên Supabase Storage.
+ * URL bản thumbnail (list) của 1 ảnh master trên Supabase Storage.
  * Quy ước: master ở `.../product-images/img/<hash>`, thumb ở `.../product-images/thumb/<hash>`.
  * Trả null nếu URL không phải ảnh master Supabase (không có thumb tương ứng).
+ * Lightbox / export / form luôn dùng master (URL gốc), không dùng thumb.
  */
 export function thumbUrlFor(url: string | null | undefined): string | null {
   if (!url || !url.includes('/product-images/img/')) return null;
