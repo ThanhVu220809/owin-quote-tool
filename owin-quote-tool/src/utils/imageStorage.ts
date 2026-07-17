@@ -22,17 +22,17 @@ import { isSupabaseConfigured } from '@/features/supabase/supabaseClient';
 
 /**
  * Master image (lưu Storage / lightbox / Word / zoom):
- * - Cạnh dài tối đa 3840px (chuẩn 4K UHD) — ảnh nhỏ hơn giữ nguyên độ phân giải.
- * - quality cao + maxSizeMB lớn để browser-image-compression KHÔNG hạ quality
- *   xuống mức mờ (bản cũ maxSizeMB 0.25 + 1600px khiến ảnh bị “đục”).
- * - WebP + EXIF orientation.
  *
- * Thumbnail list/bảng giá (~480px) tạo riêng trong imagesRepo — không đụng master.
+ * Quan trọng: Full HD (1920) **không** được ép qua canvas/WebP nếu đã nằm trong
+ * giới hạn — re-encode lossy (kể cả quality 0.93) vẫn làm ảnh “mờ mờ”.
+ * Chỉ resize + nén khi cạnh dài > 4K hoặc file quá nặng.
+ *
+ * Thumbnail list (~640px) tạo riêng trong imagesRepo — không đụng master.
  */
 export const COMPRESS_OPTIONS = {
-  maxSizeMB: 8,
+  maxSizeMB: 12,
   maxWidthOrHeight: 3840,
-  initialQuality: 0.93,
+  initialQuality: 0.95,
   fileType: 'image/webp',
   // Keep customer/product bytes inside this app process; do not load a worker
   // program from a third-party CDN at runtime.
@@ -54,6 +54,39 @@ export function isImageFile(file: File): boolean {
   return typeof file.type === 'string' && file.type.startsWith('image/');
 }
 
+/** Cạnh dài (px) của ảnh; lỗi decode → null (sẽ đi path nén). */
+async function readLongEdgePx(file: File): Promise<number | null> {
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(file);
+      const edge = Math.max(bitmap.width, bitmap.height);
+      bitmap.close();
+      return edge;
+    }
+  } catch {
+    /* fall through */
+  }
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const edge = Math.max(img.naturalWidth || 0, img.naturalHeight || 0);
+      URL.revokeObjectURL(url);
+      resolve(edge > 0 ? edge : null);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Chuẩn bị blob lưu Storage:
+ * - Full HD / 4K trong hạn mức → **giữ nguyên file gốc** (không bóp quality).
+ * - Ảnh quá lớn (px hoặc MB) → resize/nén WebP quality cao.
+ */
 export async function compressImage(
   file: File,
   options: Partial<typeof COMPRESS_OPTIONS> = {},
@@ -64,8 +97,18 @@ export async function compressImage(
       'NOT_IMAGE',
     );
   }
+
+  const merged = { ...COMPRESS_OPTIONS, ...options };
+  const maxBytes = merged.maxSizeMB * 1024 * 1024;
+  const maxEdge = merged.maxWidthOrHeight;
+
   try {
-    return await imageCompression(file, { ...COMPRESS_OPTIONS, ...options });
+    const longEdge = await readLongEdgePx(file);
+    // Full HD (1920), 2K, … đến 4K và file không quá nặng → upload nguyên, nét như máy.
+    if (longEdge !== null && longEdge > 0 && longEdge <= maxEdge && file.size <= maxBytes) {
+      return file;
+    }
+    return await imageCompression(file, merged);
   } catch (error) {
     throw new ImageError(
       `Nén ảnh thất bại: ${error instanceof Error ? error.message : String(error)}`,
