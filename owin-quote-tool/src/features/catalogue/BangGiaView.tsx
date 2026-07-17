@@ -106,42 +106,50 @@ export function BangGiaView() {
   return (
     <section className="admin-page catalogue-page">
       <div className="toolbar catalogue-toolbar no-print">
-        <div>
+        <div className="catalogue-toolbar-text">
           <h1 className="app-title">Bảng giá</h1>
-          <p className="app-subtitle">BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN · {loading ? 'Đang tải…' : (printCategory === 'all' ? `${productRecords.length} sản phẩm` : `${shownRecords.length} sản phẩm · ${printCategory}`)}</p>
+          <p className="app-subtitle">
+            {loading
+              ? 'Đang tải…'
+              : printCategory === 'all'
+                ? `${productRecords.length} sản phẩm`
+                : `${shownRecords.length} SP · ${printCategory}`}
+          </p>
         </div>
-        <div className="spacer" />
-        <label className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-          In theo:
-          <select
-            className="input"
-            value={printCategory}
-            onChange={(e) => setPrintCategory(e.target.value)}
-            style={{ width: 'auto', minWidth: 140 }}
-          >
-            <option value="all">Tất cả</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <button
-          className="btn btn-ghost"
-          disabled={shownRecords.length === 0 || exporting}
-          onClick={() => void exportWord()}
-        >
-          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? 'Đang xuất…' : 'Tải Word (.docx)'}
-        </button>
-        <button
-          className="btn btn-ghost"
-          disabled={shownRecords.length === 0 || exportingExcel}
-          onClick={() => void exportExcel()}
-        >
-          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? 'Đang xuất…' : 'Tải Excel (.xlsx)'}
-        </button>
-        <button className="btn btn-primary" onClick={() => void printCatalogue()}>
-          <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> In / PDF
-        </button>
+        <div className="catalogue-toolbar-actions">
+          <label className="catalogue-filter-label">
+            <span>In theo</span>
+            <select
+              className="input"
+              value={printCategory}
+              onChange={(e) => setPrintCategory(e.target.value)}
+            >
+              <option value="all">Tất cả</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <div className="catalogue-export-actions">
+            <button
+              className="btn btn-ghost"
+              disabled={shownRecords.length === 0 || exporting}
+              onClick={() => void exportWord()}
+            >
+              <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exporting ? '…' : 'Word'}
+            </button>
+            <button
+              className="btn btn-ghost"
+              disabled={shownRecords.length === 0 || exportingExcel}
+              onClick={() => void exportExcel()}
+            >
+              <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? '…' : 'Excel'}
+            </button>
+            <button className="btn btn-primary" onClick={() => void printCatalogue()}>
+              <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> In / PDF
+            </button>
+          </div>
+        </div>
       </div>
 
       {(productsError || exportError) && (

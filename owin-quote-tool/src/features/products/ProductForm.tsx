@@ -547,28 +547,29 @@ export function ProductForm({ editing, suggestions, onSave, onCancel, registerCl
         <SummaryMetric label="Tổng cộng ước tính" value={formatVND(estimatedTotal)} strong />
       </div>
 
-      <div className="toolbar product-editor-actions">
+      <div className="toolbar product-editor-actions no-print">
         <div
           className={`product-autosave-status is-${displayedSaveStatus === 'dirty' ? 'pending' : displayedSaveStatus}`}
           role={displayedSaveStatus === 'error' ? 'alert' : 'status'}
           aria-live="polite"
         >
-          {displayedSaveStatus === 'idle' && 'Nhập tên sản phẩm, rồi bấm Lưu.'}
-          {displayedSaveStatus === 'dirty' && 'Có thay đổi — bấm Lưu để ghi Supabase.'}
+          {displayedSaveStatus === 'idle' && 'Nhập tên, rồi bấm Lưu.'}
+          {displayedSaveStatus === 'dirty' && 'Có thay đổi — bấm Lưu.'}
           {displayedSaveStatus === 'saving' && 'Đang lưu…'}
-          {displayedSaveStatus === 'saved' && 'Đã lưu trên Supabase.'}
+          {displayedSaveStatus === 'saved' && 'Đã lưu.'}
           {displayedSaveStatus === 'error' && (
             <>
-              <span>Lỗi lưu: {saveError}</span>
+              <span>Lỗi: {saveError}</span>
               <button type="button" className="btn-link" onClick={() => void save()}>Thử lại</button>
             </>
           )}
         </div>
-        <div className="spacer" />
-        <button type="button" className="btn btn-ghost" onClick={() => void requestClose()}>Quay lại</button>
-        <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={!canSave || saving}>
-          {saving ? 'Đang lưu…' : 'Lưu'}
-        </button>
+        <div className="product-editor-action-btns">
+          <button type="button" className="btn btn-ghost" onClick={() => void requestClose()}>Quay lại</button>
+          <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={!canSave || saving}>
+            {saving ? 'Đang lưu…' : 'Lưu'}
+          </button>
+        </div>
       </div>
     </div>
   );

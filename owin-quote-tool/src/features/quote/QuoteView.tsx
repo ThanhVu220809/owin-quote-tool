@@ -1158,35 +1158,38 @@ export function QuoteView() {
   return (
     <section className="admin-page quote-workflow-page">
       <div className="toolbar quote-form-heading">
-        <button className="admin-back-button" onClick={backToQuoteList} aria-label="Quay lại danh sách báo giá">
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="app-title">{quoteId ? 'Cập nhật báo giá' : 'Thiết kế & Lập báo giá'}</h1>
-          <p className="app-subtitle">
-            {loading ? 'Đang tải kho…' : `${productRecords.length} sản phẩm · ${history.length} báo giá đã lưu`}
-          </p>
+        <div className="quote-form-heading-main">
+          <button className="admin-back-button" onClick={backToQuoteList} aria-label="Quay lại danh sách báo giá">
+            <ArrowLeft size={20} />
+          </button>
+          <div className="quote-form-heading-text">
+            <h1 className="app-title">{quoteId ? 'Cập nhật báo giá' : 'Thiết kế & Lập báo giá'}</h1>
+            <p className="app-subtitle">
+              {loading ? 'Đang tải kho…' : `${productRecords.length} sản phẩm · ${history.length} báo giá đã lưu`}
+            </p>
+          </div>
         </div>
-        <div className="spacer" />
-        <button className="btn btn-ghost" disabled={saving} onClick={startNewQuote}>Báo giá mới</button>
-        <button className="btn btn-primary" disabled={items.length === 0 || saving} onClick={() => void saveManually()}>
-          <Save size={17} style={{ verticalAlign: '-3px' }} /> {saving ? 'Đang lưu…' : 'Lưu báo giá'}
-        </button>
-        <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportWord()}>
-          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Word
-        </button>
-        <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportExcel()}>
-          <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Excel
-        </button>
-        <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void printCurrentQuote()}>
-          <Printer size={17} style={{ verticalAlign: '-3px' }} /> In/PDF
-        </button>
+        <div className="quote-form-actions no-print">
+          <button className="btn btn-ghost" disabled={saving} onClick={startNewQuote}>Báo giá mới</button>
+          <button className="btn btn-primary" disabled={items.length === 0 || saving} onClick={() => void saveManually()}>
+            <Save size={17} style={{ verticalAlign: '-3px' }} /> {saving ? 'Đang lưu…' : 'Lưu'}
+          </button>
+          <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportWord()}>
+            <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Word
+          </button>
+          <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportExcel()}>
+            <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Excel
+          </button>
+          <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void printCurrentQuote()}>
+            <Printer size={17} style={{ verticalAlign: '-3px' }} /> In/PDF
+          </button>
+        </div>
       </div>
 
-      <div className="two-col">
+      <div className="two-col quote-top-grid">
         <div className="card">
           <div className="section-label">Thông tin khách hàng</div>
-          <div className="two-col">
+          <div className="two-col quote-customer-grid">
             <Field label="Tên khách" value={customerName} onChange={setCustomerName} suggestions={seededSuggestions.customer_name} />
             <Field label="SĐT" value={customerPhone} onChange={setCustomerPhone} />
             <Field label="Email" value={customerEmail} onChange={setCustomerEmail} />
@@ -1211,7 +1214,7 @@ export function QuoteView() {
           {message && !saveError && <div className="product-sub" style={{ color: 'var(--ios-green)' }}>{message}</div>}
         </div>
 
-        <div className="card">
+        <div className="card quote-totals-card">
           <div className="section-label">Tổng tiền</div>
           <TotalLine label="Tiền sản phẩm" value={calculated.summary.subtotalProductVnd} />
           <TotalLine label="Tiền phụ kiện" value={calculated.summary.subtotalAccessoryVnd} />
@@ -1221,17 +1224,17 @@ export function QuoteView() {
         </div>
       </div>
 
-      <div className="card quote-add-products-card" style={{ marginTop: 16 }}>
+      <div className="card quote-add-products-card">
         <div>
           <div className="section-label">Chọn sản phẩm</div>
-          <div className="product-sub">Mở kho sản phẩm để chọn nhanh bằng hình ảnh, hoặc thêm hạng mục tùy chỉnh.</div>
+          <div className="product-sub quote-add-hint">Mở kho để chọn bằng hình, hoặc thêm hạng mục tùy chỉnh.</div>
         </div>
         <div className="quote-add-actions">
           <button className="btn btn-primary" onClick={() => setProductPickerOpen(true)}>
-            <Package size={17} style={{ verticalAlign: '-3px' }} /> Chọn sản phẩm từ kho
+            <Package size={17} style={{ verticalAlign: '-3px' }} /> Chọn từ kho
           </button>
           <button className="btn btn-ghost" onClick={addCustom}>
-            <Plus size={16} style={{ verticalAlign: '-3px' }} /> Hạng mục tùy chỉnh
+            <Plus size={16} style={{ verticalAlign: '-3px' }} /> Tùy chỉnh
           </button>
         </div>
       </div>
@@ -2291,41 +2294,57 @@ function QuoteItemCard({
           const calculatedLine = calculated?.dimensions[lineIndex];
           return (
             <div key={lineIndex} className="quote-line-row">
-              <select className="input" value={line.unit || item.unit} onChange={(e) => onDimension(lineIndex, { unit: e.target.value as ProductUnit })}>
-                <option value="M2">m²</option>
-                <option value="BO">Bộ</option>
-                <option value="METER">md</option>
-              </select>
-              <SmartNumberInput
-                className="input"
-                mode="decimal"
-                decimals={3}
-                min={0}
-                value={line.widthM}
-                onChange={(widthM) => onDimension(lineIndex, { widthM: widthM === 0 ? null : widthM })}
-                placeholder="Rộng"
-              />
-              <SmartNumberInput
-                className="input"
-                mode="decimal"
-                decimals={3}
-                min={0}
-                value={line.heightM}
-                onChange={(heightM) => onDimension(lineIndex, { heightM: heightM === 0 ? null : heightM })}
-                placeholder="Cao"
-              />
-              <SmartNumberInput
-                className="input"
-                mode="int"
-                min={0}
-                value={line.quantity}
-                onChange={(quantity) => onDimension(lineIndex, { quantity })}
-                placeholder="SL"
-              />
-              <div className="readonly-money muted-money">{calculatedLine?.calculatedQty?.toFixed(3) ?? '0.000'}</div>
-              <CurrencyInput value={Number(line.unitPriceVnd ?? item.unitPriceVnd ?? 0)} onChange={(unitPriceVnd) => onDimension(lineIndex, { unitPriceVnd })} placeholder="Đơn giá" />
-              <div className="readonly-money">{formatVND(calculatedLine?.lineTotalVnd ?? 0)}</div>
-              <button className="icon-btn danger" onClick={() => onUpdate({ dimensions: item.dimensions.filter((_, i) => i !== lineIndex) })} aria-label="Xóa kích thước"><Trash2 size={16} /></button>
+              <div className="quote-line-field" data-label="ĐV">
+                <select className="input" value={line.unit || item.unit} onChange={(e) => onDimension(lineIndex, { unit: e.target.value as ProductUnit })}>
+                  <option value="M2">m²</option>
+                  <option value="BO">Bộ</option>
+                  <option value="METER">md</option>
+                </select>
+              </div>
+              <div className="quote-line-field" data-label="Rộng">
+                <SmartNumberInput
+                  className="input"
+                  mode="decimal"
+                  decimals={3}
+                  min={0}
+                  value={line.widthM}
+                  onChange={(widthM) => onDimension(lineIndex, { widthM: widthM === 0 ? null : widthM })}
+                  placeholder="Rộng"
+                />
+              </div>
+              <div className="quote-line-field" data-label="Cao">
+                <SmartNumberInput
+                  className="input"
+                  mode="decimal"
+                  decimals={3}
+                  min={0}
+                  value={line.heightM}
+                  onChange={(heightM) => onDimension(lineIndex, { heightM: heightM === 0 ? null : heightM })}
+                  placeholder="Cao"
+                />
+              </div>
+              <div className="quote-line-field" data-label="SL">
+                <SmartNumberInput
+                  className="input"
+                  mode="int"
+                  min={0}
+                  value={line.quantity}
+                  onChange={(quantity) => onDimension(lineIndex, { quantity })}
+                  placeholder="SL"
+                />
+              </div>
+              <div className="quote-line-field" data-label="KL">
+                <div className="readonly-money muted-money">{calculatedLine?.calculatedQty?.toFixed(3) ?? '0.000'}</div>
+              </div>
+              <div className="quote-line-field quote-line-field-wide" data-label="Đơn giá">
+                <CurrencyInput value={Number(line.unitPriceVnd ?? item.unitPriceVnd ?? 0)} onChange={(unitPriceVnd) => onDimension(lineIndex, { unitPriceVnd })} placeholder="Đơn giá" />
+              </div>
+              <div className="quote-line-field quote-line-field-total" data-label="Thành tiền">
+                <div className="readonly-money">{formatVND(calculatedLine?.lineTotalVnd ?? 0)}</div>
+              </div>
+              <div className="quote-line-field quote-line-field-action" data-label="">
+                <button className="icon-btn danger" onClick={() => onUpdate({ dimensions: item.dimensions.filter((_, i) => i !== lineIndex) })} aria-label="Xóa kích thước"><Trash2 size={16} /></button>
+              </div>
             </div>
           );
         })}

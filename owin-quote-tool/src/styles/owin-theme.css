@@ -1749,7 +1749,7 @@ textarea.input:focus {
   display: grid;
   grid-template-columns: 76px 76px 76px 64px 86px minmax(124px, 0.8fr) minmax(128px, 0.8fr) 36px;
   gap: 8px;
-  align-items: center;
+  align-items: end;
   min-width: 720px;
 }
 .quote-lines-head {
@@ -1759,12 +1759,106 @@ textarea.input:focus {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0 2px;
+  align-items: center;
 }
 .quote-line-row {
   padding: 8px;
   border: 1px solid var(--owin-border);
   border-radius: 12px;
   background: #fff;
+}
+.quote-line-field {
+  min-width: 0;
+  display: grid;
+  gap: 0;
+}
+.quote-line-field > .input,
+.quote-line-field > .readonly-money,
+.quote-line-field > .currency-input,
+.quote-line-field > * {
+  width: 100%;
+  min-width: 0;
+}
+.quote-line-field::before {
+  display: none;
+  content: attr(data-label);
+  color: var(--owin-ink-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.quote-line-field-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.quote-form-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+.quote-form-heading-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 240px;
+}
+.quote-form-heading-text {
+  min-width: 0;
+}
+.quote-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+.quote-add-products-card {
+  margin-top: 16px;
+}
+.product-editor-action-btns {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+.catalogue-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+.catalogue-toolbar-text {
+  min-width: 0;
+  flex: 1 1 200px;
+}
+.catalogue-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.catalogue-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--owin-ink-muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+.catalogue-filter-label .input {
+  width: auto;
+  min-width: 140px;
+}
+.catalogue-export-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .legacy-accessory-row {
   display: grid;
@@ -1785,10 +1879,12 @@ textarea.input:focus {
   .extra-accessory-head,
   .quote-lines-head { display: none; }
   .extra-accessory-line,
-  .legacy-accessory-row,
-  .quote-line-row {
+  .legacy-accessory-row {
     min-width: 0;
     grid-template-columns: 1fr;
+  }
+  .quote-line-row {
+    min-width: 0;
   }
   .quote-history-filters,
   .quote-history-filters .field {
@@ -2646,9 +2742,6 @@ textarea.input:focus {
   padding: 8px 12px;
   font-size: 13px;
 }
-.quote-form-heading {
-  align-items: flex-start;
-}
 .quote-detail-actions {
   display: flex;
   align-items: center;
@@ -2704,7 +2797,6 @@ textarea.input:focus {
 .catalogue-toolbar {
   border-bottom: 1px solid var(--owin-border);
   padding-bottom: 16px;
-  align-items: flex-start;
 }
 .catalogue-toolbar .btn {
   font-size: 13px;
@@ -3898,19 +3990,126 @@ textarea.input:focus {
     border-radius: var(--r-sm);
   }
 
-  /* Dimension lines: keep horizontal scroll but nicer */
+  /* Dimension lines → labeled cards, no sideways scroll */
   .quote-lines-editor {
-    margin: 0 -4px;
-    padding: 0 4px 4px;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
   }
+  .quote-lines-head { display: none; }
   .quote-line-row {
-    min-width: 640px;
+    min-width: 0 !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    align-items: stretch;
+    padding: 10px;
+  }
+  .quote-line-field {
+    gap: 4px;
+  }
+  .quote-line-field::before {
+    display: block;
+  }
+  .quote-line-field[data-label='']::before {
+    display: none;
+  }
+  .quote-line-field .input,
+  .quote-line-field .readonly-money {
+    min-height: 42px;
+    font-size: 16px !important;
+  }
+  .quote-line-field-wide,
+  .quote-line-field-total {
+    grid-column: 1 / -1;
+  }
+  .quote-line-field-action {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+  .quote-line-field-action .icon-btn {
+    width: 44px;
+    height: 44px;
   }
 
-  /* Quote form customer fields */
+  /* Quote form layout */
+  .quote-form-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .quote-form-heading-main {
+    width: 100%;
+  }
+  .quote-form-heading .app-title {
+    font-size: 1.15rem;
+  }
+  .quote-form-heading .app-subtitle {
+    font-size: 12px;
+  }
+  .quote-form-actions {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .quote-form-actions .btn {
+    min-height: 44px;
+    justify-content: center;
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .quote-form-actions .btn-primary {
+    grid-column: 1 / -1;
+  }
+  .quote-top-grid,
   .quote-customer-grid,
-  .quote-form-grid {
+  .quote-form-grid,
+  .two-col {
     grid-template-columns: 1fr !important;
+    display: grid !important;
+    gap: 12px !important;
+  }
+  .quote-totals-card {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .quote-add-products-card {
+    margin-top: 12px !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .quote-add-hint {
+    font-size: 12px;
+  }
+  .quote-add-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    justify-content: stretch;
+  }
+  .quote-add-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .quote-detail-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .quote-detail-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 
   /* Toolbars stack nicely */
@@ -3921,13 +4120,123 @@ textarea.input:focus {
   .toolbar .btn {
     min-height: 44px;
   }
+
+  /* Product create/edit: sticky save bar */
+  .product-editor-card {
+    padding-bottom: 88px;
+  }
   .product-editor-actions {
-    flex-wrap: wrap;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    margin: 0 !important;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.97);
+    border-top: 1px solid var(--owin-border);
+    box-shadow: 0 -8px 24px rgba(15, 42, 61, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: grid !important;
+    grid-template-columns: 1fr;
     gap: 8px;
   }
-  .product-editor-actions .btn {
-    flex: 1 1 140px;
+  .product-autosave-status {
+    font-size: 12px;
+    text-align: center;
+  }
+  .product-editor-action-btns {
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .product-editor-action-btns .btn {
+    width: 100%;
+    min-height: 46px;
     justify-content: center;
+  }
+  .product-summary-strip {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0 !important;
+  }
+  .summary-metric {
+    padding: 10px !important;
+  }
+  .summary-metric strong {
+    font-size: 14px !important;
+  }
+  .summary-metric-strong {
+    grid-column: 1 / -1;
+  }
+  .product-image-panel .dropzone {
+    max-width: 100% !important;
+    min-height: 160px;
+  }
+
+  /* Catalogue toolbar */
+  .catalogue-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .catalogue-toolbar-actions {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .catalogue-filter-label {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+  }
+  .catalogue-filter-label .input {
+    width: 100%;
+    min-width: 0;
+  }
+  .catalogue-export-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .catalogue-export-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+  .bang-gia-doc {
+    padding: 6px;
+    margin: 0 -4px;
+  }
+  .bang-gia-table {
+    font-size: 11px;
+  }
+
+  /* Segmented unit control full-width */
+  .segmented {
+    width: 100%;
+    display: flex;
+  }
+  .segmented button {
+    flex: 1;
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  /* Compact main nav labels on phone */
+  .tool-nav-item {
+    gap: 4px;
+  }
+  .tool-nav-item span {
+    font-size: 12px;
   }
 
   /* Modals full-bleed-ish */
