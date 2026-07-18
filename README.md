@@ -1,183 +1,185 @@
 # OWIN Quote Tool
 
-**Nền tảng báo giá & bảng giá cửa nhôm OWIN** — từ catalogue sản phẩm đến file Word/Excel/PDF gửi khách, chạy production trên domain riêng.
+### Báo giá cửa nhôm chuyên nghiệp — từ catalogue đến file gửi khách trong vài giây
 
 <p align="center">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
-  <img alt="React" src="https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
-  <img alt="Vite" src="https://img.shields.io/badge/Vite_8-646CFF?style=for-the-badge&logo=vite&logoColor=white" />
-  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white" />
-  <img alt="GitHub Pages" src="https://img.shields.io/badge/GitHub_Pages-222?style=for-the-badge&logo=githubpages&logoColor=white" />
+  <a href="https://saigonfox.online"><img src="https://img.shields.io/badge/🟢_Live-saigonfox.online-22c55e?style=for-the-badge" alt="Live" /></a>
+  &nbsp;
+  <img src="https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Vite_8-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
 </p>
 
 <p align="center">
-  <a href="https://saigonfox.online"><strong>Live demo → saigonfox.online</strong></a>
-  ·
-  <a href="./owin-quote-tool/README.md">Hướng dẫn dev</a>
-  ·
-  <a href="./owin-quote-tool/supabase/SETUP.md">Supabase setup</a>
+  <strong><a href="https://saigonfox.online">→ Mở ứng dụng production</a></strong>
 </p>
 
 ---
 
-## Vì sao repo này “nặng ký”?
+## ✨ Một dòng
 
-Đây không phải form CRUD đơn giản. Tool giải quyết bài toán **kinh doanh cửa nhôm thật**:
-
-| Bài toán thực tế | Cách tool xử lý |
-|---|---|
-| Báo giá có m² / mét dài / bộ + phụ kiện | Quote engine riêng: quantity, accessory pricing, rounding VND |
-| Khách cần file Word đẹp như template sales | Clone marker-row DOCX bằng PizZip — chạy 100% trên browser |
-| Catalogue + ảnh + phụ kiện phải khớp Word/PDF | Cùng pipeline `buildCatalogueBlockRows` cho web, Word, Excel, PDF |
-| Nhiều máy cùng sửa data | Supabase Realtime + soft-delete + `revision` optimistic concurrency |
-| Ảnh HD không làm đơ UI | Master WebP sắc nét + thumbnail lazy + global lightbox |
-| Dùng trên điện thoại ngoài công trình | Layout portrait/landscape densified cho products / quotes / aluminium |
+Công cụ nội bộ cho sales / xưởng cửa nhôm: quản lý sản phẩm, lập báo giá, xuất **Word · Excel · PDF**, tính nhôm — realtime đa máy, mobile-ready, deploy domain riêng.
 
 ---
 
-## Tính năng chính
+## 🧩 Modules
 
-### 1. Sản phẩm (Catalogue)
-- CRUD sản phẩm: mã, tên, danh mục, đơn vị (`BO` / `M2` / `METER`), giá, specs, gallery
-- Phụ kiện theo set + gói phụ kiện cố định (rule-based suggestions)
-- Drag-to-reorder thứ tự bảng giá
-- Compress ảnh 4K-class, giữ Full HD, không re-encode mờ
+<table>
+<tr>
+<td width="50%" valign="top">
 
-### 2. Báo giá
-- Chọn sản phẩm → kích thước → SL → phụ kiện → tổng
-- Snapshot đầy đủ lúc lưu (giá/tên/ảnh lúc chốt không bị đổi khi catalogue đổi)
-- Khoá item gọn (chỉ tên + tổng) khi không chỉnh
-- Filter theo danh mục ngang; smart number / currency input (gõ thô, format on blur)
-- Export **Word · Excel · PDF** — PDF tải file, không phụ thuộc print dialog trình duyệt
+### 📦 Sản phẩm
+Catalogue đầy đủ: mã, danh mục, đơn vị  
+(m² / mét / bộ), giá, specs, gallery.  
+Phụ kiện theo set + gói gợi ý.  
+Kéo-thả sắp xếp bảng giá.
 
-### 3. Bảng giá
-- Xem catalogue theo block (category → product → accessories)
-- Ảnh web/PDF **contain-fit 95% ô** (scale lên khi ảnh nhỏ, không crop)
-- Word export **read-only + password** (khách xem, không sửa lung tung)
-- Xuất theo 1 danh mục hoặc toàn bộ
+</td>
+<td width="50%" valign="top">
 
-### 4. Tính nhôm
-- Ước lượng thanh profile theo hệ / màu
-- Giá đơn vị theo màu; SL = số cái; quantity session-only
-- Export Word/PDF kèm ảnh profile embed
+### 📝 Báo giá
+Chọn SP → kích thước → SL → phụ kiện.  
+Snapshot giá lúc chốt (không lệch sau này).  
+Lọc danh mục, khoá dòng gọn.  
+Smart input tiền / số (gõ thô, format lúc blur).
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 📒 Bảng giá
+Xem catalogue block đẹp như file in.  
+Ảnh scale fit ô (web + PDF).  
+Xuất theo 1 loại cửa hoặc toàn bộ.  
+Word khoá chỉnh sửa (read-only + password).
+
+</td>
+<td width="50%" valign="top">
+
+### 🧮 Tính nhôm
+Ước lượng thanh profile theo hệ / màu.  
+Giá đơn vị theo màu, SL = số cái.  
+Export Word / PDF kèm ảnh profile.
+
+</td>
+</tr>
+</table>
 
 ---
 
-## Kiến trúc
+## 📤 Export — điểm mạnh
+
+| Định dạng | Báo giá | Bảng giá | Tính nhôm |
+|:---------:|:-------:|:--------:|:---------:|
+| **Word (.docx)** | ✅ | ✅ read-only | ✅ |
+| **Excel (.xlsx)** | ✅ | ✅ | — |
+| **PDF** | ✅ tải file | ✅ tải file | ✅ |
+
+- Chạy **100% trên trình duyệt** — không server render, không API export  
+- Template bám layout sales thật (ảnh, phụ kiện, tổng VND, font tiếng Việt)  
+- PDF không phụ thuộc print dialog trình duyệt  
+
+---
+
+## 🏗️ Công nghệ
 
 ```text
-┌─────────────────── Browser (React + Vite) ───────────────────┐
-│  Products │ Quotes │ Catalogue │ Aluminum                    │
-│       │ quote-engine │ export (Word/Excel/PDF) │ media      │
-└───────────┬──────────────────────┬───────────────────────────┘
-            │ Auth + REST + Realtime│ Storage (CDN URL only)
-            ▼                       ▼
-     Supabase Auth            product-images (public)
-     Supabase Postgres        quote-images (private)
-     RLS + revision + soft-delete
+┌─────────────────────────────────────────────────────────┐
+│                     FRONTEND                            │
+│   React 19  ·  TypeScript  ·  Vite 8  ·  Design system  │
+│   Mobile portrait / landscape  ·  Global image lightbox │
+└───────────────────────┬─────────────────────────────────┘
+                        │
+          Auth · REST · Realtime · Storage URL
+                        │
+┌───────────────────────▼─────────────────────────────────┐
+│                      SUPABASE                           │
+│   Auth (email)  ·  Postgres (JSON document + index)     │
+│   Storage (CDN ảnh)  ·  Realtime multi-device            │
+│   RLS  ·  soft-delete  ·  optimistic revision           │
+└─────────────────────────────────────────────────────────┘
+                        │
+┌───────────────────────▼─────────────────────────────────┐
+│                   GITHUB PAGES                          │
+│   CI: lint · test · build  →  deploy saigonfox.online   │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**Nguyên tắc thiết kế**
+### Stack chi tiết
 
-- **Postgres = single source of truth** — không IndexedDB nghiệp vụ; localStorage chỉ session auth
-- **Document + index columns** — full `ProductRecord` / `QuoteRecord` trong `jsonb data`, cột index để filter/sort rẻ
-- **Export pure-client** — GitHub Pages friendly: không server render, không API route
-- **Security-first** — chỉ `anon` key trên frontend; RLS; signup public tắt; `service_role` không bao giờ vào bundle
-
-### Stack
-
-| Layer | Tech |
-|---|---|
-| UI | React 19, TypeScript, custom design system (mobile-first) |
-| Build | Vite 8, ESLint, Vitest (~22 test files) |
+| Tầng | Công nghệ |
+|------|-----------|
+| UI | React 19, TypeScript, Lucide icons, custom CSS design system |
+| Build | Vite 8, ESLint, Vitest |
 | Backend | Supabase Auth · Postgres · Storage · Realtime |
-| Export | docxtemplater + PizZip · ExcelJS · jsPDF + Noto Sans VI |
-| Deploy | GitHub Actions → GitHub Pages · custom domain `saigonfox.online` |
+| Export | docxtemplater + PizZip · ExcelJS · jsPDF + Noto Sans Vietnamese |
+| Ảnh | WebP master + thumbnail · lazy load · compression 4K-class |
+| Deploy | GitHub Actions → GitHub Pages · custom domain |
 
 ---
 
-## Logic “hay” đáng xem trong code
+## 🧠 Logic nghiệp vụ “nặng”
 
-### Quote engine (`src/lib/quote-engine/`)
-Tách pure functions: `quantity` · `accessory-pricing` · `totals` · `rounding` · `units` · fixed-accessory rules.  
-Dễ test, không dính UI — ví dụ phụ kiện md/m² nhân SL×giá khi KL = 0; làm tròn tiền theo quy ước bán hàng VN.
+Không phải CRUD form. Engine tính toán tách lớp, pure, testable:
 
-### Word export không cần backend (`src/features/export/wordExport.ts`)
-Template DOCX marker-row được clone runtime bằng PizZip. Ảnh contain-fit theo **chiều rộng/cao cell thật** (EMU/DXA), không hard-code box cố định — web và file xuất ra nhìn đồng bộ.
-
-### Concurrent edit an toàn
-- Cột `revision` + trigger server  
-- Soft-delete (`deleted_at`) chặn form cũ “hồi sinh” record đã xoá máy khác  
-- Realtime subscription cập nhật UI không cần nút Sync
-
-### Image pipeline
-Master WebP sắc + thumbnail nhỏ · lazy `ProductThumb` · lightbox toàn app · PDF dùng bản master độ phân giải cao hơn web.
+| Bài toán | Cách xử lý |
+|----------|------------|
+| Đơn vị m² / md / bộ lẫn phụ kiện | Quantity engine + rule phụ kiện cố định |
+| Tiền VND, làm tròn theo thói quen bán hàng | Rounding / totals riêng, không dính UI |
+| Phụ kiện md/m² khi không có khối lượng | Fallback SL × đơn giá — đúng thực tế xưởng |
+| Nhiều máy cùng sửa | Realtime + revision + soft-delete chống “hồi sinh” data |
+| Catalogue đổi sau khi đã báo giá | Snapshot full document lúc lưu quote |
+| Ảnh HD vs performance | Master sắc nét + thumb nhỏ + lazy |
 
 ---
 
-## Cấu trúc monorepo
+## 📱 Trải nghiệm
 
-```text
-owin-quote-tool/                 ← git root (CI/CD sống ở đây)
-├── .github/workflows/
-│   ├── ci.yml                   # lint · test · build
-│   └── deploy-pages.yml         # build + deploy Pages
-├── GITHUB_PAGES_DEPLOY.md
-└── owin-quote-tool/             ← app source
-    ├── src/
-    │   ├── features/            # products · quote · catalogue · aluminum · export · supabase
-    │   ├── lib/                 # quote-engine · media · aluminium · catalogue
-    │   ├── components/          # smart inputs, lightbox, drag-reorder…
-    │   └── types/models.ts      # nguồn chân lý kiểu dữ liệu
-    ├── supabase/schema.sql      # idempotent schema + RLS
-    ├── public/                  # CNAME, fonts VI, aluminum profile images
-    └── package.json
-```
+- **Desktop** — tool shell gọn, nav 4 tab, form densified  
+- **Phone portrait** — control nhỏ, không chen chúc, dùng ngoài công trình  
+- **Phone landscape / mini desktop** — layout nén riêng  
+- **Lightbox** — chạm ảnh là zoom full  
+- **Chỉ Lưu mới ghi server** — không autosave bất ngờ  
 
 ---
 
-## Chạy local
+## 🔐 Bảo mật & vận hành
 
-```bash
-cd owin-quote-tool
-cp .env.example .env   # VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
-npm ci
-npm run dev
-```
-
-```bash
-npm run lint
-npm test
-npm run build
-```
-
-Chi tiết Supabase (bucket, RLS, secrets Actions): [`owin-quote-tool/supabase/SETUP.md`](./owin-quote-tool/supabase/SETUP.md).
+| Nguyên tắc | Thực tế |
+|------------|---------|
+| Secret trên client | Chỉ `anon` key public · không `service_role` |
+| Quyền dữ liệu | RLS Postgres · signup public tắt |
+| Ảnh báo giá | Bucket private · catalogue public URL có kiểm soát |
+| Data cũ trình duyệt | Đã migrate hết lên Supabase |
+| CI/CD | Lint + test bắt buộc trước deploy |
 
 ---
 
-## Deploy
+## 🚀 Production
 
-Push `main` → CI + **Deploy GitHub Pages**.
-
-Secrets cần trong repo Actions:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-`public/CNAME` = `saigonfox.online`.
+| | |
+|--|--|
+| **URL** | [https://saigonfox.online](https://saigonfox.online) |
+| **Hosting** | GitHub Pages |
+| **Data** | Supabase (EU/region project) |
+| **CI** | GitHub Actions on `main` |
 
 ---
 
-## Liên quan (cùng profile)
+## 🔗 Cùng profile
 
-| Repo | Vai trò |
-|---|---|
-| [`esp32_sim_neo10`](https://github.com/ThanhVu220809/esp32_sim_neo10) | Firmware ESP32-S3 SOS + GPS + 4G |
-| [`Landing_page`](https://github.com/ThanhVu220809/Landing_page) | Landing thương mại BA.SEW |
-| [`Tracking_page`](https://github.com/ThanhVu220809/Tracking_page) | Bản đồ theo dõi thiết bị realtime |
+Hệ IoT **BA.SEW** (SOS GPS) — stack khác, cùng tác giả:
+
+| Project | Mô tả |
+|---------|--------|
+| [esp32_sim_neo10](https://github.com/ThanhVu220809/esp32_sim_neo10) | Firmware ESP32-S3 · SOS · 4G · FreeRTOS |
+| [Landing_page](https://github.com/ThanhVu220809/Landing_page) | Landing bán thiết bị |
+| [Tracking_page](https://github.com/ThanhVu220809/Tracking_page) | Bản đồ theo dõi realtime |
 
 ---
 
 <p align="center">
-  Built for real shop-floor quoting · <strong>OWIN</strong> · React · Supabase · client-side export
+  <sub>Built for real shop-floor quoting · OWIN · React · Supabase · client-side export</sub>
 </p>
