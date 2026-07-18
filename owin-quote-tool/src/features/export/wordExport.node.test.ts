@@ -5,6 +5,9 @@ import PizZip from 'pizzip';
 import type { ProductRecord } from '@/types/models';
 import { calculateQuote } from '@/lib/quote/quoteCalculator';
 import {
+  applyCatalogueReadOnlyProtection,
+  CATALOGUE_WORD_EDIT_PASSWORD,
+  computeWordProtectionHash,
   fitImageDimensionsToEmuBox,
   renderBangGiaDocumentXml,
   renderQuoteDocumentXml,
@@ -231,5 +234,28 @@ describe('reference Word catalogue template renderer', () => {
     const continuationCells = [...tables[1].matchAll(/<w:tc\b(?:(?!<\/w:tc>)[\s\S])*?<w:vMerge\s*\/>[\s\S]*?<\/w:tc>/g)];
     expect(continuationCells.length).toBeGreaterThan(0);
     continuationCells.forEach((match) => expect(match[0]).toContain('<w:tcBorders>'));
+  });
+
+  it('protects catalogue Word export as read-only with edit password 222333', async () => {
+    expect(CATALOGUE_WORD_EDIT_PASSWORD).toBe('222333');
+
+    const salt = new Uint8Array(16).fill(7);
+    const hash = await computeWordProtectionHash(CATALOGUE_WORD_EDIT_PASSWORD, salt, 1);
+    expect(hash).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    expect(hash.length).toBeGreaterThan(40);
+
+    const zip = new PizZip(readFileSync(resolve(DIR, 'Template_Bang_Gia.docx')));
+    await applyCatalogueReadOnlyProtection(zip, CATALOGUE_WORD_EDIT_PASSWORD);
+    const settings = zip.file('word/settings.xml')?.asText() ?? '';
+
+    expect(settings).toContain('w:documentProtection');
+    expect(settings).toContain('w:edit="readOnly"');
+    expect(settings).toContain('w:enforcement="1"');
+    expect(settings).toContain('w:cryptAlgorithmSid="14"');
+    expect(settings).toContain('w:cryptSpinCount="100000"');
+    expect(settings).toMatch(/w:hashValue="[^"]+"/);
+    expect(settings).toMatch(/w:saltValue="[^"]+"/);
+    // Password itself must not appear in cleartext inside the package.
+    expect(settings).not.toContain('222333');
   });
 });

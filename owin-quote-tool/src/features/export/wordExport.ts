@@ -1244,10 +1244,107 @@ export async function buildBangGiaWordData(products: ProductRecord[]) {
   };
 }
 
+/** Password required in Word to stop read-only / edit the catalogue export. */
+export const CATALOGUE_WORD_EDIT_PASSWORD = '222333';
+
+const WORD_PROTECT_SPIN_COUNT = 100_000;
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]!);
+  }
+  return btoa(binary);
+}
+
+function utf16LeBytes(text: string): Uint8Array {
+  const out = new Uint8Array(text.length * 2);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    out[index * 2] = code & 0xff;
+    out[index * 2 + 1] = (code >> 8) & 0xff;
+  }
+  return out;
+}
+
+async function sha512Bytes(data: Uint8Array): Promise<Uint8Array> {
+  const digest = await crypto.subtle.digest('SHA-512', data as BufferSource);
+  return new Uint8Array(digest);
+}
+
+/**
+ * OOXML document-protection password hash (ECMA-376 / MS-OFFCRYPTO):
+ * H0 = SHA-512(salt + UTF-16LE password); then spinCount rounds of
+ * Hn = SHA-512(H_{n-1} + LE32(n-1)).
+ */
+export async function computeWordProtectionHash(
+  password: string,
+  salt: Uint8Array,
+  spinCount = WORD_PROTECT_SPIN_COUNT,
+): Promise<string> {
+  const passwordBytes = utf16LeBytes(password);
+  const initial = new Uint8Array(salt.length + passwordBytes.length);
+  initial.set(salt);
+  initial.set(passwordBytes, salt.length);
+  let hash = await sha512Bytes(initial);
+  for (let iteration = 0; iteration < spinCount; iteration += 1) {
+    const next = new Uint8Array(hash.length + 4);
+    next.set(hash);
+    next[hash.length] = iteration & 0xff;
+    next[hash.length + 1] = (iteration >> 8) & 0xff;
+    next[hash.length + 2] = (iteration >> 16) & 0xff;
+    next[hash.length + 3] = (iteration >> 24) & 0xff;
+    hash = await sha512Bytes(next);
+  }
+  return bytesToBase64(hash);
+}
+
+/**
+ * Lock the DOCX as read-only (preview). Opening still works; editing requires the password
+ * (Word: Review → Restrict Editing → Stop Protection).
+ */
+export async function applyCatalogueReadOnlyProtection(
+  zip: PizZip,
+  password = CATALOGUE_WORD_EDIT_PASSWORD,
+): Promise<void> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hashValue = await computeWordProtectionHash(password, salt, WORD_PROTECT_SPIN_COUNT);
+  const saltValue = bytesToBase64(salt);
+  const protectionXml =
+    `<w:documentProtection w:edit="readOnly" w:enforcement="1" ` +
+    `w:cryptProviderType="rsaAES" w:cryptAlgorithmClass="hash" w:cryptAlgorithmType="typeAny" ` +
+    `w:cryptAlgorithmSid="14" w:cryptSpinCount="${WORD_PROTECT_SPIN_COUNT}" ` +
+    `w:hashValue="${hashValue}" w:saltValue="${saltValue}"/>`;
+
+  const settingsPath = 'word/settings.xml';
+  const existing = zip.file(settingsPath)?.asText();
+  if (!existing) {
+    zip.file(
+      settingsPath,
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        + '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        + `${protectionXml}</w:settings>`,
+    );
+    return;
+  }
+
+  let next = existing
+    .replace(/<w:documentProtection\b[^>]*\/>/g, '')
+    .replace(/<w:documentProtection\b[\s\S]*?<\/w:documentProtection>/g, '');
+  if (next.includes('</w:settings>')) {
+    next = next.replace('</w:settings>', `${protectionXml}</w:settings>`);
+  } else {
+    next = next.replace(/(<w:settings\b[^>]*>)/, `$1${protectionXml}`);
+  }
+  zip.file(settingsPath, next);
+}
+
 export async function exportBangGiaWord(products: ProductRecord[]): Promise<string> {
   const zip = await fetchTemplateZip(tplBangGiaUrl);
   const documentXml = await renderBangGiaDocumentXml(zip, products);
   zip.file('word/document.xml', documentXml);
+  // Catalogue exports are preview-only; password unlocks editing in Word.
+  await applyCatalogueReadOnlyProtection(zip, CATALOGUE_WORD_EDIT_PASSWORD);
   const fileName = `Bang_gia_OWIN_${new Date().toISOString().slice(0, 10)}.docx`;
   downloadBlob(generateDocxBlob(zip), fileName);
   return fileName;
