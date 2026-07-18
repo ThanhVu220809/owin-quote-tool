@@ -20,8 +20,8 @@ const IMG_CELL_FILL = 0.95;
 const IMG_CELL_PAD_MM = 1.2;
 const FONT = PDF_FONT_FAMILY;
 
-/** Column fractions (sum = 1). KL wide enough for max 3 decimals on one line. */
-const COL_FRACS = [0.035, 0.105, 0.30, 0.045, 0.055, 0.055, 0.10, 0.10, 0.10, 0.105] as const;
+/** Column fractions (sum = 1). Hình wider so 95% contain-fit has room. */
+const COL_FRACS = [0.035, 0.13, 0.275, 0.045, 0.055, 0.055, 0.10, 0.10, 0.10, 0.105] as const;
 const HEADERS = ['STT', 'Hình', 'Mô tả', 'DV', 'Rộng', 'Cao', 'KL', 'Đơn giá', 'Thành tiền', 'Tổng'] as const;
 
 type ProductBlock = {
@@ -161,7 +161,12 @@ export async function exportBangGiaPdf(products: ProductRecord[]): Promise<strin
     if (block.kind !== 'product') continue;
     const path = block.product.imagePath;
     if (!path || imageCache.has(path)) continue;
-    const dataUrl = await lightPdfImageDataUrl(path);
+    // Master + higher maxEdge so 95% cell fill stays sharp (not 160px thumb).
+    const dataUrl = await lightPdfImageDataUrl(path, {
+      preferThumb: false,
+      maxEdge: 960,
+      quality: 0.82,
+    });
     if (!dataUrl) {
       imageCache.set(path, null);
       continue;

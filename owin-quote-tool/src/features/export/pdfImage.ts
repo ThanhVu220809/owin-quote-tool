@@ -1,15 +1,38 @@
 /**
- * Small JPEG thumbs for light PDF exports (catalogue + quote).
+ * JPEG images for PDF export.
+ * - catalogue: higher res so 95% cell fill stays sharp
+ * - quote/other: lighter thumbs
  */
 
 import { getImageDataUrlByPath, thumbUrlFor } from '@/utils/imagePaths';
 
-/** Downscale image for a light PDF (JPEG ~0.72). */
-export async function lightPdfImageDataUrl(source: string | null | undefined): Promise<string | null> {
+export type LightPdfImageOptions = {
+  /** Prefer storage thumb (smaller). Default true for quote; false for catalogue. */
+  preferThumb?: boolean;
+  /** Max edge in px after downscale. Default 160; use ~900 for catalogue. */
+  maxEdge?: number;
+  /** JPEG quality 0–1. */
+  quality?: number;
+};
+
+/** Load + optionally downscale for PDF. Aspect ratio preserved for contain-fit later. */
+export async function lightPdfImageDataUrl(
+  source: string | null | undefined,
+  options: LightPdfImageOptions = {},
+): Promise<string | null> {
   if (!source) return null;
-  const preferred = thumbUrlFor(source) || source;
+  const preferThumb = options.preferThumb !== false;
+  const maxEdge = options.maxEdge ?? 160;
+  const quality = options.quality ?? 0.72;
+  const preferred = preferThumb ? thumbUrlFor(source) || source : source;
   const dataUrl = await getImageDataUrlByPath(preferred, { fallbackLogo: false });
-  if (!dataUrl) return null;
+  if (!dataUrl) {
+    // Thumb missing → try master once.
+    if (preferThumb && preferred !== source) {
+      return lightPdfImageDataUrl(source, { ...options, preferThumb: false });
+    }
+    return null;
+  }
 
   if (typeof Image === 'undefined' || typeof document === 'undefined') return dataUrl;
 
@@ -17,10 +40,11 @@ export async function lightPdfImageDataUrl(source: string | null | undefined): P
     const image = new Image();
     image.onload = () => {
       try {
-        const maxEdge = 160;
-        const scale = Math.min(1, maxEdge / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
-        const w = Math.max(1, Math.round((image.naturalWidth || 1) * scale));
-        const h = Math.max(1, Math.round((image.naturalHeight || 1) * scale));
+        const nw = image.naturalWidth || 1;
+        const nh = image.naturalHeight || 1;
+        const scale = Math.min(1, maxEdge / Math.max(nw, nh));
+        const w = Math.max(1, Math.round(nw * scale));
+        const h = Math.max(1, Math.round(nh * scale));
         const canvas = document.createElement('canvas');
         canvas.width = w;
         canvas.height = h;
@@ -32,7 +56,7 @@ export async function lightPdfImageDataUrl(source: string | null | undefined): P
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(image, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.72));
+        resolve(canvas.toDataURL('image/jpeg', quality));
       } catch {
         resolve(dataUrl);
       }

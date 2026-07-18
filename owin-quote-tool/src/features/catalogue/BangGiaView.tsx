@@ -254,7 +254,7 @@ function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
         {isProduct && (
           <td rowSpan={row.imageRowSpan} className="image-cell">
             <div className="bang-gia-image-frame">
-              {/* Thumb nhẹ cho xem trên web; Word/PDF export tự lấy ảnh riêng. */}
+              {/* fill + CSS contain 95% ô: scale tới khi chạm ngang/dọc. Thumb nhẹ; PDF/Word dùng master. */}
               <ProductThumb imagePath={row.imagePath} fill thumb />
             </div>
           </td>
