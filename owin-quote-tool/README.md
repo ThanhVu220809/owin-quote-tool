@@ -1,16 +1,18 @@
-# OWIN Quote Tool
+# OWIN Quote Tool — Dev notes
 
-Công cụ nội bộ React/Vite được deploy bằng GitHub Pages tại `saigonfox.online`.
+> Showcase & kiến trúc tổng quan: xem [README root monorepo](../README.md).
 
-## Kiến trúc
+Công cụ nội bộ React/Vite, production: [`saigonfox.online`](https://saigonfox.online).
 
-- Supabase Auth: đăng nhập người dùng.
-- Supabase Postgres: nguồn dữ liệu duy nhất cho sản phẩm, báo giá, suggestions, meta và tính nhôm.
-- Supabase Storage: ảnh sản phẩm/báo giá; app chỉ lưu URL CDN trong record.
-- Supabase Realtime: trình duyệt đang mở tự cập nhật khi máy khác sửa dữ liệu.
-- GitHub Actions/Pages: test, lint, build và deploy từ nhánh `main`.
+## Stack nhanh
 
-Form sản phẩm, báo giá và bảng tính nhôm tự lưu sau khoảng 1 giây, chỉ báo “đã lưu” sau khi Supabase xác nhận. App không lưu dữ liệu nghiệp vụ vào IndexedDB/localStorage; localStorage chỉ chứa phiên đăng nhập Supabase. Dữ liệu cũ đã được chuyển xong lên Supabase.
+- **Supabase Auth** — đăng nhập; signup public tắt
+- **Postgres** — source of truth (products, quotes, suggestions, app_data)
+- **Storage** — ảnh catalogue public URL; ảnh báo giá private
+- **Realtime** — multi-device sync
+- **GitHub Actions/Pages** — lint · test · build · deploy từ `main`
+
+Form chỉ ghi Supabase khi bấm **Lưu**. Không lưu data nghiệp vụ vào IndexedDB/localStorage.
 
 ## Chạy local
 
@@ -20,16 +22,12 @@ npm ci
 npm run dev
 ```
 
-Hai biến bắt buộc:
-
 ```text
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<public-anon-key>
 ```
 
-Không đặt `service_role`, Supabase PAT hoặc mật khẩu người dùng vào source/frontend.
-
-Production tắt đăng ký công khai. Tài khoản mới phải được quản trị viên tạo và xác nhận trong Supabase Auth; không ghi mật khẩu vào repository hay GitHub Actions.
+Không đặt `service_role`, PAT hoặc mật khẩu vào source/frontend.
 
 ## Kiểm tra
 
@@ -39,6 +37,15 @@ npm test
 npm run build
 ```
 
-Schema idempotent nằm tại `supabase/schema.sql`.
+Schema idempotent: `supabase/schema.sql`.  
+`review-screenshots/` đã ignore (có thể chứa data khách).
 
-Các file chụp màn hình/Word/PDF dùng kiểm tra thủ công phải để ngoài Git; `review-screenshots/` đã được ignore vì có thể chứa dữ liệu khách hàng.
+## Module quan trọng
+
+| Path | Việc |
+|---|---|
+| `src/types/models.ts` | Kiểu ProductRecord / QuoteRecord |
+| `src/lib/quote-engine/` | Tính SL, phụ kiện, tổng, làm tròn |
+| `src/features/export/` | Word / Excel / PDF |
+| `src/features/supabase/` | Auth, repos, Realtime, merge |
+| `src/lib/media/` | Resolve & pipeline ảnh |
