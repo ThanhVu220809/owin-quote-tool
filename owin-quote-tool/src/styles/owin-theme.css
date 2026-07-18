@@ -4480,49 +4480,13 @@ textarea.input:focus {
   }
 }
 
-/* ───────────── In PDF: chỉ hiện .preview-doc, khổ A4 ngang ───────────── */
-@page { size: A4 landscape; margin: 10mm; }
-
+/*
+ * Browser print is NOT used for Bảng giá / Báo giá anymore (PDF = file download).
+ * Ctrl+P / Print on those pages must not dump 170 pages of catalogue HTML.
+ * Aluminum estimator still has its own isolated print root + styles.
+ */
 @media print {
-  html,
-  body.printing-quote {
-    background: #fff;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  body.printing-quote .admin-shell > *:not(:has(.preview-doc)),
-  body.printing-quote .no-print { display: none !important; }
-
-  /* Ẩn tất cả, chỉ hiện khối preview đang chọn */
-  body.printing-quote * { visibility: hidden; }
-  body.printing-quote .preview-doc,
-  body.printing-quote .preview-doc * { visibility: visible; }
-  body.printing-quote .preview-doc,
-  body.printing-quote .quote-print-doc {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    margin: 0 !important;
-    box-shadow: none;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    opacity: 1 !important;
-    overflow: visible !important;
-    pointer-events: auto !important;
-  }
-  body.printing-quote .preview-doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .quote-print-doc {
-    font-size: 9pt;
-    margin-top: 0 !important;
-  }
-  .quote-print-doc table {
-    font-size: 8.5pt;
-  }
-
-  .no-print { display: none !important; }
+  .no-print,
   .tool-topnav,
   .admin-sidebar,
   .admin-header,
@@ -4530,59 +4494,18 @@ textarea.input:focus {
   .account-menu {
     display: none !important;
   }
-  .tool-shell,
-  .tool-content,
-  .admin-shell,
-  .admin-main,
-  .admin-content {
-    display: block;
-    padding: 0 !important;
-    margin: 0 !important;
-    min-height: 0;
-    max-width: none !important;
-    overflow: visible;
+
+  /* Bảng giá + báo giá: chặn in HTML — dùng nút PDF để tải file. */
+  .catalogue-page,
+  .bang-gia-doc,
+  .quote-workflow-page,
+  .quote-detail-page,
+  .quote-print-doc,
+  .preview-doc:not(.aluminum-print-document) {
+    display: none !important;
   }
-  .bang-gia-doc {
-    border: none;
-    padding: 0;
-    overflow: visible;
-  }
-  .bang-gia-table {
-    min-width: 0;
-    font-size: 9pt;
-  }
-  /* A thead is repeated automatically by Chromium. The document template lives in a
-     normal tbody so logo/title/column labels are printed exactly once on page 1. */
-  .bang-gia-table > thead {
-    display: table-row-group;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  .bang-gia-table th,
-  .bang-gia-table td {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .bang-gia-table .image-cell {
-    min-width: 24mm;
-    width: 18%;
-    padding: 2mm !important;
-  }
-  .bang-gia-image-frame {
-    max-width: 36mm;
-    min-height: 22mm;
-    max-height: 30mm;
-    aspect-ratio: 4 / 3;
-    padding: 1mm;
-  }
-  .bang-gia-table .image-cell .ph,
-  .bang-gia-image-frame img,
-  .bang-gia-image-frame .image-fit-fill {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    min-height: 0 !important;
-    object-fit: contain !important;
+
+  body.printing-quote {
+    /* Legacy class no longer used by quote/catalogue exporters. */
   }
 }

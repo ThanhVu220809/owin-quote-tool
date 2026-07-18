@@ -98,10 +98,13 @@ export function BangGiaView() {
     setExportingPdf(true);
     setExportError('');
     try {
+      // File download only — never window.print / browser "Save as PDF".
       const { exportBangGiaPdf } = await import('@/features/export/cataloguePdfExport');
-      await exportBangGiaPdf(shownRecords);
-    } catch {
-      setExportError('Không thể xuất bảng giá PDF. Vui lòng thử lại.');
+      const fileName = await exportBangGiaPdf(shownRecords);
+      if (!fileName) throw new Error('PDF rỗng');
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? `: ${error.message}` : '';
+      setExportError(`Không thể xuất bảng giá PDF${detail}. Dùng nút PDF (không in trình duyệt).`);
     } finally {
       setExportingPdf(false);
     }
@@ -151,10 +154,12 @@ export function BangGiaView() {
             </button>
             <button
               className="btn btn-primary"
+              type="button"
               disabled={shownRecords.length === 0 || exportingPdf}
               onClick={() => void exportPdf()}
+              title="Tải file PDF (không mở hộp thoại in)"
             >
-              <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingPdf ? '…' : 'PDF'}
+              <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingPdf ? 'Đang xuất…' : 'PDF'}
             </button>
           </div>
         </div>
