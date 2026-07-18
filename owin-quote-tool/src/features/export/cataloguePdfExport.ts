@@ -1,6 +1,7 @@
 /**
- * Light catalogue PDF export — same row model as Word/Excel, file download (no print).
- * Compact landscape table + small product thumbnails to keep the file lean.
+ * Light catalogue PDF — file download (no print).
+ * Layout matches Word: STT / Hình / Tổng vMerge across product+accessories;
+ * logo+title+column header once at the top; category row only when loại cửa changes.
  */
 
 import { jsPDF } from 'jspdf';
@@ -20,6 +21,19 @@ const FONT = PDF_FONT_FAMILY;
 /** Column fractions (sum = 1). KL wide enough for max 3 decimals on one line. */
 const COL_FRACS = [0.035, 0.105, 0.30, 0.045, 0.055, 0.055, 0.10, 0.10, 0.10, 0.105] as const;
 const HEADERS = ['STT', 'Hình', 'Mô tả', 'DV', 'Rộng', 'Cao', 'KL', 'Đơn giá', 'Thành tiền', 'Tổng'] as const;
+
+type ProductBlock = {
+  kind: 'product';
+  product: CatalogueBlockRow;
+  lines: CatalogueBlockRow[]; // product + accessories + extras
+};
+
+type CategoryBlock = {
+  kind: 'category';
+  row: CatalogueBlockRow;
+};
+
+type PdfBlock = ProductBlock | CategoryBlock;
 
 function money(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value) || value === 0) return '';
@@ -55,13 +69,7 @@ function rowHeightMm(doc: jsPDF, row: CatalogueBlockRow, descWidth: number): num
   return Math.max(5.5, textH);
 }
 
-function drawCellBorder(
-  doc: jsPDF,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-): void {
+function drawCellBorder(doc: jsPDF, x: number, y: number, w: number, h: number): void {
   doc.setDrawColor(40, 56, 70);
   doc.setLineWidth(0.15);
   doc.rect(x, y, w, h);
@@ -72,8 +80,54 @@ function fillRect(doc: jsPDF, x: number, y: number, w: number, h: number, rgb: [
   doc.rect(x, y, w, h, 'F');
 }
 
+/** Same block model as Word / web: category alone; product + its accessories together. */
+function groupCatalogueBlocks(rows: CatalogueBlockRow[]): PdfBlock[] {
+  const blocks: PdfBlock[] = [];
+  let current: ProductBlock | null = null;
+
+  for (const row of rows) {
+    if (row.rowType === 'category') {
+      if (current) {
+        blocks.push(current);
+        current = null;
+      }
+      blocks.push({ kind: 'category', row });
+      continue;
+    }
+    if (row.rowType === 'product') {
+      if (current) blocks.push(current);
+      current = { kind: 'product', product: row, lines: [row] };
+      continue;
+    }
+    // accessory / extraAccessory
+    if (!current) {
+      current = { kind: 'product', product: row, lines: [row] };
+    } else {
+      current.lines.push(row);
+    }
+  }
+  if (current) blocks.push(current);
+  return blocks;
+}
+
+function lineCells(row: CatalogueBlockRow): string[] {
+  return [
+    row.stt,
+    '',
+    row.description,
+    row.unit,
+    row.width || (row.rowType !== 'product' ? '—' : ''),
+    row.height || (row.rowType !== 'product' ? '—' : ''),
+    row.weight,
+    money(row.unitPriceVnd),
+    money(row.amountVnd),
+    money(row.completedTotalVnd),
+  ];
+}
+
 export async function exportBangGiaPdf(products: ProductRecord[]): Promise<string> {
   const rows = buildCatalogueBlockRows(products);
+  const blocks = groupCatalogueBlocks(rows);
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
   await ensureVietnamesePdfFonts(doc);
   doc.setFont(FONT, 'normal');
@@ -85,31 +139,28 @@ export async function exportBangGiaPdf(products: ProductRecord[]): Promise<strin
   const xs = colXs(widths, MARGIN);
   const descWidth = widths[2]!;
 
-  // Preload small images for product rows only (shared cache by path).
   const imageCache = new Map<string, string | null>();
-  for (const row of rows) {
-    if (row.rowType !== 'product' || !row.imagePath || imageCache.has(row.imagePath)) continue;
-    imageCache.set(row.imagePath, await lightPdfImageDataUrl(row.imagePath));
+  for (const block of blocks) {
+    if (block.kind !== 'product') continue;
+    const path = block.product.imagePath;
+    if (!path || imageCache.has(path)) continue;
+    imageCache.set(path, await lightPdfImageDataUrl(path));
   }
 
   let y = MARGIN;
+  let headerDrawn = false;
 
-  const ensureSpace = (need: number) => {
-    if (y + need <= pageH - MARGIN) return;
-    doc.addPage();
-    y = MARGIN;
-    drawHeaderBand();
-  };
+  /** Word-style: logo + title + column headers only once at the document start. */
+  const drawDocumentHeaderOnce = () => {
+    if (headerDrawn) return;
+    headerDrawn = true;
 
-  const drawHeaderBand = () => {
-    // Company
     doc.setFont(FONT, 'bold');
     doc.setFontSize(11);
     doc.setTextColor(14, 47, 68);
     doc.text('HOÀNG ANH OWIN', pageW / 2, y + 4.5, { align: 'center' });
     y += 7;
 
-    // Title bar
     fillRect(doc, MARGIN, y, usable, 8, [75, 96, 120]);
     doc.setFont(FONT, 'bold');
     doc.setFontSize(10);
@@ -117,7 +168,6 @@ export async function exportBangGiaPdf(products: ProductRecord[]): Promise<strin
     doc.text(TITLE, pageW / 2, y + 5.3, { align: 'center' });
     y += 9;
 
-    // Column headers
     const headH = 7;
     fillRect(doc, MARGIN, y, usable, headH, [14, 47, 68]);
     doc.setFont(FONT, 'bold');
@@ -128,7 +178,6 @@ export async function exportBangGiaPdf(products: ProductRecord[]): Promise<strin
       doc.text(label, cx, y + 4.5, { align: 'center' });
     });
     drawCellBorder(doc, MARGIN, y, usable, headH);
-    // vertical grid for header
     let vx = MARGIN;
     for (let i = 0; i < widths.length - 1; i += 1) {
       vx += widths[i]!;
@@ -138,109 +187,122 @@ export async function exportBangGiaPdf(products: ProductRecord[]): Promise<strin
     doc.setTextColor(20, 20, 20);
   };
 
-  drawHeaderBand();
+  const ensureSpace = (need: number) => {
+    if (y + need <= pageH - MARGIN) return;
+    doc.addPage();
+    y = MARGIN;
+    // No repeated logo/title/header on later pages (matches Word bang-gia).
+  };
 
-  if (rows.length === 0) {
+  drawDocumentHeaderOnce();
+
+  if (blocks.length === 0) {
     doc.setFont(FONT, 'normal');
     doc.setFontSize(10);
     doc.text('Chưa có sản phẩm.', MARGIN, y + 8);
   }
 
-  for (const row of rows) {
-    const h = rowHeightMm(doc, row, descWidth);
-    ensureSpace(h);
-
-    if (row.rowType === 'category') {
+  for (const block of blocks) {
+    if (block.kind === 'category') {
+      // Category heading only when loại cửa changes (from buildCatalogueBlockRows).
+      const h = 7;
+      ensureSpace(h);
       fillRect(doc, MARGIN, y, usable, h, [217, 226, 243]);
       drawCellBorder(doc, MARGIN, y, usable, h);
       doc.setFont(FONT, 'bold');
       doc.setFontSize(8.5);
       doc.setTextColor(14, 47, 68);
-      doc.text(row.categoryName || row.description, MARGIN + 2, y + h / 2 + 1.2);
+      doc.text(block.row.categoryName || block.row.description, MARGIN + 2, y + h / 2 + 1.2);
       y += h;
       continue;
     }
 
-    // Background for product vs accessory
-    if (row.rowType === 'product') {
-      fillRect(doc, MARGIN, y, usable, h, [255, 255, 255]);
-    } else {
-      fillRect(doc, MARGIN, y, usable, h, [250, 251, 252]);
-    }
+    const lineHeights = block.lines.map((line) => rowHeightMm(doc, line, descWidth));
+    const blockH = lineHeights.reduce((sum, h) => sum + h, 0);
+    ensureSpace(blockH);
 
-    // Outer + vertical grid
-    drawCellBorder(doc, MARGIN, y, usable, h);
-    let vx = MARGIN;
-    for (let i = 0; i < widths.length - 1; i += 1) {
-      vx += widths[i]!;
-      doc.line(vx, y, vx, y + h);
-    }
+    const blockTop = y;
+    let rowY = y;
 
-    const cells: string[] = [
-      row.stt,
-      '',
-      row.description,
-      row.unit,
-      row.width || (row.rowType !== 'product' ? '—' : ''),
-      row.height || (row.rowType !== 'product' ? '—' : ''),
-      row.weight,
-      money(row.unitPriceVnd),
-      money(row.amountVnd),
-      money(row.completedTotalVnd),
-    ];
+    // Draw each content line (mô tả + DV…thành tiền). STT/Hình/Tổng drawn as one tall cell after.
+    block.lines.forEach((line, lineIndex) => {
+      const h = lineHeights[lineIndex]!;
+      const isProduct = line.rowType === 'product';
+      const bg: [number, number, number] = isProduct ? [255, 255, 255] : [250, 251, 252];
 
-    doc.setFont(FONT, row.rowType === 'product' ? 'bold' : 'normal');
-    doc.setFontSize(7.5);
+      // Mid columns only (index 2..8) — skip STT(0), Hình(1), Tổng(9) for per-row boxes.
+      for (let col = 2; col <= 8; col += 1) {
+        fillRect(doc, xs[col]!, rowY, widths[col]!, h, bg);
+        drawCellBorder(doc, xs[col]!, rowY, widths[col]!, h);
+      }
+
+      const cells = lineCells(line);
+      doc.setFont(FONT, isProduct ? 'bold' : 'normal');
+      doc.setFontSize(7.2);
+      doc.setTextColor(20, 20, 20);
+
+      // Description
+      const descLines = doc.splitTextToSize(cells[2] || ' ', Math.max(8, descWidth - 2)) as string[];
+      let ty = rowY + 3.2;
+      for (const text of descLines) {
+        if (ty > rowY + h - 1.5) break;
+        doc.text(text, xs[2]! + 1, ty);
+        ty += 3.2;
+      }
+
+      doc.setFont(FONT, 'normal');
+      doc.setFontSize(7.5);
+      for (const col of [3, 4, 5, 6]) {
+        const text = cells[col] || '';
+        if (!text) continue;
+        doc.text(text, xs[col]! + widths[col]! / 2, rowY + h / 2 + 1, { align: 'center' });
+      }
+      for (const col of [7, 8]) {
+        const text = cells[col] || '';
+        if (!text) continue;
+        doc.text(text, xs[col]! + widths[col]! - 1.2, rowY + h / 2 + 1, { align: 'right' });
+      }
+
+      rowY += h;
+    });
+
+    // ── Word vMerge: STT + Hình + Tổng span the whole product block ──
+    fillRect(doc, xs[0]!, blockTop, widths[0]!, blockH, [255, 255, 255]);
+    drawCellBorder(doc, xs[0]!, blockTop, widths[0]!, blockH);
+    fillRect(doc, xs[1]!, blockTop, widths[1]!, blockH, [250, 251, 252]);
+    drawCellBorder(doc, xs[1]!, blockTop, widths[1]!, blockH);
+    fillRect(doc, xs[9]!, blockTop, widths[9]!, blockH, [255, 255, 255]);
+    drawCellBorder(doc, xs[9]!, blockTop, widths[9]!, blockH);
+
+    doc.setFont(FONT, 'bold');
+    doc.setFontSize(8);
     doc.setTextColor(20, 20, 20);
-
-    // STT
-    if (cells[0]) {
-      doc.text(cells[0], xs[0]! + widths[0]! / 2, y + h / 2 + 1, { align: 'center' });
+    if (block.product.stt) {
+      doc.text(block.product.stt, xs[0]! + widths[0]! / 2, blockTop + blockH / 2 + 1, { align: 'center' });
     }
 
-    // Image (product only)
-    if (row.rowType === 'product' && row.imagePath) {
-      const img = imageCache.get(row.imagePath);
-      if (img) {
-        try {
-          const format = img.startsWith('data:image/jpeg') || img.startsWith('data:image/jpg') ? 'JPEG' : 'PNG';
-          const ix = xs[1]! + (widths[1]! - IMG_W) / 2;
-          const iy = y + (h - IMG_H) / 2;
-          doc.addImage(img, format, ix, iy, IMG_W, IMG_H, undefined, 'FAST');
-        } catch {
-          // skip broken image
-        }
+    const img = block.product.imagePath ? imageCache.get(block.product.imagePath) : null;
+    if (img) {
+      try {
+        const format = img.startsWith('data:image/jpeg') || img.startsWith('data:image/jpg') ? 'JPEG' : 'PNG';
+        const ix = xs[1]! + (widths[1]! - IMG_W) / 2;
+        const iy = blockTop + (blockH - IMG_H) / 2;
+        doc.addImage(img, format, ix, iy, IMG_W, IMG_H, undefined, 'FAST');
+      } catch {
+        // skip
       }
     }
 
-    // Description (wrapped)
-    doc.setFont(FONT, row.rowType === 'product' ? 'bold' : 'normal');
-    doc.setFontSize(7.2);
-    const descLines = doc.splitTextToSize(cells[2] || ' ', Math.max(8, descWidth - 2)) as string[];
-    let ty = y + 3.2;
-    for (const line of descLines) {
-      if (ty > y + h - 1.5) break;
-      doc.text(line, xs[2]! + 1, ty);
-      ty += 3.2;
+    const totalText = money(block.product.completedTotalVnd);
+    if (totalText) {
+      doc.setFont(FONT, 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(180, 100, 20);
+      doc.text(totalText, xs[9]! + widths[9]! - 1.2, blockTop + blockH / 2 + 1, { align: 'right' });
+      doc.setTextColor(20, 20, 20);
     }
 
-    // Remaining columns
-    const centerCols = [3, 4, 5, 6];
-    const rightCols = [7, 8, 9];
-    doc.setFont(FONT, 'normal');
-    doc.setFontSize(7.5);
-    for (const index of centerCols) {
-      const text = cells[index] || '';
-      if (!text) continue;
-      doc.text(text, xs[index]! + widths[index]! / 2, y + h / 2 + 1, { align: 'center' });
-    }
-    for (const index of rightCols) {
-      const text = cells[index] || '';
-      if (!text) continue;
-      doc.text(text, xs[index]! + widths[index]! - 1.2, y + h / 2 + 1, { align: 'right' });
-    }
-
-    y += h;
+    y = blockTop + blockH;
   }
 
   const fileName = `Bang_gia_OWIN_${new Date().toISOString().slice(0, 10)}.pdf`;
