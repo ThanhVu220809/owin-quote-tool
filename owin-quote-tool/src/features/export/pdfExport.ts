@@ -1,39 +1,24 @@
 /**
- * XUẤT PDF — in trực tiếp khối preview A4 (window.print → "Save as PDF").
- * App thuần client nên không dùng được LibreOffice/Word; in-to-PDF cho fidelity cao nhất,
- * chữ chọn được, không cần dependency. CSS in nằm trong owin-theme.css (@media print).
- *
- * Quy ước: thêm class 'printing-quote' lên <body>; CSS chỉ hiện .preview-doc khi in.
+ * PDF export entry points — always download a .pdf file (never window.print).
+ * Catalogue + quote both use jsPDF with shared Vietnamese fonts.
  */
-export async function printPreviewDocument(): Promise<void> {
-  const body = document.body;
-  body.classList.add('printing-quote');
 
-  const cleanup = () => {
-    body.classList.remove('printing-quote');
-    window.removeEventListener('afterprint', cleanup);
-  };
-  window.addEventListener('afterprint', cleanup);
+import type { CalculatedQuote, ProductRecord } from '@/types/models';
 
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < 5_000) {
-    const images = Array.from(document.querySelectorAll<HTMLImageElement>('.preview-doc img'));
-    const ready = images.every((image) => image.dataset.imageLoading !== 'true' && image.complete);
-    if (ready) break;
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+/** @deprecated Prefer exportQuotePdf; kept for older imports. */
+export async function exportQuotePDF(
+  quote?: CalculatedQuote,
+  quoteCode?: string,
+  products: ProductRecord[] = [],
+): Promise<string> {
+  if (!quote || !quoteCode) {
+    throw new Error('Xuất PDF báo giá cần dữ liệu quote — không còn dùng in trình duyệt.');
   }
-
-  await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
-  try {
-    window.print();
-  } catch (error) {
-    cleanup();
-    throw error;
-  }
-  // Dự phòng nếu trình duyệt không bắn afterprint; để lâu để Chrome kịp dựng preview.
-  window.setTimeout(cleanup, 30_000);
+  const { exportQuotePdf } = await import('@/features/export/quotePdfExport');
+  return exportQuotePdf(quote, quoteCode, products);
 }
 
-export function exportQuotePDF(): Promise<void> {
-  return printPreviewDocument();
+/** @deprecated Print preview removed — use catalogue PDF file export. */
+export async function printPreviewDocument(): Promise<void> {
+  throw new Error('In trình duyệt đã tắt. Dùng nút PDF để tải file .pdf.');
 }

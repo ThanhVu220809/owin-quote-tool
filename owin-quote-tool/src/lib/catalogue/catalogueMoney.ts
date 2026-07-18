@@ -38,10 +38,24 @@ export function parseSizeToMeters(sizeText: string | null | undefined): { width:
   return { width: 0, height: 0 };
 }
 
+/**
+ * Format dimension/weight for catalogue display.
+ * - Rộng/Cao: max 2 decimals
+ * - KL (khối lượng): max 3 decimals
+ * Trailing zeros are stripped (2.700 → "2,7"; 2.511 → "2,511").
+ */
 export function formatCatalogueDecimal(value: number, digits = 2): string {
   if (!Number.isFinite(value) || value === 0) return '';
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(digits).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
+  const factor = 10 ** Math.max(0, digits);
+  // Round half-up to the allowed precision before display.
+  const rounded = Math.round((Math.abs(value) + Number.EPSILON) * factor) / factor;
+  const signed = value < 0 ? -rounded : rounded;
+  if (Number.isInteger(signed)) return String(signed);
+  return signed
+    .toFixed(digits)
+    .replace(/0+$/, '')
+    .replace(/\.$/, '')
+    .replace('.', ',');
 }
 
 function parseJsonMaybe<T>(value: unknown, fallback: T): T {
@@ -56,6 +70,7 @@ function parseJsonMaybe<T>(value: unknown, fallback: T): T {
 
 export function getCatalogueLineWeight(unit: string, width: number, height: number, quantity = 1): number {
   const normalizedUnit = normalizeUnit(unit);
+  // Full precision for money; display truncates via formatCatalogueDecimal (W/H ≤2, KL ≤3).
   if (normalizedUnit === 'M2') return width > 0 && height > 0 ? width * height * quantity : quantity;
   if (normalizedUnit === 'METER') return width + height > 0 ? (width + height) * quantity : quantity;
   return quantity;

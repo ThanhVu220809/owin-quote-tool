@@ -26,15 +26,15 @@ export async function exportBangGiaExcel(products: ProductRecord[]): Promise<voi
 
   sheet.columns = [
     { width: 6 },
-    { width: 18 },
-    { width: 48 },
+    { width: 16 },
+    { width: 44 },
     { width: 7 },
-    { width: 8 },
-    { width: 8 },
     { width: 9 },
-    { width: 16 },
-    { width: 16 },
-    { width: 16 },
+    { width: 9 },
+    { width: 12 },
+    { width: 14 },
+    { width: 14 },
+    { width: 14 },
   ];
 
   const companyRow = sheet.addRow(['HOÀNG ANH OWIN', '', 'Tiên Điền - Nghi Xuân - Hà Tĩnh · 0799040616']);

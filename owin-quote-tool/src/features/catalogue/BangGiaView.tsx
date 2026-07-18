@@ -1,8 +1,7 @@
-import { BookOpen, FileDown } from 'lucide-react';
+import { FileDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useProducts } from '@/features/products/useProducts';
 import { ProductThumb } from '@/features/products/ProductThumb';
-import { printPreviewDocument } from '@/features/export/pdfExport';
 import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue/catalogueRows';
 import { formatVND } from '@/utils/format';
 
@@ -25,19 +24,20 @@ export function BangGiaView() {
   const { productRecords, loading, error: productsError, retry } = useProducts();
   const [exporting, setExporting] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [exportError, setExportError] = useState('');
-  // In theo loại cửa: 'all' = tất cả (như hiện tại), hoặc 1 danh mục cụ thể.
-  const [printCategory, setPrintCategory] = useState('all');
+  // Xuất theo loại cửa: 'all' = tất cả, hoặc 1 danh mục cụ thể.
+  const [exportCategory, setExportCategory] = useState('all');
   const categories = useMemo(
     () => Array.from(new Set(productRecords.map((p) => p.category).filter(Boolean))),
     [productRecords],
   );
   const shownRecords = useMemo(
-    () => (printCategory === 'all' ? productRecords : productRecords.filter((p) => p.category === printCategory)),
-    [productRecords, printCategory],
+    () => (exportCategory === 'all' ? productRecords : productRecords.filter((p) => p.category === exportCategory)),
+    [productRecords, exportCategory],
   );
   const rows = useMemo(() => buildCatalogueBlockRows(shownRecords), [shownRecords]);
-  // Group so category stays with first product and accessories stay with product for print keep-together.
+  // Group so category stays with first product and accessories stay with product.
   const blocks = useMemo(() => {
     const out: CatalogueBlockRow[][] = [];
     let current: CatalogueBlockRow[] | null = null;
@@ -94,12 +94,16 @@ export function BangGiaView() {
     }
   };
 
-  const printCatalogue = async () => {
+  const exportPdf = async () => {
+    setExportingPdf(true);
     setExportError('');
     try {
-      await printPreviewDocument();
+      const { exportBangGiaPdf } = await import('@/features/export/cataloguePdfExport');
+      await exportBangGiaPdf(shownRecords);
     } catch {
-      setExportError('Không thể mở chế độ In/PDF. Vui lòng thử lại.');
+      setExportError('Không thể xuất bảng giá PDF. Vui lòng thử lại.');
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -111,18 +115,18 @@ export function BangGiaView() {
           <p className="app-subtitle">
             {loading
               ? 'Đang tải…'
-              : printCategory === 'all'
+              : exportCategory === 'all'
                 ? `${productRecords.length} sản phẩm`
-                : `${shownRecords.length} SP · ${printCategory}`}
+                : `${shownRecords.length} SP · ${exportCategory}`}
           </p>
         </div>
         <div className="catalogue-toolbar-actions">
           <label className="catalogue-filter-label">
-            <span>In theo</span>
+            <span>Xuất theo</span>
             <select
               className="input"
-              value={printCategory}
-              onChange={(e) => setPrintCategory(e.target.value)}
+              value={exportCategory}
+              onChange={(e) => setExportCategory(e.target.value)}
             >
               <option value="all">Tất cả</option>
               {categories.map((c) => (
@@ -145,8 +149,12 @@ export function BangGiaView() {
             >
               <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingExcel ? '…' : 'Excel'}
             </button>
-            <button className="btn btn-primary" onClick={() => void printCatalogue()}>
-              <BookOpen size={17} style={{ verticalAlign: '-3px' }} /> In / PDF
+            <button
+              className="btn btn-primary"
+              disabled={shownRecords.length === 0 || exportingPdf}
+              onClick={() => void exportPdf()}
+            >
+              <FileDown size={17} style={{ verticalAlign: '-3px' }} /> {exportingPdf ? '…' : 'PDF'}
             </button>
           </div>
         </div>
@@ -166,13 +174,13 @@ export function BangGiaView() {
       <div className="preview-doc bang-gia-doc">
         <table className="bang-gia-table">
           <colgroup>
+            <col style={{ width: '3%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '26%' }} />
             <col style={{ width: '3.5%' }} />
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '29%' }} />
-            <col style={{ width: '3.5%' }} />
-            <col style={{ width: '4.5%' }} />
-            <col style={{ width: '4%' }} />
-            <col style={{ width: '4.5%' }} />
+            <col style={{ width: '5%' }} />
+            <col style={{ width: '5%' }} />
+            <col style={{ width: '8.5%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '11%' }} />
@@ -241,16 +249,16 @@ function CatalogueRow({ row }: { row: CatalogueBlockRow }) {
         {isProduct && (
           <td rowSpan={row.imageRowSpan} className="image-cell">
             <div className="bang-gia-image-frame">
-              {/* Master (không thumb) để ảnh bảng giá to và nét khi in/xem. */}
-              <ProductThumb imagePath={row.imagePath} fill thumb={false} />
+              {/* Thumb nhẹ cho xem trên web; Word/PDF export tự lấy ảnh riêng. */}
+              <ProductThumb imagePath={row.imagePath} fill thumb />
             </div>
           </td>
         )}
       <td className="description-cell"><Lines text={row.description} /></td>
-      <td>{row.unit}</td>
-      <td>{row.width || (row.rowType !== 'product' ? '—' : '')}</td>
-      <td>{row.height || (row.rowType !== 'product' ? '—' : '')}</td>
-      <td>{row.weight}</td>
+      <td className="unit-cell">{row.unit}</td>
+      <td className="dim-cell">{row.width || (row.rowType !== 'product' ? '—' : '')}</td>
+      <td className="dim-cell">{row.height || (row.rowType !== 'product' ? '—' : '')}</td>
+      <td className="kl-cell">{row.weight}</td>
       <td className="num"><Money value={row.unitPriceVnd} /></td>
       <td className="num"><Money value={row.amountVnd} /></td>
       {isProduct && (

@@ -204,14 +204,14 @@ describe('reference Word catalogue template renderer', () => {
       cx: Number(m[1]),
       cy: Number(m[2]),
     }));
-    // Wider image column (~5.6/26 share) → larger max cx than the old 1.68M box.
-    const catalogueMaxCx = 1_921_459;
+    // Image column share after widening KL; contain-fit max width in EMU.
+    const catalogueMaxCx = 1_810_512;
     for (const e of extents) {
       expect(e.cx).toBeLessThanOrEqual(catalogueMaxCx);
       expect(e.cy).toBeLessThanOrEqual(150 * 36_000); // page-safe height cap
     }
-    // At least one product photo fills the wider cell (contain-fit hits width or height).
-    expect(extents.some((e) => e.cx >= 1_800_000 || e.cy >= 1_800_000)).toBe(true);
+    // At least one product photo fills the cell (contain-fit hits width or height).
+    expect(extents.some((e) => e.cx >= 1_700_000 || e.cy >= 1_700_000)).toBe(true);
     expect(xml).toContain('<w:trHeight w:val="1530" w:hRule="atLeast"/>');
     expect(xml).toContain('<w:trHeight w:val="340" w:hRule="atLeast"/>');
     // Logo/title/column template must appear once only; no Word repeat-header marker remains.
@@ -239,10 +239,11 @@ describe('reference Word catalogue template renderer', () => {
   it('protects catalogue Word export as read-only with edit password 222333', async () => {
     expect(CATALOGUE_WORD_EDIT_PASSWORD).toBe('222333');
 
+    // Fixed salt — hash must match the Microsoft/PHPWord Word97+SHA-1 verifier.
     const salt = new Uint8Array(16).fill(7);
-    const hash = await computeWordProtectionHash(CATALOGUE_WORD_EDIT_PASSWORD, salt, 1);
-    expect(hash).toMatch(/^[A-Za-z0-9+/]+=*$/);
-    expect(hash.length).toBeGreaterThan(40);
+    const hash = await computeWordProtectionHash(CATALOGUE_WORD_EDIT_PASSWORD, salt, 1000);
+    // Golden value from independent PHPWord-compatible port (SHA-1 base64).
+    expect(hash).toBe('JhJqm0E2oDqaG5fU1Wga8rBpQd4=');
 
     const zip = new PizZip(readFileSync(resolve(DIR, 'Template_Bang_Gia.docx')));
     await applyCatalogueReadOnlyProtection(zip, CATALOGUE_WORD_EDIT_PASSWORD);
@@ -250,11 +251,15 @@ describe('reference Word catalogue template renderer', () => {
 
     expect(settings).toContain('w:documentProtection');
     expect(settings).toContain('w:edit="readOnly"');
+    expect(settings).toContain('w:formatting="1"');
     expect(settings).toContain('w:enforcement="1"');
-    expect(settings).toContain('w:cryptAlgorithmSid="14"');
+    expect(settings).toContain('w:cryptProviderType="rsaFull"');
+    expect(settings).toContain('w:cryptAlgorithmSid="4"');
     expect(settings).toContain('w:cryptSpinCount="100000"');
-    expect(settings).toMatch(/w:hashValue="[^"]+"/);
-    expect(settings).toMatch(/w:saltValue="[^"]+"/);
+    // Word verifies w:hash / w:salt (not ISO-only hashValue/saltValue).
+    expect(settings).toMatch(/w:hash="[^"]+"/);
+    expect(settings).toMatch(/w:salt="[^"]+"/);
+    expect(settings).not.toContain('w:hashValue=');
     // Password itself must not appear in cleartext inside the package.
     expect(settings).not.toContain('222333');
   });

@@ -33,8 +33,8 @@ const MM_TO_EMU = 36000;
 const DXA_TO_EMU = 635;
 const CATALOGUE_TEMPLATE_TABLE_WIDTH = 14515;
 const CATALOGUE_HEADER_TABLE_WIDTH = CATALOGUE_TEMPLATE_TABLE_WIDTH;
-/* Cột hình rộng hơn (~22%) để ảnh SP không bé xíu trong Word. */
-const CATALOGUE_TABLE_WIDTHS = [0.85, 5.6, 6.75, 0.9, 1.1, 0.95, 1.05, 2.65, 2.65, 2.65];
+/* KL rộng đủ cho "12,345" (max 3 thập phân) trên 1 dòng; Rộng/Cao max 2 số lẻ. */
+const CATALOGUE_TABLE_WIDTHS = [0.8, 5.2, 6.1, 0.85, 1.15, 1.15, 2.0, 2.5, 2.5, 2.5];
 const CATALOGUE_COLUMN_WIDTHS_DXA = scaleWidthsToTarget(
   CATALOGUE_TABLE_WIDTHS,
   CATALOGUE_TEMPLATE_TABLE_WIDTH,
@@ -1247,7 +1247,34 @@ export async function buildBangGiaWordData(products: ProductRecord[]) {
 /** Password required in Word to stop read-only / edit the catalogue export. */
 export const CATALOGUE_WORD_EDIT_PASSWORD = '222333';
 
+/** Word's default Restrict Editing spin count (matches PHPWord / MS Word). */
 const WORD_PROTECT_SPIN_COUNT = 100_000;
+/** cryptAlgorithmSid 4 = SHA-1 — widely accepted by Word for documentProtection. */
+const WORD_PROTECT_ALGORITHM_SID = 4;
+const WORD_PASSWORD_MAX_LENGTH = 15;
+
+// Word 97 / Open XML password verifier constants (MS-OFFCRYPTO / PHPWord PasswordEncoder).
+const WORD_INITIAL_CODE_ARRAY = [
+  0xe1f0, 0x1d0f, 0xcc9c, 0x84c0, 0x110c, 0x0e10, 0xf1ce, 0x313e,
+  0x1872, 0xe139, 0xd40f, 0x84f9, 0x280c, 0xa96a, 0x4ec3,
+] as const;
+const WORD_ENCRYPTION_MATRIX: readonly (readonly number[])[] = [
+  [0xaefc, 0x4dd9, 0x9bb2, 0x2745, 0x4e8a, 0x9d14, 0x2a09],
+  [0x7b61, 0xf6c2, 0xfda5, 0xeb6b, 0xc6f7, 0x9dcf, 0x2bbf],
+  [0x4563, 0x8ac6, 0x05ad, 0x0b5a, 0x16b4, 0x2d68, 0x5ad0],
+  [0x0375, 0x06ea, 0x0dd4, 0x1ba8, 0x3750, 0x6ea0, 0xdd40],
+  [0xd849, 0xa0b3, 0x5147, 0xa28e, 0x553d, 0xaa7a, 0x44d5],
+  [0x6f45, 0xde8a, 0xad35, 0x4a4b, 0x9496, 0x390d, 0x721a],
+  [0xeb23, 0xc667, 0x9cef, 0x29ff, 0x53fe, 0xa7fc, 0x5fd9],
+  [0x47d3, 0x8fa6, 0x0f6d, 0x1eda, 0x3db4, 0x7b68, 0xf6d0],
+  [0xb861, 0x60e3, 0xc1c6, 0x93ad, 0x377b, 0x6ef6, 0xddec],
+  [0x45a0, 0x8b40, 0x06a1, 0x0d42, 0x1a84, 0x3508, 0x6a10],
+  [0xaa51, 0x4483, 0x8906, 0x022d, 0x045a, 0x08b4, 0x1168],
+  [0x76b4, 0xed68, 0xcaf1, 0x85c3, 0x1ba7, 0x374e, 0x6e9c],
+  [0x3730, 0x6e60, 0xdcc0, 0xa9a1, 0x4363, 0x86c6, 0x1dad],
+  [0x3331, 0x6662, 0xccc4, 0x89a9, 0x0373, 0x06e6, 0x0dcc],
+  [0x1021, 0x2042, 0x4084, 0x8108, 0x1231, 0x2462, 0x48c4],
+];
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -1267,26 +1294,83 @@ function utf16LeBytes(text: string): Uint8Array {
   return out;
 }
 
-async function sha512Bytes(data: Uint8Array): Promise<Uint8Array> {
-  const digest = await crypto.subtle.digest('SHA-512', data as BufferSource);
+function toInt32(value: number): number {
+  return value | 0;
+}
+
+/**
+ * Word 97-style password key (high/low order words + encryption matrix).
+ * Port of PHPWord Shared\\Microsoft\\PasswordEncoder::buildCombinedKey.
+ */
+function buildWordCombinedKey(byteChars: number[]): number {
+  const length = byteChars.length;
+  let highOrderWord = WORD_INITIAL_CODE_ARRAY[length - 1] ?? 0;
+
+  for (let index = 0; index < length; index += 1) {
+    const matrixRow = WORD_ENCRYPTION_MATRIX[WORD_PASSWORD_MAX_LENGTH - length + index];
+    if (!matrixRow) continue;
+    const ch = byteChars[index] ?? 0;
+    for (let bit = 0; bit < 7; bit += 1) {
+      if ((ch & (0x0001 << bit)) !== 0) {
+        highOrderWord ^= matrixRow[bit] ?? 0;
+      }
+    }
+  }
+
+  let lowOrderWord = 0;
+  for (let index = length - 1; index >= 0; index -= 1) {
+    lowOrderWord = ((((lowOrderWord >> 14) & 0x0001) | ((lowOrderWord << 1) & 0x7fff))
+      ^ (byteChars[index] ?? 0));
+  }
+  lowOrderWord = ((((lowOrderWord >> 14) & 0x0001) | ((lowOrderWord << 1) & 0x7fff))
+    ^ length
+    ^ 0xce4b);
+
+  return toInt32((highOrderWord << 16) + lowOrderWord);
+}
+
+/**
+ * Transform password to the UCS-2LE key Word hashes (not the raw password).
+ * @see https://blogs.msdn.microsoft.com/vsod/2010/04/05/how-to-set-the-editing-restrictions-in-word-using-open-xml-sdk-2-0/
+ */
+export function transformWordProtectionPassword(password: string): Uint8Array {
+  const truncated = Array.from(password).slice(0, WORD_PASSWORD_MAX_LENGTH).join('');
+  const utf16 = utf16LeBytes(truncated);
+  const byteChars: number[] = [];
+  for (let index = 0; index < truncated.length; index += 1) {
+    const low = utf16[index * 2] ?? 0;
+    const high = utf16[index * 2 + 1] ?? 0;
+    byteChars.push(low !== 0 ? low : high);
+  }
+  const combinedKey = buildWordCombinedKey(byteChars);
+  // Unsigned 32-bit hex, then reverse byte pairs (PHPWord).
+  const hex = (combinedKey >>> 0).toString(16).toUpperCase().padStart(8, '0');
+  const reversedHex = hex[6]! + hex[7]! + hex[4]! + hex[5]! + hex[2]! + hex[3]! + hex[0]! + hex[1]!;
+  return utf16LeBytes(reversedHex);
+}
+
+async function sha1Bytes(data: Uint8Array): Promise<Uint8Array> {
+  const digest = await crypto.subtle.digest('SHA-1', data as BufferSource);
   return new Uint8Array(digest);
 }
 
 /**
- * OOXML document-protection password hash (ECMA-376 / MS-OFFCRYPTO):
- * H0 = SHA-512(salt + UTF-16LE password); then spinCount rounds of
- * Hn = SHA-512(H_{n-1} + LE32(n-1)).
+ * Word documentProtection password hash (legacy AG_Password / PHPWord-compatible):
+ * 1) Word97 password transform → UCS-2LE key
+ * 2) H0 = SHA-1(salt + key)  (not counted in spinCount)
+ * 3) Hn = SHA-1(H_{n-1} + LE32(n-1)) for n in 0..spinCount-1
+ * Returns base64 for the `w:hash` attribute.
  */
 export async function computeWordProtectionHash(
   password: string,
   salt: Uint8Array,
   spinCount = WORD_PROTECT_SPIN_COUNT,
 ): Promise<string> {
-  const passwordBytes = utf16LeBytes(password);
-  const initial = new Uint8Array(salt.length + passwordBytes.length);
+  const key = transformWordProtectionPassword(password);
+  const initial = new Uint8Array(salt.length + key.length);
   initial.set(salt);
-  initial.set(passwordBytes, salt.length);
-  let hash = await sha512Bytes(initial);
+  initial.set(key, salt.length);
+  let hash = await sha1Bytes(initial);
   for (let iteration = 0; iteration < spinCount; iteration += 1) {
     const next = new Uint8Array(hash.length + 4);
     next.set(hash);
@@ -1294,7 +1378,7 @@ export async function computeWordProtectionHash(
     next[hash.length + 1] = (iteration >> 8) & 0xff;
     next[hash.length + 2] = (iteration >> 16) & 0xff;
     next[hash.length + 3] = (iteration >> 24) & 0xff;
-    hash = await sha512Bytes(next);
+    hash = await sha1Bytes(next);
   }
   return bytesToBase64(hash);
 }
@@ -1302,19 +1386,23 @@ export async function computeWordProtectionHash(
 /**
  * Lock the DOCX as read-only (preview). Opening still works; editing requires the password
  * (Word: Review → Restrict Editing → Stop Protection).
+ *
+ * Uses crypt* + w:hash/w:salt attributes that Microsoft Word actually verifies
+ * (not the ISO-only algorithmName/hashValue path).
  */
 export async function applyCatalogueReadOnlyProtection(
   zip: PizZip,
   password = CATALOGUE_WORD_EDIT_PASSWORD,
 ): Promise<void> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hashValue = await computeWordProtectionHash(password, salt, WORD_PROTECT_SPIN_COUNT);
-  const saltValue = bytesToBase64(salt);
+  const hash = await computeWordProtectionHash(password, salt, WORD_PROTECT_SPIN_COUNT);
+  const saltB64 = bytesToBase64(salt);
+  // Match PHPWord / Open XML SDK attribute names Word accepts for Restrict Editing.
   const protectionXml =
-    `<w:documentProtection w:edit="readOnly" w:enforcement="1" ` +
-    `w:cryptProviderType="rsaAES" w:cryptAlgorithmClass="hash" w:cryptAlgorithmType="typeAny" ` +
-    `w:cryptAlgorithmSid="14" w:cryptSpinCount="${WORD_PROTECT_SPIN_COUNT}" ` +
-    `w:hashValue="${hashValue}" w:saltValue="${saltValue}"/>`;
+    `<w:documentProtection w:edit="readOnly" w:formatting="1" w:enforcement="1" ` +
+    `w:cryptProviderType="rsaFull" w:cryptAlgorithmClass="hash" w:cryptAlgorithmType="typeAny" ` +
+    `w:cryptAlgorithmSid="${WORD_PROTECT_ALGORITHM_SID}" w:cryptSpinCount="${WORD_PROTECT_SPIN_COUNT}" ` +
+    `w:hash="${hash}" w:salt="${saltB64}"/>`;
 
   const settingsPath = 'word/settings.xml';
   const existing = zip.file(settingsPath)?.asText();

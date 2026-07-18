@@ -1,7 +1,7 @@
 /* Existing effects intentionally reset local view state after async store updates. */
 /* eslint-disable react-hooks/set-state-in-effect, no-useless-assignment */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Copy, Eye, FileDown, ImagePlus, LoaderCircle, Package, Plus, Printer, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, FileDown, ImagePlus, LoaderCircle, Package, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import type {
   AccessoryInput,
   DimensionInput,
@@ -32,7 +32,7 @@ import {
   suggestionTypesForSpecKey,
 } from '@/lib/suggestions';
 import { useSuggestions } from '@/lib/useSuggestions';
-import { exportQuotePDF } from '@/features/export/pdfExport';
+
 import { ProductThumb, OWIN_LOGO } from '@/features/products/ProductThumb';
 import { ProductPreviewCard } from '@/features/products/ProductPreviewCard';
 import { ImageLightbox } from '@/components/ImageLightbox';
@@ -110,10 +110,6 @@ type PersistQuote = (
 function operationError(prefix: string, error: unknown): string {
   const detail = error instanceof Error ? error.message.trim() : '';
   return detail ? `${prefix}: ${detail}` : prefix;
-}
-
-function pdfExportFileName(code: string): string {
-  return `Bao_gia_${code}.pdf`;
 }
 
 function makeItemCode(index: number): string {
@@ -947,15 +943,18 @@ export function QuoteView() {
     }
   };
 
-  const printCurrentQuote = async () => {
+  const exportPdf = async () => {
     if (items.length === 0) return;
     beginBusy();
     setMessage('');
     setSaveError('');
     try {
-      await exportQuotePDF();
+      const { code } = ensureDraftIdentity();
+      const { exportQuotePdf } = await import('@/features/export/quotePdfExport');
+      await exportQuotePdf({ ...calculated, quoteCode: code }, code, productRecords);
+      setMessage(`Đã xuất PDF ${code}`);
     } catch (error) {
-      showOperationError('Không thể mở In/PDF', error);
+      showOperationError('Không thể hoàn tất xuất PDF', error);
     } finally {
       endBusy();
     }
@@ -1019,18 +1018,19 @@ export function QuoteView() {
     }
   };
 
-  const printSavedQuote = async (quote: QuoteRecord) => {
+  const exportSavedQuotePdf = async (quote: QuoteRecord) => {
     beginBusy();
     setMessage('');
     setSaveError('');
     try {
-      const saved = await recordSavedQuoteExport(quote, 'pdf', pdfExportFileName(quote.code));
+      const { exportQuotePdf } = await import('@/features/export/quotePdfExport');
+      const fileName = await exportQuotePdf(quote.snapshot, quote.code, productRecords);
+      const saved = await recordSavedQuoteExport(quote, 'pdf', fileName);
       if (detailQuote?.id === saved.id) setDetailQuote(saved);
-      setMessage(`Đã ghi lịch sử In/PDF ${quote.code}`);
+      setMessage(`Đã xuất PDF và ghi lịch sử ${quote.code}`);
       try { await refreshHistory(); } catch { /* Realtime retries list refresh. */ }
-      await exportQuotePDF();
     } catch (error) {
-      showOperationError('Không thể lưu lịch sử In/PDF', error);
+      showOperationError('Không thể hoàn tất xuất PDF', error);
     } finally {
       endBusy();
     }
@@ -1150,7 +1150,7 @@ export function QuoteView() {
         onDelete={() => void deleteSavedQuote(detailQuote)}
         onExport={() => void exportSavedQuote(detailQuote)}
         onExportExcel={() => void exportSavedQuoteExcel(detailQuote)}
-        onPrint={() => void printSavedQuote(detailQuote)}
+        onExportPdf={() => void exportSavedQuotePdf(detailQuote)}
       />
     );
   }
@@ -1180,8 +1180,8 @@ export function QuoteView() {
           <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportExcel()}>
             <FileDown size={17} style={{ verticalAlign: '-3px' }} /> Excel
           </button>
-          <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void printCurrentQuote()}>
-            <Printer size={17} style={{ verticalAlign: '-3px' }} /> In/PDF
+          <button className="btn btn-ghost" disabled={items.length === 0 || saving} onClick={() => void exportPdf()}>
+            <FileDown size={17} style={{ verticalAlign: '-3px' }} /> PDF
           </button>
         </div>
       </div>
@@ -1644,7 +1644,7 @@ function QuoteDetailPanel({
   onDelete,
   onExport,
   onExportExcel,
-  onPrint,
+  onExportPdf,
 }: {
   quote: QuoteRecord;
   products: ProductRecord[];
@@ -1657,7 +1657,7 @@ function QuoteDetailPanel({
   onDelete: () => void;
   onExport: () => void;
   onExportExcel: () => void;
-  onPrint: () => void;
+  onExportPdf: () => void;
 }) {
   return (
     <section className="admin-page quote-detail-page">
@@ -1682,8 +1682,8 @@ function QuoteDetailPanel({
           <button className="btn btn-ghost" disabled={saving} onClick={onExportExcel}>
             <FileDown size={16} style={{ verticalAlign: '-3px' }} /> Excel
           </button>
-          <button className="btn btn-ghost" disabled={saving} onClick={onPrint}>
-            <Printer size={16} style={{ verticalAlign: '-3px' }} /> In/PDF
+          <button className="btn btn-ghost" disabled={saving} onClick={onExportPdf}>
+            <FileDown size={16} style={{ verticalAlign: '-3px' }} /> PDF
           </button>
           <button className="btn btn-danger" onClick={onDelete}>Xóa</button>
         </div>

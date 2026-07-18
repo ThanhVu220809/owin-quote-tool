@@ -2867,7 +2867,23 @@ textarea.input:focus {
   border: 1px solid #283846;
   padding: 5px 6px;
   vertical-align: middle;
+}
+.bang-gia-table .description-cell,
+.bang-gia-table .category-row td {
   white-space: pre-line;
+}
+/* Rộng/Cao (max 2 lẻ) + KL (max 3 lẻ) luôn 1 dòng — tránh "2,511" bị bẻ thành 2,51 / 1. */
+.bang-gia-table .unit-cell,
+.bang-gia-table .dim-cell,
+.bang-gia-table .kl-cell {
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.bang-gia-table .kl-cell {
+  min-width: 4.2em;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 .bang-gia-table thead th {
   background: #0e2f44;
