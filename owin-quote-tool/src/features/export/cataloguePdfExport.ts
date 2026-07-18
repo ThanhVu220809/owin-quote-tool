@@ -67,7 +67,8 @@ function rowHeightMm(doc: jsPDF, row: CatalogueBlockRow, descWidth: number): num
   if (row.rowType === 'category') return 7;
   const lines = estimateDescLines(doc, row.description, descWidth, 7.5);
   const textH = lines * 3.2 + 2.5;
-  if (row.rowType === 'product') return Math.max(IMG_H + 3, textH);
+  // Product rows keep a floor so a short description still leaves room for the photo.
+  if (row.rowType === 'product') return Math.max(17, textH);
   return Math.max(5.5, textH);
 }
 
