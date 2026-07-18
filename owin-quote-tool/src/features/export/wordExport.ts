@@ -42,7 +42,8 @@ const CATALOGUE_COLUMN_WIDTHS_DXA = scaleWidthsToTarget(
 const CATALOGUE_IMAGE_CELL_MARGIN_DXA = 40;
 const CATALOGUE_IMAGE_CELL_VERTICAL_MARGIN_DXA = 36;
 const CATALOGUE_DESCRIPTION_CELL_MARGIN_DXA = 55;
-const CATALOGUE_IMG_FILL = 0.96;
+/** Contain-fit into 95% of the merged image cell (stop when width OR height hits limit). */
+const CATALOGUE_IMG_FILL = 0.95;
 const CATALOGUE_IMG_MAX_CX = Math.round(
   (CATALOGUE_COLUMN_WIDTHS_DXA[1] - 2 * CATALOGUE_IMAGE_CELL_MARGIN_DXA) * DXA_TO_EMU * CATALOGUE_IMG_FILL,
 );
@@ -240,7 +241,8 @@ export function fitImageDimensionsToEmuBox(
   const ratio = sourceWidth / sourceHeight;
   if (!Number.isFinite(ratio) || ratio <= 0) return { cx: safeMaxCx, cy: safeMaxCy };
 
-  // Fill width first, then constrain height. Exactly one axis reaches its 95% limit.
+  // Contain-fit: grow to max width, stop if height would exceed max (or vice versa).
+  // Exactly one axis reaches the 95% cell limit; never overflows the box.
   let cx = safeMaxCx;
   let cy = Math.round(cx / ratio);
   if (cy > safeMaxCy) {

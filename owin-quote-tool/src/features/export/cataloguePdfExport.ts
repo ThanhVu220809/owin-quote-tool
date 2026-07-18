@@ -9,13 +9,15 @@ import type { ProductRecord } from '@/types/models';
 import { buildCatalogueBlockRows, type CatalogueBlockRow } from '@/lib/catalogue/catalogueRows';
 import { ensureVietnamesePdfFonts, PDF_FONT_FAMILY } from '@/features/export/pdfFonts';
 import { lightPdfImageDataUrl } from '@/features/export/pdfImage';
+import { cellImageMaxBox, containFitSize } from '@/lib/media/containFit';
 import { downloadBlob } from '@/utils/download';
 import { formatSoVND } from '@/utils/format';
 
 const TITLE = 'BẢNG GIÁ NHÔM OWIN LẮP ĐẶT HOÀN THIỆN';
 const MARGIN = 8;
-const IMG_W = 22;
-const IMG_H = 14;
+/** Same 95% cell fill as Word / web catalogue images. */
+const IMG_CELL_FILL = 0.95;
+const IMG_CELL_PAD_MM = 1.2;
 const FONT = PDF_FONT_FAMILY;
 
 /** Column fractions (sum = 1). KL wide enough for max 3 decimals on one line. */
@@ -139,12 +141,32 @@ export async function exportBangGiaPdf(products: ProductRecord[]): Promise<strin
   const xs = colXs(widths, MARGIN);
   const descWidth = widths[2]!;
 
-  const imageCache = new Map<string, string | null>();
+  type CachedImage = { dataUrl: string; naturalW: number; naturalH: number };
+  const imageCache = new Map<string, CachedImage | null>();
+
+  const loadNaturalSize = (dataUrl: string): Promise<{ w: number; h: number }> =>
+    new Promise((resolve) => {
+      if (typeof Image === 'undefined') {
+        resolve({ w: 1, h: 1 });
+        return;
+      }
+      const image = new Image();
+      image.onload = () => resolve({ w: image.naturalWidth || 1, h: image.naturalHeight || 1 });
+      image.onerror = () => resolve({ w: 1, h: 1 });
+      image.src = dataUrl;
+    });
+
   for (const block of blocks) {
     if (block.kind !== 'product') continue;
     const path = block.product.imagePath;
     if (!path || imageCache.has(path)) continue;
-    imageCache.set(path, await lightPdfImageDataUrl(path));
+    const dataUrl = await lightPdfImageDataUrl(path);
+    if (!dataUrl) {
+      imageCache.set(path, null);
+      continue;
+    }
+    const natural = await loadNaturalSize(dataUrl);
+    imageCache.set(path, { dataUrl, naturalW: natural.w, naturalH: natural.h });
   }
 
   let y = MARGIN;
@@ -284,10 +306,20 @@ export async function exportBangGiaPdf(products: ProductRecord[]): Promise<strin
     const img = block.product.imagePath ? imageCache.get(block.product.imagePath) : null;
     if (img) {
       try {
-        const format = img.startsWith('data:image/jpeg') || img.startsWith('data:image/jpg') ? 'JPEG' : 'PNG';
-        const ix = xs[1]! + (widths[1]! - IMG_W) / 2;
-        const iy = blockTop + (blockH - IMG_H) / 2;
-        doc.addImage(img, format, ix, iy, IMG_W, IMG_H, undefined, 'FAST');
+        // Contain-fit into 95% of merged image cell (stop at first axis limit).
+        const { maxWidth, maxHeight } = cellImageMaxBox(
+          widths[1]!,
+          blockH,
+          IMG_CELL_FILL,
+          IMG_CELL_PAD_MM,
+        );
+        const fitted = containFitSize(img.naturalW, img.naturalH, maxWidth, maxHeight);
+        const format = img.dataUrl.startsWith('data:image/jpeg') || img.dataUrl.startsWith('data:image/jpg')
+          ? 'JPEG'
+          : 'PNG';
+        const ix = xs[1]! + (widths[1]! - fitted.width) / 2;
+        const iy = blockTop + (blockH - fitted.height) / 2;
+        doc.addImage(img.dataUrl, format, ix, iy, fitted.width, fitted.height, undefined, 'FAST');
       } catch {
         // skip
       }

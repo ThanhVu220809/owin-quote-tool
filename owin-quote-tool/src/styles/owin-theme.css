@@ -2925,28 +2925,34 @@ textarea.input:focus {
   text-align: left;
   line-height: 1.35;
 }
+/*
+ * Ô ảnh catalogue (rowspan SP+PK):
+ * - Ô giãn theo chiều cao block (height:1px rowspan trick)
+ * - Khung ảnh = 95% ô (2.5% lề mỗi phía)
+ * - Ảnh contain-fit: scale đến khi chạm 95% ngang HOẶC dọc, không tràn ô
+ */
 .bang-gia-table .image-cell {
+  position: relative;
   height: 1px; /* rowspan stretch */
   min-width: 120px;
-  width: 20%;
-  padding: 6px 8px;
+  width: 18%;
+  padding: 0;
   text-align: center;
   vertical-align: middle;
   background: #fafbfc;
 }
-/* Ô ảnh: khung cố định tỉ lệ; img lấp 100% khung (contain), không “thụt” so với div */
 .bang-gia-image-frame {
+  position: absolute;
+  top: 2.5%;
+  left: 2.5%;
+  width: 95%;
+  height: 95%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  max-width: 180px;
-  margin: 0 auto;
-  aspect-ratio: 4 / 3;
-  min-height: 112px;
-  max-height: 160px;
+  margin: 0;
   padding: 4px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
@@ -2956,8 +2962,8 @@ textarea.input:focus {
 .bang-gia-image-frame img,
 .bang-gia-image-frame .ph,
 .bang-gia-image-frame .image-fit-fill {
-  width: 100% !important;
-  height: 100% !important;
+  width: auto !important;
+  height: auto !important;
   max-width: 100% !important;
   max-height: 100% !important;
   min-width: 0 !important;
@@ -3929,22 +3935,22 @@ textarea.input:focus {
   .bang-gia-table th,
   .bang-gia-table td { padding: 5px 4px; }
   .bang-gia-table .image-cell {
-    min-width: 100px;
+    min-width: 96px;
     width: 18%;
-    padding: 6px;
+    padding: 0;
   }
   .bang-gia-image-frame {
-    max-width: 120px;
-    min-height: 80px;
-    max-height: 110px;
-    aspect-ratio: 4 / 3;
+    top: 2.5%;
+    left: 2.5%;
+    width: 95%;
+    height: 95%;
     padding: 3px;
   }
   .bang-gia-image-frame img,
   .bang-gia-image-frame .ph,
   .bang-gia-image-frame .image-fit-fill {
-    width: 100% !important;
-    height: 100% !important;
+    width: auto !important;
+    height: auto !important;
     max-width: 100% !important;
     max-height: 100% !important;
     min-height: 0 !important;
@@ -4377,14 +4383,17 @@ textarea.input:focus {
   }
   .bang-gia-doc { max-height: calc(100dvh - 80px); overflow: auto; }
   .bang-gia-image-frame {
-    max-width: 100px;
-    min-height: 64px;
-    max-height: 84px;
+    top: 2.5%;
+    left: 2.5%;
+    width: 95%;
+    height: 95%;
   }
   .bang-gia-image-frame img,
   .bang-gia-image-frame .image-fit-fill {
-    width: 100% !important;
-    height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
     object-fit: contain !important;
   }
 

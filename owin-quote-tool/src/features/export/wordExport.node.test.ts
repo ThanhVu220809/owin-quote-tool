@@ -204,8 +204,8 @@ describe('reference Word catalogue template renderer', () => {
       cx: Number(m[1]),
       cy: Number(m[2]),
     }));
-    // Image column share after widening KL; contain-fit max width in EMU.
-    const catalogueMaxCx = 1_810_512;
+    // Image column × 95% cell fill; contain-fit max width in EMU.
+    const catalogueMaxCx = 1_791_653;
     for (const e of extents) {
       expect(e.cx).toBeLessThanOrEqual(catalogueMaxCx);
       expect(e.cy).toBeLessThanOrEqual(150 * 36_000); // page-safe height cap

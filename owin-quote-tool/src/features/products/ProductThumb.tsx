@@ -13,7 +13,7 @@ const NO_PRODUCTS: ProductRecord[] = [];
 
 /**
  * Product image thumbnail with OWIN logo fallback when missing.
- * fill = 100% khung cha, object-fit: contain (không còn ép 95% làm ảnh “lọt thỏm” trong ô).
+ * fill = lấp khung cha với object-fit: contain (khung catalogue đã là 95% ô).
  */
 export function ProductThumb({
   imageId,
