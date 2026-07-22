@@ -2186,6 +2186,9 @@ function QuoteItemCard({
               <strong>{titleCaseVi(item.itemName || '') || 'Hạng Mục'}</strong>
             </div>
             <div className="quote-item-locked-meta">
+              {(item.quoteItemCode || item.productCode) && (
+                <span className="quote-item-locked-code">{item.quoteItemCode || item.productCode}</span>
+              )}
               <span className="quote-item-locked-total">{formatVND(calculated?.itemTotalVnd ?? 0)}</span>
             </div>
           </button>
@@ -2260,8 +2263,14 @@ function QuoteItemCard({
 
           {imageError && <div className="hint" style={{ color: 'var(--ios-red)' }}>{imageError}</div>}
 
-          {/* Chỉ cần Tên hạng mục — ĐVT lấy theo từng dòng kích thước (cột DV). */}
-          <div className="quote-item-basic-grid quote-item-basic-grid-name-only">
+          {/* Mã SP + Tên hạng mục — ĐVT lấy theo từng dòng kích thước (cột DV). */}
+          <div className="quote-item-basic-grid">
+            <Field
+              label="Mã SP"
+              fieldKey="product_code"
+              value={item.quoteItemCode || item.productCode || ''}
+              onChange={(value) => onUpdate({ quoteItemCode: value, productCode: value })}
+            />
             <Field
               label="Tên hạng mục"
               fieldKey="item_name"

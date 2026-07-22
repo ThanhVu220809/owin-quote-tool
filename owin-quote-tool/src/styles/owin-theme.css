@@ -2410,6 +2410,13 @@ textarea.input:focus {
   font-size: 13px;
   font-weight: 600;
 }
+.quote-item-locked-code {
+  color: var(--owin-ink-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
 .quote-item-locked-total {
   color: var(--owin-primary);
   font-size: 16px;
