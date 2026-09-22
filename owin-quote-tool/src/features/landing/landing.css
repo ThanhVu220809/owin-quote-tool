@@ -1,0 +1,65 @@
+/* Nội dung trang công khai — dùng lại vỏ hộp thoại của Quản trị cửa hàng. */
+.landing-dialog { max-width: 720px; }
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.landing-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.landing-field > label,
+.landing-field > .landing-label {
+  color: var(--ios-label2);
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium, 500);
+}
+
+.landing-field > small {
+  color: var(--ios-label3);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+/* Ô mô tả là ô dài nhất trong form — nhét vào một cột thì gõ vài chữ đã xuống
+   dòng, trong khi cột bên cạnh trống một nửa. */
+.landing-field:has(textarea) { grid-column: 1 / -1; }
+
+.landing-field > textarea.input {
+  min-height: 84px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.landing-image {
+  max-width: 220px;
+  aspect-ratio: 4 / 3;
+}
+
+/* Cảnh báo lúc đang gõ: nói trước rằng giá trị sẽ bị bỏ, đừng để người dùng
+   lưu xong mới phát hiện ô của mình trống trơn. */
+.landing-warn {
+  margin: var(--space-3) 0 0;
+  color: var(--ios-orange);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.landing-ok {
+  margin: 0 0 var(--space-3);
+  color: var(--ios-green);
+  font-size: var(--fs-sm);
+}
+
+.landing-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

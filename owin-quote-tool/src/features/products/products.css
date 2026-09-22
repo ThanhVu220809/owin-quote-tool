@@ -1,0 +1,1861 @@
+/*
+ * TÍNH NĂNG: SẢN PHẨM — stylesheet riêng của tab "Sản phẩm".
+ * Import bởi features/products/ProductsView.tsx, nạp SAU styles/patterns.css.
+ *
+ * Bố cục, thang chữ và thang bo góc lấy màn "Thiết kế & Lập báo giá"
+ * (features/quote/quote.css) làm tham chiếu, theo FONT_WEIGHT_GUIDE.md và
+ * BORDER_RADIUS_GUIDE.md: danh sách có toolbar sticky trên nền sáng, bảng nằm
+ * trong một card duy nhất, form dùng nav bar phẳng với nút pill, modal có header
+ * và footer cố định còn thân chia hai cột để nội dung vừa một khung nhìn.
+ *
+ * Chỉ chứa selector `.product-*` / `.bulk-price-*` / `.modal-backdrop`; ngoại lệ
+ * là selector shell có `:has(.product-list-page)` để đổi nền riêng màn danh sách.
+ * Pattern dùng chung (.card, .field, .input, .btn, .icon-btn, .editor-panel,
+ * .spec-editor-row, .summary-metric, .toolbar, .admin-page*, .empty-card, .toast,
+ * .data-error) vẫn ở lớp chung — ở đây chỉ khai biến thể có tổ tiên `.product-*`.
+ *
+ * `!important` chỉ còn ở chỗ buộc phải đè một `!important` khác vẫn sống ở lớp
+ * chung (.input, .btn, .card, .editor-panel, .icon-btn, .app-title); mỗi chỗ đều
+ * có ghi chú lý do ngay tại rule và vẫn tham chiếu token.
+ */
+
+/* ═══════════════ Token của feature ═══════════════ */
+
+/* Một thang độ đậm và một thang bo góc duy nhất cho toàn bộ luồng sản phẩm.
+   `.product-modal` có mặt trong selector vì modal xem nhanh còn được tab Báo giá
+   dựng lại (QuoteProductPicker) — khi đó nó nằm ngoài mọi `.product-*-page`. */
+:is(.product-list-page, .product-workflow-page, .product-modal) {
+  --product-weight-regular: 400;
+  --product-weight-medium: 500;
+  --product-weight-semibold: 600;
+  --product-weight-bold: 700;
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-pill: 999px;
+  --ios-radius: var(--r-lg);
+  --ios-radius-sm: var(--r-md);
+
+  /* Nền cho bề mặt cấp hai (panel trong card, ô tổng): tint xanh rất nhẹ, dùng
+     thay cho các mảng xám. Đủ để tách khỏi card trắng và khỏi dòng trắng. */
+  --product-tint: #f4f8ff;
+
+  font-weight: var(--product-weight-regular);
+}
+
+/* Ánh xạ các pattern dùng chung sang thang weight của feature Sản phẩm. Hai
+   selector có `!important` chỉ để đè đúng rule dùng chung đang có `!important`. */
+:is(.product-list-page, .product-workflow-page) .app-title {
+  font-weight: var(--product-weight-bold) !important;
+}
+:is(.product-list-page, .product-workflow-page) .section-label {
+  font-weight: var(--product-weight-semibold) !important;
+}
+:is(.product-list-page, .product-workflow-page, .product-modal) :is(.app-subtitle, .hint) {
+  font-weight: var(--product-weight-regular);
+}
+/* Metadata phụ dưới tiêu đề (mã sản phẩm, "3 dòng · …") — guide §2: 500. */
+:is(.product-list-page, .product-workflow-page, .product-modal) .product-sub {
+  font-weight: var(--product-weight-medium);
+}
+:is(.product-list-page, .product-workflow-page, .product-modal) .field > label {
+  font-weight: var(--product-weight-medium);
+}
+:is(.product-list-page, .product-workflow-page, .product-modal) :is(input.input, select.input, textarea.input) {
+  font-weight: var(--product-weight-regular);
+}
+:is(.product-list-page, .product-workflow-page, .product-modal) :is(.btn, .btn-link) {
+  font-weight: var(--product-weight-semibold);
+}
+:is(.product-list-page, .product-workflow-page, .product-modal) .product-name {
+  font-weight: var(--product-weight-semibold);
+}
+:is(.product-list-page, .product-workflow-page) .empty-card h3 {
+  font-weight: var(--product-weight-bold);
+}
+
+/* ═══════════════ Danh sách sản phẩm ═══════════════ */
+
+/* Chỉ làm sáng nền màn danh sách; form sản phẩm giữ nền app chung. Offset bằng
+   padding-top của vùng cuộn để toolbar sticky che kín tới sát top. */
+.tool-content:has(.product-list-page) {
+  --product-list-sticky-offset: 24px;
+  background: #f8f9fb;
+}
+
+/* Giữ khoảng thở với top nav nhưng che bảng đang cuộn qua khoảng đó. Phần tử
+   giả không chiếm chỗ trong layout và bám theo cùng scroll container. */
+.tool-content:has(.product-list-page)::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  z-index: 14;
+  display: block;
+  height: var(--product-list-sticky-offset);
+  margin-bottom: calc(-1 * var(--product-list-sticky-offset));
+  transform: translateY(calc(-1 * var(--product-list-sticky-offset)));
+  background: #f8f9fb;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .tool-content:has(.product-list-page) { --product-list-sticky-offset: 16px; }
+}
+
+@media (max-width: 760px) {
+  .tool-content:has(.product-list-page) { --product-list-sticky-offset: 12px; }
+}
+
+.product-list-heading {
+  align-items: center;
+  margin-bottom: 14px;
+  padding-top: 2px;
+}
+.product-list-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+.product-list-title-row .app-title { margin-bottom: 0 !important; } /* đè margin có !important của .app-title */
+.product-list-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-medium);
+  white-space: nowrap;
+}
+
+/* ─── Toolbar sticky: tìm · nhóm sản phẩm · hành động ─── */
+.product-list-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(190px, 230px) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 0;
+  background: #f8f9fb;
+}
+.product-list-toolbar::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: #f8f9fb;
+}
+.product-toolbar-control {
+  position: relative;
+  min-width: 0;
+}
+.product-toolbar-control > svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  z-index: 1;
+  transform: translateY(-50%);
+  color: var(--ios-label3);
+  pointer-events: none;
+}
+/* Ô tìm kiếm: đè padding / viền / nền / bo của control dùng chung, vì `.input`
+   khai các thuộc tính này kèm `!important`. */
+.product-toolbar-control .input {
+  min-height: var(--control-h);
+  padding-left: 42px !important;
+  border-color: rgba(60, 60, 67, 0.16) !important;
+  border-radius: var(--r-md) !important;
+  background: var(--ios-card) !important;
+  font-size: var(--fs-sm) !important;
+  font-weight: var(--product-weight-regular);
+  transition: background 0.16s var(--ease-ios), box-shadow 0.16s var(--ease-ios);
+}
+.product-toolbar-control .input:hover {
+  border-color: rgba(0, 122, 255, 0.28) !important;
+  background: #fbfdff !important;
+}
+.product-toolbar-control .input:focus {
+  border-color: var(--ios-blue) !important;
+  background: var(--ios-card) !important;
+  box-shadow: var(--shadow-glow) !important;
+}
+/* Nhãn chỉ dành cho trình đọc màn hình — toolbar đã có icon và placeholder. */
+.product-toolbar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.product-category-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--control-h);
+  padding: 10px 12px 10px 42px;
+  border: 1px solid rgba(60, 60, 67, 0.16);
+  border-radius: var(--r-md);
+  background: var(--ios-card);
+  color: var(--ios-label);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-regular);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease-ios), box-shadow 0.16s var(--ease-ios), background 0.16s var(--ease-ios);
+}
+.product-category-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-category-trigger:hover,
+.product-category-trigger[aria-expanded='true'] {
+  border-color: rgba(0, 122, 255, 0.28);
+  background: #fbfdff;
+}
+.product-category-trigger[aria-expanded='true'] {
+  border-color: var(--ios-blue);
+  background: var(--ios-card);
+  box-shadow: var(--shadow-glow);
+}
+.product-category-trigger > svg { flex: 0 0 auto; color: var(--ios-label3); }
+.product-category-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: grid;
+  gap: 3px;
+  max-height: min(320px, 46vh);
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid rgba(60, 60, 67, 0.14);
+  border-radius: var(--r-lg);
+  background: var(--ios-card);
+  box-shadow: var(--shadow-lg);
+  animation: product-menu-in 0.16s var(--ease-ios) both;
+}
+@keyframes product-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.product-category-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ios-label);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium);
+  text-align: left;
+  cursor: pointer;
+}
+.product-category-option > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-category-option:hover { background: var(--ios-blue-soft); }
+.product-category-option.is-selected {
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+  font-weight: var(--product-weight-semibold);
+}
+.product-category-option.is-selected > svg { color: var(--ios-blue); }
+
+.product-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+/* Nút toolbar: đè chiều cao / padding / bo / cỡ chữ của `.btn` dùng chung
+   (các thuộc tính này khai kèm `!important` ở lớp chung). */
+.product-toolbar-actions > .btn {
+  min-height: var(--control-h);
+  padding-inline: 14px !important;
+  border-radius: var(--r-md) !important;
+  font-size: var(--fs-sm) !important;
+  white-space: nowrap;
+}
+.product-toolbar-actions .product-create-button {
+  padding-inline: 18px !important; /* CTA rộng hơn nút phụ, vẫn đè padding chung */
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.2);
+}
+.product-toolbar-actions .product-create-button:active { transform: scale(0.98); }
+
+/* ─── Card bảng ─── */
+
+/* `.product-table-card` là thẻ bọc; `.product-table-wrap` bên trong là vùng cuộn
+   ngang cho bảng rộng 1040px. */
+.product-table-card {
+  overflow: hidden;
+  border: 1px solid rgba(60, 60, 67, 0.14);
+  border-radius: var(--r-lg);
+  background: var(--ios-card);
+  box-shadow: 0 2px 5px rgba(28, 28, 40, 0.05), 0 12px 32px rgba(28, 28, 40, 0.07);
+}
+.product-table-wrap { overflow-x: auto; }
+.product-table {
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.product-table th,
+.product-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(60, 60, 67, 0.14);
+  border-right: 1px solid rgba(60, 60, 67, 0.1);
+  text-align: left;
+  vertical-align: middle;
+}
+.product-table th:last-child,
+.product-table td:last-child { border-right: 0; }
+.product-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-block: 14px;
+  border-bottom-color: #dce9f7;
+  background: #f3f8fe;
+  color: #355a7a;
+  font-size: var(--fs-md);
+  font-weight: var(--product-weight-semibold);
+  text-align: center;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-transform: none;
+}
+.product-table tr:last-child td { border-bottom: 0; }
+.product-table td[data-col='image'],
+.product-table td[data-col='category'],
+.product-table td[data-col='unit'],
+.product-table td[data-col='size'],
+.product-table td[data-col='public'],
+.product-table td[data-col='actions'] {
+  text-align: center;
+}
+
+/* ─── Cờ hiển thị công khai ───
+ * Trạng thái phải đọc được mà không cần hover: chữ "Hiện"/"Ẩn" đi kèm icon, và
+ * màu chỉ là lớp nhấn thêm — không phải kênh thông tin duy nhất. */
+.product-public-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ios-separator-opaque);
+  border-radius: var(--r-pill);
+  background: var(--ios-fill);
+  color: var(--ios-label2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.product-public-toggle:hover:not(:disabled) { background: var(--ios-fill-strong); }
+.product-public-toggle:disabled { opacity: 0.55; cursor: progress; }
+.product-public-toggle.is-public {
+  border-color: transparent;
+  background: var(--ios-green-soft);
+  color: var(--ios-green);
+}
+.product-public-toggle.is-public:hover:not(:disabled) { background: var(--ios-green-soft); filter: brightness(0.97); }
+.product-table .num {
+  text-align: right;
+  color: var(--ios-label);
+  font-weight: var(--product-weight-semibold);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.product-row {
+  cursor: pointer;
+  transition: background 0.16s var(--ease-ios), box-shadow 0.16s var(--ease-ios);
+}
+.product-row:hover { background: var(--ios-row-hover); }
+.product-row:focus-visible {
+  outline: none;
+  background: var(--ios-row-hover);
+  box-shadow: inset 3px 0 0 var(--ios-blue);
+}
+/* Cả hàng là thứ kéo được (không còn cột tay cầm): con trỏ báo có thể nhấc,
+   hàng đang kéo mờ đi, hàng đích hiện vạch chèn ở lớp `[data-drag-over]`. */
+.product-row-reorderable { cursor: grab; }
+.product-row-reorderable:active { cursor: grabbing; }
+.product-row-reorderable[data-dragging] { opacity: 0.45; }
+.product-table tbody tr[data-drag-over] td {
+  box-shadow: inset 0 2px 0 0 var(--ios-blue);
+}
+
+.product-image-button {
+  width: 88px;
+  height: 64px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(60, 60, 67, 0.12);
+  border-radius: var(--r-sm);
+  background: var(--ios-surface-muted);
+  cursor: zoom-in;
+  transition: border-color 0.16s var(--ease-ios), box-shadow 0.16s var(--ease-ios);
+}
+.product-image-button:hover {
+  border-color: rgba(0, 122, 255, 0.42);
+  box-shadow: 0 5px 16px rgba(28, 28, 40, 0.1);
+}
+.product-image-button .ph,
+.product-image-button img { object-fit: cover; }
+
+.product-table td[data-col='name'] .product-name {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-table-code {
+  color: var(--ios-blue-ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+  white-space: nowrap;
+}
+
+.product-table-actions {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+/* Đè bo của `.icon-btn` dùng chung (khai kèm `!important`). */
+.product-table-actions .icon-btn { border-radius: var(--r-sm) !important; }
+.product-table-actions .product-view-action,
+.product-table-actions .product-copy-action {
+  border-color: var(--ios-separator);
+  background: var(--ios-card);
+  color: var(--ios-label2);
+}
+.product-table-actions .product-edit-action {
+  border-color: transparent;
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+}
+.product-table-actions .product-edit-action:hover { background: var(--ios-blue-soft-strong); }
+.product-table-actions .product-delete-action {
+  border-color: var(--ios-separator);
+  background: var(--ios-card);
+  color: var(--ios-red);
+}
+
+/* Chip thông tin phụ, chỉ hiện ở dạng thẻ trên điện thoại */
+.product-row-mobile-meta { display: none; }
+
+/* Footer phân trang — compact bar theo phong cách iOS, cùng nhịp với thanh phân
+   trang của màn danh sách báo giá. */
+.product-list-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--ios-separator);
+  background: var(--ios-card);
+  color: var(--ios-label2);
+  font-size: var(--fs-sm);
+}
+.product-pagination-summary,
+.product-pagination-controls,
+.product-pagination-summary label {
+  display: flex;
+  align-items: center;
+}
+.product-pagination-summary {
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.product-pagination-summary label {
+  gap: 8px;
+  color: var(--ios-label2);
+  font-weight: var(--product-weight-medium);
+  white-space: nowrap;
+}
+/* Ô chọn số dòng: đè chiều cao / padding / bo / cỡ chữ của control dùng chung
+   (khai kèm `!important`) để footer gọn. */
+.product-pagination-summary .product-page-size-select {
+  width: 96px;
+  min-width: 96px;
+  min-height: 36px !important;
+  padding: 6px 30px 6px 10px !important;
+  border-radius: var(--r-md) !important;
+  font-size: var(--fs-sm) !important;
+  font-weight: var(--product-weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+.product-pagination-controls {
+  flex: 0 0 auto;
+  gap: 10px;
+  color: var(--ios-label);
+  white-space: nowrap;
+}
+.product-pagination-controls strong { font-weight: var(--product-weight-semibold); }
+/* Đè kích thước và bo của `.icon-btn` dùng chung. */
+.product-pagination-controls .icon-btn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: var(--r-md) !important;
+  background: var(--ios-card);
+}
+.product-pagination-controls .icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Trạng thái trống / đang tải */
+
+.product-list-skeleton {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+.product-list-skeleton div {
+  height: 62px;
+  border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--ios-bg), var(--ios-card), var(--ios-bg));
+  background-size: 200% 100%;
+  animation: product-skeleton 1.2s ease infinite;
+}
+@keyframes product-skeleton {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+/* Trạng thái rỗng dùng chung `.empty-card`; ở đây chỉ cho nó cùng khối và cùng
+   bo với card bảng để nền sáng của màn danh sách không bị hở. */
+.product-list-page .empty-card {
+  border-radius: var(--r-lg);
+  box-shadow: 0 2px 5px rgba(28, 28, 40, 0.05), 0 12px 32px rgba(28, 28, 40, 0.07);
+}
+
+/* ═══════════════ Form sản phẩm ═══════════════ */
+
+/* ─── Nav bar đầu form: phẳng hoàn toàn, chỉ hairline dưới, không thẻ/không shadow ─── */
+.product-form-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 0 2px 12px;
+  border-bottom: 1px solid rgba(60, 60, 67, 0.13);
+}
+.product-form-back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--ios-label);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s var(--ease-ios);
+}
+.product-form-back:hover {
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+}
+.product-form-back:active { transform: scale(0.92); }
+
+.product-form-heading-text {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+}
+.product-form-title {
+  margin: 0;
+  color: var(--ios-label);
+  font-size: var(--fs-xl);
+  font-weight: var(--product-weight-bold);
+  letter-spacing: var(--track-tight);
+  line-height: 1.2;
+}
+.product-form-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+/* Chip số liệu: nền tint phẳng, không viền, không shadow. */
+.product-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--r-pill);
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--ios-label2);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.product-meta-chip svg { flex: 0 0 auto; opacity: 0.7; }
+.product-meta-chip.is-accent {
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+}
+.product-meta-chip.is-accent svg { opacity: 1; }
+.product-meta-chip.is-saved {
+  background: var(--ios-green-soft);
+  color: var(--ios-green);
+}
+.product-meta-chip.is-saved svg { opacity: 1; }
+.product-meta-chip.is-error {
+  height: auto;
+  padding: 3px 9px;
+  background: var(--ios-red-soft);
+  color: var(--ios-red);
+  white-space: normal;
+}
+.product-meta-chip.is-error svg { opacity: 1; }
+/* Nút "Thử lại" nằm trong chip lỗi: đè chiều cao tối thiểu của `.btn-link`. */
+.product-meta-chip .btn-link {
+  min-height: 0;
+  padding: 0 2px;
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+}
+
+.product-form-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+/* Nút pill phẳng: phân cấp bằng độ đậm của nền, không dùng shadow hay viền.
+   `!important` để đè padding / bo / cỡ chữ của `.btn` dùng chung. */
+.product-form-actions > .btn {
+  min-height: 38px;
+  padding: 0 16px !important;
+  border: 0;
+  border-radius: var(--r-pill) !important;
+  font-size: var(--fs-sm) !important;
+  font-weight: var(--product-weight-semibold);
+  white-space: nowrap;
+  box-shadow: none;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s var(--ease-ios);
+}
+.product-form-actions > .btn:active:not(:disabled) {
+  filter: none;
+  transform: scale(0.96);
+}
+.product-cancel-button {
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--ios-label);
+}
+.product-cancel-button:hover:not(:disabled) { background: rgba(120, 120, 128, 0.18); }
+.product-save-button {
+  min-width: 92px;
+  background: var(--ios-blue);
+  color: #fff;
+}
+.product-save-button:hover:not(:disabled) { background: var(--ios-blue-ink); }
+
+/* ─── Nhãn nhóm nội dung ─── */
+.product-section-block { min-width: 0; }
+.product-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  margin-bottom: 8px;
+}
+.product-section-label {
+  margin: 0 0 7px 2px;
+  color: var(--ios-label2);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+  letter-spacing: 0.045em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.product-section-heading .product-section-label { margin-bottom: 0; }
+.product-section-count {
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-medium);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* ─── Thân form ─── */
+.product-editor-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-color: rgba(60, 60, 67, 0.16);
+  border-radius: var(--r-lg) !important; /* đè bo của `.card` dùng chung (có !important) */
+  box-shadow: var(--shadow-sm);
+}
+.product-editor-card .field {
+  margin-bottom: 0;
+  min-width: 0;
+}
+/* KHÔNG khai `display` ở đây: lớp chung đã ẩn nhãn lặp của từng dòng thông số /
+   phụ kiện (`.spec-editor-row .field > label` và bạn bè) vì các bảng đó đã có
+   header cột. Khai `display: block` ở selector cùng độ ưu tiên sẽ bật lại toàn
+   bộ nhãn lặp và làm form rối. */
+.product-editor-card .field > label {
+  margin-bottom: 6px;
+  color: var(--ios-label2);
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium);
+}
+.product-image-panel > label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ios-label2);
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium);
+}
+/* MỘT chiều cao và MỘT cỡ chữ cho mọi control của form — ô nhập, select và cả ô
+   chỉ đọc. Trước đây mỗi nơi một kiểu: ô nhập 45px/16px, select 44px, dòng món
+   phụ kiện 41px, còn "Thành tiền" (số quan trọng nhất của dòng) lại nhỏ nhất ở
+   38px/13px. `height` đặt tường minh để mọi ô trong cùng một hàng bằng nhau bất
+   kể box-model của từng loại thẻ; `!important` để đè các rule chung đang khai
+   min-height / font-size / padding kèm `!important`. */
+.product-editor-card :is(.input, .readonly-money) {
+  box-sizing: border-box;
+  height: var(--control-h);
+  min-height: var(--control-h) !important;
+  padding: 10px 14px !important;
+  border-radius: var(--r-md) !important;
+  font-size: var(--fs-md) !important;
+}
+.product-editor-card textarea.input {
+  height: auto;
+}
+.product-editor-card textarea.input {
+  min-height: 78px;
+  resize: vertical;
+}
+/* Panel nằm trong card gọn hơn card một cấp (lg → md). */
+.product-editor-card .editor-panel {
+  padding: 12px !important;
+  border-color: rgba(60, 60, 67, 0.16);
+  border-radius: var(--r-md) !important;
+  box-shadow: none;
+}
+
+/* ─── Kéo bằng cả dòng ───
+   Không còn ô tay cầm nên bỏ luôn cột 36px/28px mà lớp chung dành cho nó. Vùng
+   nhấc là phần viền và số thứ tự của dòng; kéo từ trong ô nhập bị chặn ở JS để
+   người dùng vẫn chọn được chữ (xem mergeRowDragProps). */
+/* Cột đầu 12px là chấm bullet của dòng thông số. Header dùng cùng padding ngang
+   với dòng, nếu lệch thì nhãn cột không thẳng hàng với ô nhập bên dưới. */
+.product-editor-card .spec-table-head,
+.product-editor-card .spec-editor-row.is-row-drag {
+  grid-template-columns: 12px minmax(0, 0.9fr) minmax(0, 1.4fr) 40px;
+}
+.product-editor-card .spec-table-head { padding-inline: 10px; }
+.product-spec-bullet {
+  justify-self: center;
+  align-self: center;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%; /* chấm tròn thật, theo ngoại lệ của BORDER_RADIUS_GUIDE */
+  background: var(--ios-blue);
+}
+.product-editor-card .accessory-item-line.is-row-drag {
+  grid-template-columns: 26px minmax(0, 1fr) 76px 40px;
+}
+.product-editor-card .extra-accessory-head.is-row-drag,
+.product-editor-card .extra-accessory-line.is-row-drag {
+  grid-template-columns: minmax(160px, 1.2fr) minmax(420px, 2.2fr) 36px;
+}
+/* Header ăn cùng padding ngang với dòng để nhãn DV / SL / KL thẳng hàng với ô
+   nhập; cột DV nới 64 → 80px vì "md" bị mũi chevron của select che mất. */
+.product-editor-card .extra-accessory-head.is-row-drag { padding-inline: 10px; }
+/* SL 76px đủ nhập bốn chữ số. KL nhận phần không gian linh hoạt lớn hơn để số
+   thập phân không bị cắt; hai cột tiền vẫn đủ chỗ cho định dạng VND nhưng không
+   còn chiếm quá nhiều diện tích trong modal cập nhật sản phẩm. */
+.product-editor-card :is(.extra-acc-metrics, .extra-acc-metrics-head) {
+  grid-template-columns: 80px 76px minmax(80px, 1.15fr) minmax(96px, 1fr) minmax(110px, 1fr);
+}
+.product-editor-card :is(.spec-editor-row, .accessory-item-line, .extra-accessory-line).is-row-drag {
+  padding: 8px 10px;
+  cursor: grab;
+}
+.product-editor-card :is(.spec-editor-row, .accessory-item-line, .extra-accessory-line).is-row-drag:active {
+  cursor: grabbing;
+}
+/* Con trỏ của dòng không được lan vào ô nhập và nút. */
+.product-editor-card .is-row-drag :is(input, select, textarea) { cursor: auto; }
+.product-editor-card .is-row-drag button { cursor: pointer; }
+.product-editor-card .is-row-drag[data-dragging] { opacity: 0.45; }
+.product-editor-card .is-row-drag[data-drag-over] {
+  box-shadow: inset 0 2px 0 0 var(--ios-blue);
+}
+
+/* ─── Ít xám, ít viền ───
+   Bản cũ xếp ba tầng khung: card có viền → panel có viền → mỗi dòng lại một
+   khung viền, bên trong là ô nhập nền xám cũng có viền. Ở đây panel đổi sang nền
+   xanh rất nhạt và bỏ viền, dòng bỏ hẳn khung, chỉ ô nhập giữ một hairline trên
+   nền trắng — cấu trúc vẫn đọc được mà bớt hẳn đường kẻ và mảng xám. */
+/* Ba mức bề mặt tách rõ mà không cần viền: card trắng → panel tint xanh →
+   từng dòng trắng nổi lên trên panel. */
+.product-editor-card .editor-panel {
+  border-color: transparent;
+  background: var(--product-tint);
+}
+.product-editor-card :is(.spec-editor-row, .accessory-item-line, .extra-accessory-line) {
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--ios-card);
+}
+.product-editor-card :is(.spec-editor-row, .accessory-item-line, .extra-accessory-line):hover {
+  background: #fafcff;
+}
+/* Ô nhập nền trắng thay cho nền xám `--ios-fill`; `!important` vì lớp chung khai
+   `background` và `border` của `.input` kèm `!important`. */
+.product-editor-card :is(input.input, select.input, textarea.input) {
+  border-color: rgba(60, 60, 67, 0.16) !important;
+  background: var(--ios-card) !important;
+}
+.product-editor-card :is(input.input, select.input, textarea.input):hover {
+  border-color: rgba(0, 122, 255, 0.28) !important;
+}
+/* Guide §2: tab chưa chọn 500, tab đang chọn 600. Lớp chung đặt cả hai thành
+   600 nên phải hạ tab chưa chọn xuống — `!important` vì rule chung có
+   `!important`. */
+.product-editor-card .segmented button {
+  font-weight: var(--product-weight-medium) !important;
+}
+.product-editor-card .segmented button.active {
+  font-weight: var(--product-weight-semibold) !important;
+}
+/* Guide §2: 700 chỉ dành cho tổng cuối cùng. "Thành tiền" từng dòng là số cần
+   nhấn nhưng không phải tổng cuối → 600 (lớp chung đang để 700). */
+.product-editor-card .readonly-money {
+  font-weight: var(--product-weight-semibold);
+}
+/* Ghi chú trong nhãn ("· auto 1×SL cửa") là helper text → 400. */
+.product-editor-card .field-hint-inline {
+  font-weight: var(--product-weight-regular);
+}
+
+/* Thẻ đang chọn của "Đơn vị tính": nền cam thay vì trắng, để thấy ngay đang ở
+   đơn vị nào mà không phải đọc kỹ. `!important` vì lớp chung khai nền / màu chữ
+   / shadow của `.segmented button.active` kèm `!important`. */
+.product-editor-card .segmented button.active {
+  background: var(--ios-orange-fill) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 6px rgba(255, 149, 0, 0.35) !important;
+}
+
+/* Select đơn vị: bỏ control mặc định của hệ điều hành và tự vẽ chevron, chừa
+   đúng chỗ cho nó — mũi native đè lên chữ nên "md" chỉ còn thấy "m". Danh sách
+   option lúc mở do hệ điều hành vẽ, CSS không chạm tới được.
+   `!important` vì lớp chung khai `background` của `.input` kèm `!important`. */
+.product-editor-card select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 10px 28px 10px 12px !important;
+  background: var(--ios-card)
+    url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%20fill='none'%20stroke='%236e6e73'%20stroke-width='1.6'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M4%206.5%208%2010.5l4-4'/%3E%3C/svg%3E")
+    no-repeat right 7px center / 13px !important;
+  text-overflow: ellipsis;
+}
+.product-editor-card select.input:hover {
+  border-color: rgba(0, 122, 255, 0.28) !important;
+}
+
+/* Ô chỉ đọc: nền xanh nhạt thay vì xám, không viền, số căn phải như cột tiền. */
+.product-editor-card .readonly-money {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border: 1px solid transparent;
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+}
+/* Số thứ tự món: dùng tint xanh làm luôn affordance vùng nhấc. */
+.product-editor-card .line-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-pill);
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Ba cấp nhãn trong form ───
+   Trước đây nhãn nhóm, tiêu đề panel và header cột đều 12px / 600 / UPPERCASE
+   nên không thấy được cấp nào trên cấp nào. Phân lại:
+   nhóm = eyebrow 12px hoa · panel = 14px chữ thường đậm · cột = 12px nhạt. */
+.product-editor-card .editor-toolbar .section-label {
+  /* `!important` để đè `.section-label` dùng chung (khai cỡ chữ kèm !important). */
+  font-size: var(--fs-sm) !important;
+  font-weight: var(--product-weight-semibold) !important;
+  color: var(--ios-label);
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Header cột giữ 600 theo guide §2 (table header); tách cấp với tiêu đề panel
+   bằng cỡ chữ 12 vs 14 và màu nhạt hơn, không hạ độ đậm. */
+.product-editor-card :is(.spec-table-head, .extra-accessory-head) {
+  color: var(--ios-label3);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.product-editor-card .spec-editor-row,
+.product-editor-card .accessory-item-line {
+  border-radius: var(--r-sm);
+}
+
+.product-editor-top {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.product-image-panel .dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 8px;
+  border-radius: var(--r-md);
+}
+.product-image-panel .dropzone img,
+.product-image-panel .dropzone .image-fit-contain {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+  background: var(--ios-bg);
+}
+
+.product-basic-panel {
+  display: grid;
+  gap: 12px;
+}
+/* Bốn cột, tên sản phẩm chiếm ba: hàng 1 = nhóm + tên, hàng 2 = đơn vị, rộng,
+   cao, đơn giá. Lưới 3 cột của bản cũ đẩy "Đơn giá" xuống nằm trơ một mình. */
+.product-basic-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.product-basic-grid > :nth-child(2) { grid-column: span 3; }
+
+.product-editor-section-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  align-items: start;
+  gap: 14px;
+}
+/* Trạng thái rỗng của bảng thông số — cùng dáng với panel thông số của báo giá. */
+.product-spec-empty {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-height: 54px;
+  padding: 8px 12px;
+  text-align: center;
+}
+.product-spec-empty span {
+  color: var(--ios-label2);
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium);
+}
+.product-spec-empty small {
+  color: var(--ios-label3);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-regular);
+}
+
+.product-panel-head { margin: 0 0 10px; }
+.product-panel-head .section-label { margin: 0; }
+.product-editor-extra { min-width: 0; }
+
+/* ─── Dải tổng ước tính: cùng nhịp với thẻ "Tổng quan giá trị" của báo giá ─── */
+.product-summary-block { min-width: 0; }
+.product-summary-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.product-summary-heading .product-section-label { margin-bottom: 0; }
+.product-summary-badge {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+  white-space: nowrap;
+}
+.product-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px;
+}
+/* Ô tổng là khối con trong form, không phải card riêng — dùng md. Viền đầy đủ ở
+   đây đè luôn `border-left` phân cách của `.summary-metric` dùng chung, vì các ô
+   giờ đã tách nhau bằng gap. */
+.product-summary-strip .summary-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--product-tint);
+  text-align: center;
+}
+.product-summary-strip .summary-metric span {
+  color: var(--ios-label3);
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium);
+}
+.product-summary-strip .summary-metric strong {
+  color: var(--ios-label);
+  font-size: var(--fs-lg);
+  font-weight: var(--product-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.product-summary-strip .summary-metric small {
+  color: var(--ios-label3);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-regular);
+}
+.product-summary-strip .summary-metric-strong {
+  background: var(--ios-blue-soft);
+}
+.product-summary-strip .summary-metric-strong :is(span, strong, small) { color: var(--ios-blue-ink); }
+.product-summary-strip .summary-metric-strong strong { font-weight: var(--product-weight-bold); }
+
+/* ═══════════════ Modal (xem nhanh / giá hàng loạt) ═══════════════ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px))
+    max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  background: rgba(28, 28, 40, 0.48);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.product-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(60, 60, 67, 0.18);
+  border-radius: var(--r-lg);
+  background: var(--ios-bg);
+  box-shadow: var(--shadow-lg);
+}
+.product-modal-header {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  column-gap: 16px;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(60, 60, 67, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbfd 100%);
+}
+.product-modal-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.product-modal-title-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.product-modal-kicker {
+  color: var(--ios-label3);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.product-modal-title h2 {
+  overflow: hidden;
+  margin: 2px 0 0;
+  color: var(--ios-label);
+  font-size: var(--fs-xl);
+  font-weight: var(--product-weight-bold);
+  letter-spacing: var(--track-tight);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-modal-title .product-sub {
+  overflow: hidden;
+  margin-top: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Nút đóng: đè kích thước và bo của `.icon-btn` dùng chung (có `!important`). */
+.product-modal-header > .icon-btn {
+  justify-self: end;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--r-md) !important;
+  background: var(--ios-red-soft);
+  color: var(--ios-red);
+}
+.product-modal-header > .icon-btn:hover {
+  background: rgba(255, 59, 48, 0.18);
+  color: var(--ios-red);
+}
+
+/* Modal rộng và thấp: ưu tiên chỗ ngang để mọi khối hiện hết trong một khung
+   nhìn thay vì phải cuộn. `overflow: auto` ở body chỉ là phao cho dữ liệu cực
+   dài (rất nhiều thông số), không phải cách xem thường ngày. */
+.product-preview-modal {
+  width: min(1040px, 100%);
+  max-height: min(800px, calc(100dvh - 32px));
+}
+
+.product-preview-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(320px, 1.12fr);
+}
+/* Ảnh thấp hơn bản cũ (540px → 340px) để phần thông tin mới là thứ quyết định
+   chiều cao modal. Không dùng `height: auto`: ảnh placeholder không có kích
+   thước nội tại nên cả modal sẽ sụp về 0. */
+.product-preview-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 18px;
+  background: var(--ios-bg);
+}
+.product-preview-image .ph,
+.product-preview-image img {
+  width: 100%;
+  height: min(40vh, 340px);
+  object-fit: contain;
+  border-radius: var(--r-md);
+}
+
+.product-preview-meta {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px 20px;
+  background: var(--ios-card);
+}
+/* Thông số và phụ kiện nằm cạnh nhau: chiều cao khối bằng cột cao nhất thay vì
+   tổng cả hai, nên vừa một khung nhìn mà vẫn giữ khoảng thở. */
+.product-preview-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px 16px;
+}
+.product-preview-meta > div > span,
+.product-preview-desc > span,
+.product-preview-specs > span,
+.product-preview-accessories > span {
+  display: block;
+  color: var(--ios-label3);
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+/* Gọn trong một dòng: nhãn bên trái, giá và đơn vị đi liền nhau bên phải —
+   thay vì nhãn chiếm trọn dòng trên rồi đơn vị trôi sang lề phải. */
+.product-preview-price-block {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 10px 16px;
+  border: 1px solid rgba(0, 122, 255, 0.22);
+  border-radius: var(--r-md);
+  background: var(--ios-blue-soft);
+}
+.product-preview-price-block > span {
+  margin-right: auto;
+  color: var(--ios-blue-ink);
+}
+.product-preview-price {
+  margin: 0;
+  color: var(--ios-blue-ink);
+  font-size: var(--fs-xl);
+  font-weight: var(--product-weight-bold);
+  line-height: 1.2;
+  letter-spacing: var(--track-tight);
+  font-variant-numeric: tabular-nums;
+}
+.product-preview-price-block small {
+  color: var(--ios-blue-ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium);
+}
+
+.product-preview-desc p,
+.product-preview-empty {
+  margin: 6px 0 0;
+  color: var(--ios-label);
+  font-size: var(--fs-md);
+  font-weight: var(--product-weight-regular);
+  line-height: 1.45;
+}
+.product-preview-empty {
+  color: var(--ios-label3);
+  font-style: italic;
+}
+
+/* Danh sách thông số / phụ kiện: khối ngoài chịu trách nhiệm bo góc, từng dòng
+   chỉ dùng đường phân cách. */
+.product-preview-specs ul,
+.product-preview-acc-list {
+  list-style: none;
+  display: grid;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ios-separator);
+  border-radius: var(--r-md);
+  background: var(--ios-card);
+}
+.product-preview-specs li,
+.product-preview-acc-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ios-separator);
+}
+.product-preview-specs li:last-child,
+.product-preview-acc-list li:last-child { border-bottom: 0; }
+.product-preview-specs li em,
+.product-preview-acc-list li em,
+.product-preview-pkg-name em {
+  color: var(--ios-label3);
+  font-style: normal;
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-regular);
+  white-space: nowrap;
+}
+.product-preview-specs li strong,
+.product-preview-acc-list li strong {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium);
+}
+/* Giá bộ phụ kiện xuống dòng dưới tên: cột này hẹp nên tên thường phải xuống
+   dòng, để giá cùng hàng thì nó trôi lệch khỏi dòng cuối của tên. */
+.product-preview-pkg-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 8px 0 4px;
+}
+.product-preview-pkg-name strong {
+  margin: 0;
+  color: var(--ios-label);
+  font-size: var(--fs-md);
+  font-weight: var(--product-weight-semibold);
+  line-height: 1.3;
+}
+
+/* Hành động tách xuống footer cố định: luôn thấy được và không chiếm chiều cao
+   của cột thông tin. */
+.product-preview-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--ios-separator);
+  background: var(--ios-card);
+}
+.product-preview-footer:empty { display: none; }
+/* Hành động trong modal dùng pill như nav bar của form. */
+.product-preview-footer .btn {
+  min-height: 38px;
+  padding: 0 18px !important;
+  border: 0;
+  border-radius: var(--r-pill) !important;
+  font-size: var(--fs-sm) !important;
+}
+.product-preview-footer .btn-primary { background: var(--ios-blue); }
+.product-preview-footer .btn-primary:hover:not(:disabled) { background: var(--ios-blue-ink); }
+.product-preview-footer .btn-ghost {
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--ios-label);
+}
+.product-preview-footer .btn-ghost:hover:not(:disabled) { background: rgba(120, 120, 128, 0.18); }
+
+.bulk-price-modal {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(760px, calc(100dvh - 32px));
+}
+.bulk-price-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 20px 20px;
+  background: var(--ios-card);
+}
+.bulk-price-body .field > label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ios-label2);
+  font-size: var(--fs-sm);
+  font-weight: var(--product-weight-medium);
+}
+.bulk-price-body .input {
+  border-radius: var(--r-md) !important; /* đè bo control dùng chung */
+}
+.bulk-price-preview {
+  margin: 14px 0 18px;
+  overflow: hidden;
+  border: 1px solid var(--ios-separator);
+  border-radius: var(--r-md);
+  background: var(--ios-card);
+}
+.bulk-price-preview > div,
+.bulk-price-preview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--ios-separator);
+  font-size: var(--fs-sm);
+}
+.bulk-price-preview-head {
+  border-bottom-color: #dce9f7;
+  background: #f3f8fe;
+  color: #355a7a;
+  font-size: var(--fs-xs);
+  font-weight: var(--product-weight-semibold);
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+.bulk-price-preview > div strong {
+  font-weight: var(--product-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bulk-price-preview > div:last-of-type { border-bottom: 0; }
+.bulk-price-preview > small {
+  display: block;
+  padding: 9px 12px;
+  color: var(--ios-label3);
+  font-weight: var(--product-weight-regular);
+}
+.bulk-price-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+.bulk-price-actions .btn {
+  min-height: 38px;
+  padding: 0 16px !important;
+  border: 0;
+  border-radius: var(--r-pill) !important;
+  font-size: var(--fs-sm) !important;
+}
+.bulk-price-actions .btn-ghost {
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--ios-label);
+}
+.bulk-price-actions .btn-ghost:hover:not(:disabled) { background: rgba(120, 120, 128, 0.18); }
+.bulk-price-actions .btn-primary { background: var(--ios-blue); }
+.bulk-price-actions .btn-primary:hover:not(:disabled) { background: var(--ios-blue-ink); }
+
+/* ═══════════════ Responsive (kế thừa breakpoint của bản cũ) ═══════════════ */
+
+@media (max-width: 1180px) {
+  .product-basic-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .product-basic-grid > :nth-child(2) { grid-column: auto; }
+  .product-editor-section-grid { grid-template-columns: 1fr; }
+  /* Bốn ô tổng dưới 1180px thì mỗi ô hẹp hơn cả con số tiền — chia đôi. */
+  .product-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1080px) {
+  .product-list-toolbar { grid-template-columns: minmax(220px, 1fr) minmax(180px, 220px); }
+  .product-toolbar-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .product-editor-section-grid { grid-template-columns: 1fr; }
+  .product-form-heading { flex-wrap: wrap; }
+  .product-form-actions {
+    width: 100%;
+    margin-left: 50px;
+  }
+}
+
+@media (max-width: 760px) {
+  .product-list-toolbar { grid-template-columns: 1fr; }
+  /* Ba nút không đủ chỗ trên một hàng hẹp: hai nút phụ chia đôi, CTA xuống hàng riêng. */
+  .product-toolbar-actions {
+    flex-wrap: wrap;
+    justify-content: stretch;
+  }
+  .product-toolbar-actions > .btn { flex: 1 1 140px; }
+  .product-toolbar-actions .product-create-button { flex: 1 1 100%; }
+  .product-preview-body,
+  .product-preview-detail-grid,
+  .product-editor-top { grid-template-columns: 1fr; }
+  .product-preview-footer .btn { flex: 1 1 140px; justify-content: center; }
+    .product-image-panel { max-width: min(220px, 100%); }
+  .product-list-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .product-pagination-controls { width: 100%; justify-content: space-between; }
+}
+
+/* ─── Điện thoại dọc: danh sách thành thẻ, nút Lưu ghim đáy ─── */
+/* ─── Điện thoại: một cột cho thông tin cơ bản và dải tổng ─── */
+@media (max-width: 560px) {
+  .product-basic-grid,
+  .product-summary-strip { grid-template-columns: 1fr; }
+  .product-editor-card { padding: 14px; }
+}
+
+@media (max-width: 720px) {
+
+  .product-table-card {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .product-table-wrap { overflow: visible; }
+  .product-table {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+  .product-table thead { display: none; }
+  .product-table tbody tr.product-row {
+    /* Thẻ trên điện thoại là grid (không còn là table-row) nên dùng được
+       content-visibility: hàng ngoài màn hình bỏ qua layout/paint, cuộn danh
+       sách dài đỡ giật. Kích thước dự phòng ~ chiều cao một thẻ. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 116px;
+    display: grid;
+    /* Cột thứ ba `auto` chỉ để chứa nút bật/tắt hiển thị công khai: đặt nó cùng
+       hàng với giá thì thẻ không cao thêm dòng nào — quan trọng khi cuộn vài
+       trăm sản phẩm trên điện thoại. */
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'image name  name'
+      'image price public'
+      'actions actions actions';
+    align-items: center;
+    gap: 4px 10px;
+    padding: 10px;
+    border: 1px solid var(--ios-separator);
+    border-radius: var(--r-md);
+    background: var(--ios-card);
+    box-shadow: var(--shadow-sm);
+  }
+  .product-table tbody tr.product-row > td {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .product-table td[data-col='category'],
+  .product-table td[data-col='unit'],
+  .product-table td[data-col='size'] { display: none; }
+  .product-table td[data-col='image'] { grid-area: image; }
+  .product-table td[data-col='name'] {
+    grid-area: name;
+    min-width: 0;
+  }
+  .product-table td[data-col='name'] .product-name { max-width: none; }
+  .product-table td[data-col='price'] {
+    grid-area: price;
+    text-align: left;
+    color: var(--ios-label);
+    font-size: var(--fs-lg);
+    font-weight: var(--product-weight-semibold);
+  }
+  .product-table td[data-col='public'] {
+    grid-area: public;
+    justify-self: end;
+  }
+  .product-table td[data-col='actions'] { grid-area: actions; }
+  .product-row-mobile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .product-row-mobile-meta span {
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    background: var(--ios-fill);
+    color: var(--ios-label2);
+    font-size: var(--fs-xs);
+    font-weight: var(--product-weight-medium);
+  }
+  .product-image-button {
+    width: 64px;
+    height: 64px;
+  }
+  .product-table-actions {
+    justify-content: flex-end;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--ios-separator);
+  }
+  .product-list-pagination {
+    margin-top: 4px;
+    border: 1px solid var(--ios-separator);
+    border-radius: var(--r-md);
+  }
+
+  /* Các rule mobile của lớp chung đều chừa một cột đầu cho tay cầm. Dòng kéo-cả-
+     dòng không có tay cầm nữa nên phải khai lại lưới, nếu không ô "Tên phụ kiện"
+     rơi vào đúng cột 28px đó và bị co mất. `!important` để đè rule chung cũng
+     đang `!important`. */
+  .product-editor-card .extra-accessory-line.is-row-drag {
+    grid-template-columns: minmax(0, 1fr) 34px !important;
+  }
+  .product-editor-card .extra-accessory-line.is-row-drag > .extra-acc-metrics {
+    grid-column: 1 / -1 !important;
+  }
+  /* Nút xoá về cùng hàng với ô tên, thay vì chiếm riêng một dòng phía dưới. */
+  .product-editor-card .extra-accessory-line.is-row-drag > .row-action-group {
+    grid-column: 2 !important;
+    grid-row: 1;
+  }
+  /* Điện thoại ẩn header cột, nên phải trả lại nhãn cho từng ô đo — không thì
+     không biết ô nào là DV / SL / KL / đơn giá. Rule chung đã đặt lại
+     position và size cho nhãn nhưng thiếu `display`. */
+  .product-editor-card .extra-acc-metrics .field > label { display: block; }
+  /* Dòng thông số xếp dọc: bullet cột 1, tên và giá trị chồng nhau ở cột 2,
+     nút xoá cột 3 trải hết chiều cao. */
+  .product-editor-card .spec-editor-row.is-row-drag {
+    grid-template-columns: 12px minmax(0, 1fr) 40px !important;
+  }
+  .product-editor-card .spec-editor-row.is-row-drag > :is(.autosuggest, .field) {
+    grid-column: 2 !important;
+  }
+  .product-editor-card .spec-editor-row.is-row-drag > .product-spec-bullet {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .product-editor-card .spec-editor-row.is-row-drag > .row-action-group {
+    grid-column: 3 !important;
+    grid-row: 1 / -1;
+    align-self: center;
+  }
+  /* Header cột ẩn đi thì phải trả nhãn về từng ô, không thì không biết ô nào là
+     tên, ô nào là giá trị. */
+  .product-editor-card .spec-table-head { display: none; }
+  .product-editor-card .spec-editor-row.is-row-drag .field > label { display: block; }
+
+  .product-image-panel { max-width: 100%; }
+  .product-image-panel .dropzone {
+    max-width: 200px;
+    min-height: 140px;
+    margin: 0 auto;
+  }
+
+  /* Nút Lưu luôn trong tầm ngón tay: nhóm hành động của nav bar rời khỏi luồng
+     và ghim đáy viewport. Bỏ bo ở cạnh dán trực tiếp mép viewport (guide §7). */
+  .product-editor-card { padding-bottom: 72px; }
+  .product-form-heading { padding-bottom: 10px; }
+  .product-form-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 8px;
+    width: auto;
+    margin-left: 0;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--ios-separator);
+    background: var(--ios-card);
+    box-shadow: 0 -8px 24px rgba(28, 28, 40, 0.1);
+  }
+  .product-form-actions > .btn {
+    width: 100%;
+    min-height: var(--control-h);
+  }
+
+  /* Modal thành sheet gần toàn màn hình */
+  .product-preview-modal,
+  .bulk-price-modal {
+    width: 100%;
+    max-height: min(92dvh, 900px);
+  }
+}
+
+/* ─── Điện thoại ngang: 2 cột, ô thấp, nhóm hành động trở lại trong luồng ─── */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 960px) {
+  .product-basic-grid,
+  .product-editor-top,
+  .product-editor-section-grid,
+  .product-summary-strip {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .product-basic-grid > :nth-child(2) { grid-column: auto; }
+  .product-image-panel { max-width: none; }
+  .product-image-panel .dropzone {
+    max-width: 100%;
+    min-height: 90px;
+    margin: 0;
+  }
+
+  .product-editor-card { padding-bottom: 12px; }
+  .product-form-actions {
+    position: static;
+    display: inline-flex;
+    width: auto;
+    gap: 6px;
+    margin-left: auto;
+    padding: 0;
+    border-top: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .product-form-actions > .btn {
+    width: auto;
+    min-height: 34px;
+  }
+
+  /* Cùng lý do như breakpoint dọc: bỏ cột tay cầm khỏi lưới ngang. */
+  .product-editor-card .extra-accessory-line.is-row-drag {
+    grid-template-columns: minmax(140px, 1.2fr) minmax(0, 2.2fr) 28px !important;
+  }
+
+  .product-table tbody tr.product-row {
+    grid-template-columns: 48px minmax(0, 1fr);
+    padding: 6px 8px;
+  }
+  .product-image-button {
+    width: 48px;
+    height: 48px;
+  }
+
+  .product-preview-modal,
+  .bulk-price-modal {
+    width: min(920px, 100%);
+    max-height: calc(100dvh - 12px);
+  }
+  .product-preview-body { grid-template-columns: 1fr 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-list-skeleton div { animation: none; }
+  .product-category-menu { animation: none; }
+  .product-row,
+  .product-image-button,
+  .product-form-back,
+  .product-form-actions > .btn { transition: none; }
+}
+
+/* ─── Hộp thoại hiển thị công khai hàng loạt ─── */
+.bulk-public-modal {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(560px, calc(100dvh - 32px));
+}
+/* Modal này hẹp hơn modal cập nhật giá, nên dòng phụ một hàng bị cắt mất phần
+   "không chạm sản phẩm đã xoá" — đúng cái cần nói rõ nhất khi thao tác sửa
+   hàng trăm dòng. Cho nó xuống dòng thay vì thêm dấu ba chấm. */
+.bulk-public-modal .product-modal-title .product-sub {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+.bulk-public-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 20px 20px;
+  background: var(--ios-card);
+}
+/* Hai con số đặt cân xứng: thao tác này sửa hàng trăm dòng nên phải thấy
+   trước sẽ chạm bao nhiêu, không phải đoán. */
+.bulk-public-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.bulk-public-status > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 10px;
+  border: 1px solid var(--ios-separator);
+  border-radius: var(--r-md);
+  background: var(--ios-surface-muted);
+  text-align: center;
+}
+.bulk-public-status > div:first-child { color: var(--ios-green); }
+.bulk-public-status > div:last-child { color: var(--ios-label2); }
+.bulk-public-status strong {
+  color: var(--ios-label);
+  font-size: var(--fs-2xl);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.bulk-public-status span {
+  color: var(--ios-label2);
+  font-size: var(--fs-sm);
+}
+.bulk-public-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.bulk-public-actions .btn {
+  min-height: 38px;
+  padding: 0 16px !important;
+  border: 0;
+  border-radius: var(--r-pill) !important;
+  font-size: var(--fs-sm) !important;
+}
+.bulk-public-actions .btn-ghost {
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--ios-label);
+}
+.bulk-public-note {
+  margin: 16px 0 0;
+  color: var(--ios-label3);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+@media (max-width: 480px) {
+  .bulk-public-actions { flex-direction: column-reverse; align-items: stretch; }
+}
+
+/* Hai nút cùng nói về "lên web thế nào": sao nổi bật và công khai/ẩn. */
+.product-web-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.product-feature-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--ios-separator-opaque);
+  border-radius: var(--r-pill);
+  background: var(--ios-fill);
+  color: var(--ios-label3);
+  cursor: pointer;
+}
+
+.product-feature-toggle:hover:not(:disabled) { background: var(--ios-fill-strong); }
+
+/* Sản phẩm đang ẩn khỏi web thì nút mờ hẳn — nổi bật một thứ không ai thấy là
+   vô nghĩa, nên nói bằng hình thay vì để người dùng bấm rồi thắc mắc. */
+.product-feature-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.product-feature-toggle.is-featured {
+  border-color: transparent;
+  background: var(--ios-orange-fill);
+  color: #fff;
+}

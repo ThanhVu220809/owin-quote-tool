@@ -1,0 +1,141 @@
+/* Menu tài khoản trên thanh điều hướng — nút tròn + popover kiểu iOS. */
+
+.account-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.account-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 250px;
+  min-height: 44px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid rgba(77, 89, 113, 0.13);
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, rgba(245, 247, 251, 0.88), rgba(234, 237, 244, 0.82));
+  color: var(--ios-label);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92) inset, 0 5px 16px rgba(31, 44, 70, 0.08);
+  transition: background 0.22s var(--ease-ios), border-color 0.22s var(--ease-ios),
+    box-shadow 0.22s var(--ease-ios), transform 0.2s var(--ease-ios);
+}
+.account-menu-trigger:hover,
+.account-menu-trigger[aria-expanded='true'] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(238, 242, 248, 0.9));
+  border-color: rgba(0, 122, 255, 0.2);
+  box-shadow: 0 1px 0 #fff inset, 0 8px 22px rgba(30, 51, 88, 0.12);
+}
+.account-menu-trigger:active { transform: scale(0.98); }
+.account-menu-trigger > svg {
+  flex: 0 0 auto;
+  color: var(--ios-label3);
+  transition: transform 0.2s var(--ease-ios);
+}
+.account-menu-trigger > svg.is-open { transform: rotate(180deg); }
+
+.account-menu-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #2393ff, #0067dc 64%, #0056c1);
+  color: #fff;
+  border: 1px solid rgba(0, 76, 175, 0.28);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset, 0 4px 10px rgba(0, 104, 224, 0.24);
+}
+
+.account-menu-identity,
+.account-menu-details > span:last-child {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+.account-menu-identity strong,
+.account-menu-identity small,
+.account-menu-details strong,
+.account-menu-details small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu-identity strong,
+.account-menu-details strong {
+  color: var(--ios-label);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.account-menu-identity small,
+.account-menu-details small {
+  color: var(--ios-label3);
+  font-size: 10.5px;
+}
+
+.account-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 70;
+  width: min(290px, calc(100vw - 20px));
+  padding: 12px;
+  border: 1px solid #c7c7cc;
+  border-radius: var(--r-lg);
+  /* Nền đặc để menu không bị lẫn vào nội dung phía sau. */
+  background: #f2f2f7;
+  box-shadow: 0 22px 60px rgba(24, 37, 64, 0.2), 0 1px 0 #ffffff inset;
+  text-align: left;
+  animation: account-menu-in 0.18s var(--ease-ios) both;
+}
+@keyframes account-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.account-menu-details {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 2px 2px 12px;
+}
+.account-menu-error {
+  margin: 0 0 8px;
+  color: var(--ios-red);
+  font-size: 12px;
+}
+.account-menu-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  background: #e5e5ea !important;
+}
+.account-menu-action:hover:not(:disabled) {
+  background: #d1d1d6 !important;
+}
+.account-menu-action + .account-menu-action { margin-top: 6px; }
+
+@media (max-width: 760px) {
+  .account-menu-identity { display: none; }
+  .account-menu-trigger {
+    gap: 4px;
+    min-height: 38px;
+    padding: 2px 4px 2px 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-menu-popover { animation: none; }
+}
+
+@media print {
+  .account-menu { display: none; }
+}
+
+.account-menu-store { margin:0 0 6px; padding:8px 10px; border-radius:10px; background:var(--ios-fill); color:var(--ios-label2); font-size:13px; font-weight:600; text-align:center; }

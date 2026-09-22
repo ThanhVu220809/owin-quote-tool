@@ -1,0 +1,39 @@
+.store-gate { min-height:100dvh; display:grid; place-items:center; padding:24px; background:var(--ios-bg); color:var(--ios-label); font:400 15px/1.6 var(--font-sans); }
+.store-gate-loading { color:var(--ios-label3); font-size:15px; margin:0; }
+.store-gate-card { width:100%; max-width:430px; padding:34px 32px 28px; border:1px solid var(--ios-separator); border-radius:28px; background:var(--ios-card); box-shadow:var(--shadow-lg); text-align:center; }
+.store-gate-icon { display:grid; place-items:center; width:58px; height:58px; margin:0 auto 18px; border-radius:50%; background:var(--ios-fill); color:var(--ios-blue-ink); }
+.store-gate-card h1 { margin:0 0 14px; font-size:23px; font-weight:600; letter-spacing:-.02em; line-height:1.3; }
+.store-gate-body p { margin:0 0 10px; color:var(--ios-label2); font-size:14px; }
+.store-gate-body strong { color:var(--ios-label); font-weight:600; word-break:break-all; }
+.store-gate-detail { font-size:12px; color:var(--ios-label3); background:var(--ios-fill); border-radius:12px; padding:10px 12px; text-align:left; word-break:break-word; }
+.store-gate-choices { display:grid; gap:12px; margin-top:22px; text-align:left; }
+.store-gate-choices button { display:flex; align-items:flex-start; gap:12px; text-align:left; width:100%; padding:16px; border:1px solid var(--ios-separator); border-radius:16px; background:var(--ios-fill); color:var(--ios-label); font-family:inherit; font-size:14px; cursor:pointer; transition:border-color .2s var(--ease-ios), background-color .2s var(--ease-ios); }
+.store-gate-choices button:hover { border-color:var(--ios-blue-ink); background:var(--ios-card); }
+.store-gate-choices svg { flex-shrink:0; margin-top:2px; color:var(--ios-blue-ink); }
+.store-gate-choices span { display:block; color:var(--ios-label3); line-height:1.5; }
+.store-gate-choices strong { display:block; margin-bottom:3px; color:var(--ios-label); font-size:15px; font-weight:600; }
+
+.store-gate-fields { text-align:left; margin-top:20px; }
+.store-gate-fields label { display:block; font-size:13px; font-weight:500; color:var(--ios-label2); margin:14px 0 7px; }
+.store-gate-fields input { width:100%; min-width:0; height:50px; padding:0 16px; border:1px solid var(--ios-separator); border-radius:14px; background:var(--ios-fill); color:var(--ios-label); font-size:15px; font-family:inherit; }
+.store-gate-password { position:relative; }
+.store-gate-password input { padding-right:52px; }
+.store-gate-password button { position:absolute; right:3px; top:3px; width:44px; height:44px; display:grid; place-items:center; border:0; border-radius:11px; background:transparent; color:var(--ios-label3); cursor:pointer; }
+.store-gate-hint { margin:10px 0 0; font-size:13px; color:var(--ios-label3); }
+.store-gate-error { margin:12px 0 0; padding:11px 13px; border-radius:13px; font-size:13px; color:#c8302a; background:color-mix(in srgb, #ff3b30 8%, var(--ios-card)); border:1px solid color-mix(in srgb, #ff3b30 22%, transparent); }
+.store-gate-spinner { animation:store-gate-spin 1s linear infinite; }
+@keyframes store-gate-spin { to { transform:rotate(360deg); } }
+
+.store-gate-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:24px; padding-top:22px; border-top:1px solid var(--ios-separator); }
+.store-gate-actions button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:46px; padding:0 20px; border-radius:14px; font-size:15px; font-weight:600; cursor:pointer; transition:background-color .2s var(--ease-ios), color .2s var(--ease-ios); }
+.store-gate-retry { border:0; background:var(--ios-blue-ink); color:#fff; }
+.store-gate-retry:hover { background:var(--ios-blue-hover); }
+.store-gate-logout { border:1px solid var(--ios-separator); background:transparent; color:var(--ios-label2); }
+.store-gate-logout:hover:not(:disabled) { background:var(--ios-fill); color:var(--ios-label); }
+.store-gate-logout:disabled { opacity:.55; cursor:not-allowed; }
+
+@media (max-width:480px) {
+  .store-gate { padding:16px; }
+  .store-gate-card { padding:28px 22px 24px; border-radius:24px; }
+  .store-gate-actions button { width:100%; }
+}

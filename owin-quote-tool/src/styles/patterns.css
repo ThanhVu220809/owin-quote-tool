@@ -1,0 +1,493 @@
+/*
+ * Pattern dùng chung giữa nhiều tab — không thuộc riêng feature nào và cũng
+ * không phải control nguyên thuỷ:
+ *   khung trang (.admin-page*, .app-title, .title-row)
+ *   danh sách (.filter-card, .toast, .data-error, .empty-card, .page-actions)
+ *   bề mặt (.card, .editor-panel, .summary-metric, .spec-editor-row)
+ *   tài liệu xem trước (.preview-doc và các con)
+ *
+ * Nạp SAU components.css, TRƯỚC stylesheet của từng feature.
+ */
+
+.app-title {
+  font-size: var(--fs-title) !important;
+  font-weight: 700 !important;
+  letter-spacing: var(--track-tight);
+  line-height: 1.2;
+  margin: 0 0 4px !important;
+}
+.app-subtitle {
+  font-size: var(--fs-md) !important;
+  line-height: 1.4;
+  margin: 0 !important;
+  color: var(--owin-ink-muted);
+}
+.section-label {
+  font-size: var(--fs-sm) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+}
+.card, .editor-panel {
+  border-radius: var(--r-md) !important;
+}
+.app-title { color: var(--ios-label); }
+.app-subtitle { color: var(--ios-label2); }
+.card {
+  border: 1px solid var(--ios-separator);
+  border-radius: var(--r-lg) !important;
+  background: var(--ios-card);
+  box-shadow: var(--shadow-md);
+}
+.admin-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 6px 2px 2px;
+}
+.admin-page {
+  min-width: 0;
+}
+.admin-page > .card {
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-back-button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--owin-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--owin-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--ios-shadow);
+}
+
+@media (max-width: 760px) {
+  .admin-page-heading {
+      grid-template-columns: 1fr;
+    }
+  .admin-page-heading {
+      display: grid;
+    }
+}
+.row-action-group .icon-btn.danger {
+  /* Trash is the only control that deletes a row. */
+  flex: 0 0 auto;
+}
+.editor-panel {
+  border: 1px solid var(--owin-border);
+  border-radius: 16px;
+  background: #fff;
+  min-width: 0;
+  overflow: visible;
+  padding: 14px;
+  text-align: left;
+}
+.spec-table-head, .spec-editor-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  /* [kéo] [tên] [giá trị] [xóa] */
+  grid-template-columns: 36px minmax(0, 0.9fr) minmax(0, 1.4fr) 40px;
+  min-width: 0;
+}
+.spec-table-head {
+  color: var(--owin-ink-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0 4px 6px;
+  text-transform: uppercase;
+}
+.spec-row-list {
+  display: grid;
+  gap: 8px;
+}
+.spec-editor-row {
+  border: 1px solid var(--owin-border);
+  border-radius: var(--r-sm);
+  padding: 8px;
+  background: #fff;
+  min-width: 0;
+  overflow: hidden;
+}
+.summary-metric {
+  display: grid;
+  gap: 3px;
+  padding: 14px 16px;
+}
+.summary-metric + .summary-metric {
+  border-left: 1px solid var(--owin-border);
+}
+.summary-metric span {
+  color: var(--owin-ink-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.summary-metric strong {
+  color: var(--owin-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+}
+.summary-metric small {
+  color: var(--owin-ink-muted);
+  font-size: var(--fs-xs);
+}
+.summary-metric-strong {
+  background: #f7fbff;
+}
+.summary-metric-strong strong {
+  color: var(--owin-action);
+  font-size: var(--fs-xl);
+}
+.readonly-money {
+  min-height: var(--control-h);
+  width: 100%;
+  border-radius: var(--r-sm);
+  background: var(--owin-soft);
+  color: var(--owin-primary);
+  font-weight: 700;
+  font-size: var(--fs-md);
+  font-family: var(--font-sans);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+.muted-money { color: var(--owin-ink-muted); justify-content: center; }
+.empty-line {
+  background: var(--owin-bg);
+  border: 1px dashed var(--owin-border);
+  border-radius: 12px;
+  color: var(--owin-ink-muted);
+  font-size: 13px;
+  padding: 14px;
+  text-align: center;
+}
+.row-action-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.row-action-group .icon-btn {
+  height: 30px;
+  width: 30px;
+}
+
+@media (max-width: 760px) {
+  .summary-metric + .summary-metric {
+      border-left: 0;
+      border-top: 1px solid var(--owin-border);
+    }
+  .spec-table-head, .spec-editor-row {
+      grid-template-columns: 36px minmax(0, 1fr) 40px;
+    }
+  .spec-editor-row {
+      grid-template-columns: 36px minmax(0, 1fr) 40px;
+      grid-template-areas:
+      'drag key del'
+      'drag val del';
+    }
+  .admin-page-heading {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+}
+.preview-doc {
+  border: 1px solid var(--owin-border);
+  border-radius: var(--ios-radius);
+  color: var(--owin-ink);
+}
+.preview-doc .doc-title {
+  color: var(--owin-primary);
+  letter-spacing: 0.02em;
+  border-bottom: 2px solid var(--ios-separator);
+  display: inline-block;
+  padding-bottom: 4px;
+}
+.preview-doc .doc-date { font-style: italic; color: var(--owin-ink-muted); margin-top: 6px; }
+.preview-doc th {
+  background: var(--owin-primary);
+  color: #fff;
+  font-weight: 600;
+  border-color: var(--owin-primary);
+}
+.preview-doc td { border-color: #cfd6db; }
+.preview-doc .pk-row td { background: #f3f6f8; }
+.preview-doc .totals { line-height: 1.8; }
+.preview-doc .totals b { color: var(--owin-primary); }
+
+@media (max-width: 720px) {
+  .admin-page { gap: 10px; }
+  .admin-page-heading {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+  .admin-page-heading .title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+  .card {
+      padding: 12px;
+      border-radius: 12px;
+    }
+  .readonly-money {
+      min-height: var(--control-h);
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+  .section-label { font-size: 11px; margin-bottom: 6px; }
+  .product-sub, .muted { font-size: 12px; }
+  .admin-page-heading > .btn {
+      flex: 1 1 calc(50% - 8px);
+      min-width: 0;
+      justify-content: center;
+    }
+  .product-name {
+      font-size: 14px;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  .two-col {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+  .spec-table-head { display: none; }
+  .spec-editor-row {
+      grid-template-columns: 32px minmax(0, 1fr) 34px !important;
+      gap: 6px;
+    }
+  .summary-metric { padding: 8px; }
+  .summary-metric span { font-size: 10px; }
+  .summary-metric strong { font-size: 13px; }
+  .summary-metric-strong { grid-column: 1 / -1; }
+  .summary-metric + .summary-metric {
+      border-left: 0;
+      border-top: 1px solid var(--owin-border);
+    }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 960px) {
+  .admin-page { gap: 8px; }
+  /* Ngoai le duy nhat cua thang chu: man ngang cao <=500px, tieu de an het
+     chieu cao con lai. Van dung nac trong thang, khong dat px roi. */
+  .app-title { font-size: var(--fs-lg) !important; }
+  .app-subtitle { font-size: var(--fs-xs) !important; }
+  .card { padding: 8px 10px; }
+  .readonly-money {
+      min-height: 30px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+  .section-label { font-size: 10px; }
+  .two-col {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
+  .product-name { font-size: 12px; }
+}
+.card, .editor-panel {
+  border-color: var(--ios-separator);
+  box-shadow: var(--shadow-md);
+  background: var(--owin-surface);
+}
+.section-label {
+  color: var(--ios-label3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--fs-xs) !important;
+  font-weight: 600 !important;
+}
+.accessory-editor-panel, .editor-panel {
+  background: var(--ios-card);
+  border: 1px solid var(--owin-border);
+  border-radius: var(--r-md) !important;
+  padding: 14px !important;
+}
+.empty-line {
+  color: var(--owin-ink-muted);
+  font-weight: 600;
+}
+.admin-back-button {
+  transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+.admin-back-button:hover {
+  background: var(--owin-soft);
+  box-shadow: var(--shadow-md);
+}
+.admin-back-button:active { transform: scale(0.96); }
+.readonly-money {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+@media print {
+  .no-print {
+      display: none;
+    }
+  .preview-doc:not(.aluminum-print-document) {
+      display: none;
+    }
+}
+.page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.filter-card {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(220px, 0.7fr);
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--ios-separator);
+  border-radius: var(--r-lg);
+  background: var(--ios-card);
+  box-shadow: var(--shadow-md);
+}
+.filter-card .field { margin-bottom: 0; }
+.filter-search label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.toast, .data-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+/* Toast nổi lên trên nội dung, KHÔNG chiếm chỗ trong luồng.
+ *
+ * Trước đây nó là một khối bình thường nên mỗi lần hiện lại đẩy cả danh sách
+ * xuống vài chục pixel rồi kéo ngược lên khi tắt — bấm bật/tắt liên tục thì cả
+ * bảng nhảy theo, và hàng đang định bấm tiếp trượt khỏi con trỏ.
+ *
+ * `fixed` chứ không phải `absolute`: không cần tổ tiên nào phải được định vị,
+ * và toast ở yên khi người dùng cuộn trang. `data-error` thì giữ nguyên trong
+ * luồng — lỗi phải nằm lại cho người ta đọc và xử lý, không tự trôi đi. */
+.toast {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  z-index: 60;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 32px));
+  margin-bottom: 0;
+  border: 1px solid rgba(52, 199, 89, 0.24);
+  /* Nền phải ĐỤC. `--ios-green-soft` là màu trong suốt — hồi toast còn nằm
+     trong luồng thì không sao, nhưng khi nó nổi lên trên nội dung thì chữ và
+     nút phía dưới xuyên qua, đọc không ra. Lớp nền thẻ đặc ở dưới, lớp xanh
+     nhạt phủ lên trên: vẫn đúng màu cũ mà không nhìn xuyên được. */
+  background-color: var(--ios-card);
+  background-image: linear-gradient(var(--ios-green-soft), var(--ios-green-soft));
+  color: var(--ios-green);
+  box-shadow: var(--shadow-md, 0 6px 20px rgba(0, 0, 0, 0.12));
+  transform: translateX(-50%);
+  animation: toast-in 160ms ease-out;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Máy nào tắt hiệu ứng chuyển động thì hiện thẳng, đừng trượt. */
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+
+/* Toast là phản hồi thao tác trên màn hình, không thuộc về bản in. */
+@media print {
+  .toast { display: none; }
+}
+.data-error {
+  justify-content: space-between;
+  width: min(680px, 100%);
+  border: 1px solid rgba(255, 59, 48, 0.22);
+  background: var(--ios-red-soft);
+  color: var(--ios-red);
+}
+.data-error .btn { flex: 0 0 auto; }
+.empty-card {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 36px 20px;
+  border: 1px dashed var(--ios-separator);
+  border-radius: var(--r-lg);
+  background: var(--ios-card);
+  color: var(--ios-label2);
+  text-align: center;
+}
+.empty-card svg { color: var(--ios-label3); }
+.empty-card h3, .empty-card p { margin: 0; }
+.empty-card h3 {
+  color: var(--ios-label);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .filter-card { grid-template-columns: 1fr; }
+  .page-actions { justify-content: stretch; }
+  .page-actions .btn {
+        flex: 1 1 180px;
+        justify-content: center;
+      }
+}
+
+@media (max-width: 720px) {
+  .page-actions {
+        width: 100%;
+        gap: 8px;
+      }
+  .page-actions .btn {
+        flex: 1 1 calc(50% - 8px);
+        min-width: 0;
+      }
+  .filter-card {
+        gap: 8px;
+        padding: 10px;
+      }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 960px) {
+  .filter-card {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+}
+
+@media (max-width: 380px) {
+  .page-actions .btn { flex: 1 1 100%; }
+}

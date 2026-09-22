@@ -1,0 +1,180 @@
+/* Hộp thoại Cài đặt mở từ menu tài khoản — dùng lại thang màu/bo iOS chung. */
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px))
+    max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  background: rgba(28, 28, 40, 0.48);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: settings-fade 0.16s var(--ease-ios) both;
+}
+
+.settings-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(60, 60, 67, 0.18);
+  border-radius: var(--r-lg);
+  background: var(--ios-bg);
+  box-shadow: var(--shadow-lg);
+  text-align: left;
+  animation: settings-in 0.2s var(--ease-ios) both;
+}
+.settings-modal:focus { outline: none; }
+
+@keyframes settings-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes settings-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.settings-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  column-gap: 16px;
+  flex: 0 0 auto;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(60, 60, 67, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbfd 100%);
+}
+.settings-kicker {
+  color: var(--ios-label3);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.settings-header h2 {
+  margin: 2px 0 0;
+  color: var(--ios-label);
+  font-size: var(--fs-xl);
+}
+
+.settings-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 16px 18px;
+}
+.settings-section + .settings-section { margin-top: 20px; }
+.settings-section h3 {
+  margin: 0;
+  color: var(--ios-label);
+  font-size: var(--fs-sm);
+}
+.settings-hint {
+  margin: 4px 0 10px;
+  color: var(--ios-label3);
+  font-size: var(--fs-xs);
+}
+
+.settings-appearance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.settings-appearance button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  border: 1px solid var(--ios-separator);
+  border-radius: var(--r-md);
+  background: var(--ios-card);
+  color: var(--ios-label2);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease-ios), background 0.18s var(--ease-ios),
+    color 0.18s var(--ease-ios);
+}
+.settings-appearance button:hover { background: var(--ios-row-hover); }
+.settings-appearance button[aria-pressed='true'] {
+  border-color: var(--ios-blue);
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+  font-weight: 600;
+}
+
+/* ─── Danh sách công tắc bật/tắt ─── */
+
+.settings-toggle-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ios-separator);
+  border-radius: var(--r-md);
+  background: var(--ios-card);
+  overflow: hidden;
+}
+.settings-toggle-list li + li { border-top: 1px solid rgba(60, 60, 67, 0.1); }
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  color: var(--ios-label);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.settings-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.settings-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--ios-fill-strong);
+  transition: background 0.2s var(--ease-ios);
+}
+.settings-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(28, 28, 40, 0.28);
+  transition: transform 0.2s var(--ease-ios);
+}
+.settings-toggle input:checked + .settings-switch { background: var(--ios-green-fill); }
+.settings-toggle input:checked + .settings-switch::after { transform: translateX(18px); }
+.settings-toggle input:focus-visible + .settings-switch {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 2px;
+}
+
+.settings-footer {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(60, 60, 67, 0.08);
+  background: var(--ios-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-backdrop,
+  .settings-modal { animation: none; }
+}

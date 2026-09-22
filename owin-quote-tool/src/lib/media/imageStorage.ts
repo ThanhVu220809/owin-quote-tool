@@ -1,0 +1,364 @@
+/**
+ * Image compression + Supabase Storage persistence.
+ *
+ * Images are compressed in the browser (including EXIF orientation handling),
+ * then uploaded directly to Supabase Storage. Product images use the public
+ * `product-images` bucket; quote-only overrides use the private `quote-images`
+ * bucket. Records persist only a Storage URL/reference. The small Maps below
+ * are transient runtime caches and are never written to browser storage.
+ */
+import imageCompression from 'browser-image-compression';
+import {
+  deleteImageObject,
+  downloadImageBlob,
+  publicUrl,
+  storagePathFromPublicUrl,
+  uploadImageBlob,
+  uploadImageDedupResult,
+  uploadPrivateQuoteImage,
+  uploadPrivateQuoteImageBlob,
+} from '@/services/supabase/imagesRepo';
+import { isSupabaseConfigured } from '@/services/supabase/client';
+
+/**
+ * Master image (lưu Storage / lightbox / Word / zoom):
+ *
+ * Quan trọng: Full HD (1920) **không** được ép qua canvas/WebP nếu đã nằm trong
+ * giới hạn — re-encode lossy (kể cả quality 0.93) vẫn làm ảnh “mờ mờ”.
+ * Chỉ resize + nén khi cạnh dài > 4K hoặc file quá nặng.
+ *
+ * Thumbnail list (~640px) tạo riêng trong imagesRepo — không đụng master.
+ */
+export const COMPRESS_OPTIONS = {
+  maxSizeMB: 12,
+  maxWidthOrHeight: 3840,
+  initialQuality: 0.95,
+  fileType: 'image/webp',
+  // Keep customer/product bytes inside this app process; do not load a worker
+  // program from a third-party CDN at runtime.
+  useWebWorker: false,
+} as const;
+
+export type ImageErrorCode = 'NOT_IMAGE' | 'COMPRESS_FAILED' | 'STORE_FAILED';
+
+export class ImageError extends Error {
+  readonly code: ImageErrorCode;
+  constructor(message: string, code: ImageErrorCode) {
+    super(message);
+    this.name = 'ImageError';
+    this.code = code;
+  }
+}
+
+export function isImageFile(file: File): boolean {
+  return typeof file.type === 'string' && file.type.startsWith('image/');
+}
+
+/** Cạnh dài (px) của ảnh; lỗi decode → null (sẽ đi path nén). */
+async function readLongEdgePx(file: File): Promise<number | null> {
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(file);
+      const edge = Math.max(bitmap.width, bitmap.height);
+      bitmap.close();
+      return edge;
+    }
+  } catch {
+    /* fall through */
+  }
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const edge = Math.max(img.naturalWidth || 0, img.naturalHeight || 0);
+      URL.revokeObjectURL(url);
+      resolve(edge > 0 ? edge : null);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Chuẩn bị blob lưu Storage:
+ * - Full HD / 4K trong hạn mức → **giữ nguyên file gốc** (không bóp quality).
+ * - Ảnh quá lớn (px hoặc MB) → resize/nén WebP quality cao.
+ */
+export async function compressImage(
+  file: File,
+  options: Partial<typeof COMPRESS_OPTIONS> = {},
+): Promise<Blob> {
+  if (!isImageFile(file)) {
+    throw new ImageError(
+      `File "${file.name}" không phải ảnh (type=${file.type || 'unknown'})`,
+      'NOT_IMAGE',
+    );
+  }
+
+  const merged = { ...COMPRESS_OPTIONS, ...options };
+  const maxBytes = merged.maxSizeMB * 1024 * 1024;
+  const maxEdge = merged.maxWidthOrHeight;
+
+  try {
+    const longEdge = await readLongEdgePx(file);
+    // Full HD (1920), 2K, … đến 4K và file không quá nặng → upload nguyên, nét như máy.
+    if (longEdge !== null && longEdge > 0 && longEdge <= maxEdge && file.size <= maxBytes) {
+      return file;
+    }
+    return await imageCompression(file, merged);
+  } catch (error) {
+    throw new ImageError(
+      `Nén ảnh thất bại: ${error instanceof Error ? error.message : String(error)}`,
+      'COMPRESS_FAILED',
+    );
+  }
+}
+
+const productCache = new Map<string, Blob>();
+const quoteCache = new Map<string, Blob>();
+
+/**
+ * Các lượt tải đang bay, gộp theo khoá ảnh.
+ *
+ * Khi xuất file, nhiều dòng cùng trỏ vào một ảnh và nay chạy song song; nếu
+ * không gộp thì mỗi dòng lại mở một request riêng cho cùng một file.
+ */
+const productInflight = new Map<string, Promise<Blob | null>>();
+const quoteInflight = new Map<string, Promise<Blob | null>>();
+
+function remotePersistenceEnabled(): boolean {
+  // Unit tests exercise the compatibility API without mutating a real project.
+  return isSupabaseConfigured && import.meta.env.MODE !== 'test';
+}
+
+/**
+ * `true` khi `getImage` / `getQuoteImage` thực sự tải và nhớ ảnh hộ.
+ * Nơi gọi dựa vào đây để khỏi tải lại lần hai khi ảnh không tồn tại.
+ */
+export function imageBlobCacheActive(): boolean {
+  return remotePersistenceEnabled();
+}
+
+function aliases(source: string): string[] {
+  const raw = String(source || '').trim();
+  const path = storagePathFromPublicUrl(raw);
+  return [...new Set([raw, path || ''].filter(Boolean))];
+}
+
+function remember(cache: Map<string, Blob>, source: string, blob: Blob): void {
+  for (const key of aliases(source)) cache.set(key, blob);
+}
+
+/** Một lượt tải cho mỗi ảnh, dù có bao nhiêu dòng cùng hỏi. */
+function downloadOnce(inflight: Map<string, Promise<Blob | null>>, source: string, load: () => Promise<Blob | null>): Promise<Blob | null> {
+  const key = aliases(source)[0] || source;
+  const pending = inflight.get(key);
+  if (pending) return pending;
+  const request = load().finally(() => inflight.delete(key));
+  inflight.set(key, request);
+  return request;
+}
+
+function recalled(cache: Map<string, Blob>, source: string): Blob | null {
+  for (const key of aliases(source)) {
+    const found = cache.get(key);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Compress and upload immediately. The returned URL is safe to persist in
+ * `coverImagePath`, `image`, and `imageOverridePath`.
+ */
+export async function compressAndUpload(
+  file: File,
+  path?: string,
+  options: Partial<typeof COMPRESS_OPTIONS> = {},
+): Promise<{ id: string; path: string; url: string; blob: Blob }> {
+  const blob = await compressImage(file, options);
+  try {
+    if (remotePersistenceEnabled()) {
+      const uploaded = path
+        ? { path: storagePathFromPublicUrl(path) || path, url: await uploadImageBlob(path, blob) }
+        : await uploadImageDedupResult(blob);
+      remember(productCache, uploaded.path, blob);
+      remember(productCache, uploaded.url, blob);
+      return { id: uploaded.url, ...uploaded, blob };
+    }
+
+    // Test/unconfigured compatibility: RAM only, never browser persistence.
+    const memoryPath = path || `memory-images/${crypto.randomUUID()}`;
+    remember(productCache, memoryPath, blob);
+    return { id: memoryPath, path: memoryPath, url: memoryPath, blob };
+  } catch (error) {
+    throw new ImageError(
+      `Tải ảnh lên Supabase thất bại: ${error instanceof Error ? error.message : String(error)}`,
+      'STORE_FAILED',
+    );
+  }
+}
+
+/**
+ * Backward-compatible name. It now uploads to Supabase and returns a CDN URL
+ * as `id`; callers should persist that value directly instead of prefixing it.
+ */
+export async function compressAndStore(
+  file: File,
+  id?: string,
+  options: Partial<typeof COMPRESS_OPTIONS> = {},
+): Promise<{ id: string; blob: Blob }> {
+  const uploaded = await compressAndUpload(file, id, options);
+  return { id: uploaded.url, blob: uploaded.blob };
+}
+
+/** Compress and upload an image used only by a quote to authenticated Storage. */
+export async function compressAndUploadQuoteImage(
+  file: File,
+  options: Partial<typeof COMPRESS_OPTIONS> = {},
+): Promise<{ id: string; path: string; url: string; blob: Blob }> {
+  const blob = await compressImage(file, options);
+  try {
+    if (remotePersistenceEnabled()) {
+      const uploaded = await uploadPrivateQuoteImage(blob);
+      remember(quoteCache, uploaded.path, blob);
+      remember(quoteCache, uploaded.url, blob);
+      return { id: uploaded.url, ...uploaded, blob };
+    }
+    const memoryPath = `memory-quote-images/${crypto.randomUUID()}`;
+    remember(quoteCache, memoryPath, blob);
+    return { id: memoryPath, path: memoryPath, url: memoryPath, blob };
+  } catch (error) {
+    throw new ImageError(
+      `Tải ảnh báo giá lên Supabase thất bại: ${error instanceof Error ? error.message : String(error)}`,
+      'STORE_FAILED',
+    );
+  }
+}
+
+/** Compatibility API: upload a blob to Storage under a known object path. */
+export async function saveImage(id: string, blob: Blob): Promise<void> {
+  try {
+    if (remotePersistenceEnabled()) {
+      const url = await uploadImageBlob(id, blob);
+      remember(productCache, url, blob);
+    }
+    remember(productCache, id, blob);
+  } catch (error) {
+    throw new ImageError(
+      `Lưu ảnh "${id}" thất bại: ${error instanceof Error ? error.message : String(error)}`,
+      'STORE_FAILED',
+    );
+  }
+}
+
+/** Fetch a Storage/public image as a Blob; useful for binary exports. */
+export async function getImage(id: string): Promise<Blob | null> {
+  const cached = recalled(productCache, id);
+  if (cached) return cached;
+  if (!remotePersistenceEnabled() && !/^(https?:|blob:|data:)/i.test(id)) return null;
+  return downloadOnce(productInflight, id, async () => {
+    const blob = await downloadImageBlob(id);
+    if (blob) remember(productCache, id, blob);
+    return blob;
+  });
+}
+
+export async function getImageUrl(id: string): Promise<string | null> {
+  if (/^(https?:|data:|blob:)/i.test(id)) return id;
+  if (remotePersistenceEnabled()) return publicUrl(storagePathFromPublicUrl(id) || id);
+  const blob = await getImage(id);
+  return blob ? URL.createObjectURL(blob) : null;
+}
+
+export async function getImageDataUrl(id: string): Promise<string | null> {
+  const blob = await getImage(id);
+  return blob ? blobToDataUrl(blob) : null;
+}
+
+export async function deleteImage(id: string): Promise<void> {
+  for (const key of aliases(id)) {
+    productCache.delete(key);
+  }
+  if (remotePersistenceEnabled()) await deleteImageObject(id);
+}
+
+/** Runtime-cache keys only; persistent listing belongs to Supabase Storage. */
+export async function listImageIds(): Promise<string[]> {
+  return [...new Set(productCache.keys())];
+}
+
+export async function countImages(): Promise<number> {
+  return (await listImageIds()).length;
+}
+
+export async function saveQuoteImage(path: string, blob: Blob): Promise<void> {
+  try {
+    if (remotePersistenceEnabled()) {
+      const uploaded = await uploadPrivateQuoteImageBlob(path, blob);
+      remember(quoteCache, uploaded.url, blob);
+    }
+    remember(quoteCache, path, blob);
+  } catch (error) {
+    throw new ImageError(
+      `Lưu ảnh báo giá thất bại: ${error instanceof Error ? error.message : String(error)}`,
+      'STORE_FAILED',
+    );
+  }
+}
+
+export async function getQuoteImage(path: string): Promise<Blob | null> {
+  const cached = recalled(quoteCache, path);
+  if (cached) return cached;
+  if (!remotePersistenceEnabled() && !/^(https?:|blob:|data:)/i.test(path)) return null;
+  return downloadOnce(quoteInflight, path, async () => {
+    const blob = await downloadImageBlob(path);
+    if (blob) remember(quoteCache, path, blob);
+    return blob;
+  });
+}
+
+export async function deleteQuoteImage(path: string): Promise<void> {
+  for (const key of aliases(path)) quoteCache.delete(key);
+  if (remotePersistenceEnabled()) await deleteImageObject(path);
+}
+
+type TransientStore = {
+  clear: () => Promise<void>;
+  keys: () => Promise<string[]>;
+  getItem: <T>(key: string) => Promise<T | null>;
+  setItem: <T>(key: string, value: T) => Promise<T>;
+  removeItem: (key: string) => Promise<void>;
+};
+
+function transientStore(cache: Map<string, Blob>): TransientStore {
+  return {
+    clear: async () => cache.clear(),
+    keys: async () => [...cache.keys()],
+    getItem: async <T,>(key: string) => (cache.get(key) as T | undefined) ?? null,
+    setItem: async <T,>(key: string, value: T) => {
+      if (value instanceof Blob) cache.set(key, value);
+      return value;
+    },
+    removeItem: async (key: string) => { cache.delete(key); },
+  };
+}
+
+/** Small in-memory store facades retained for test compatibility. */
+const productImageStore = transientStore(productCache);
+const quoteImageStore = transientStore(quoteCache);
+const imageStore = productImageStore;
+
+export { imageStore, productImageStore, quoteImageStore };
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}

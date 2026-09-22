@@ -1,0 +1,603 @@
+/*
+ * CSS của các component dùng chung trong src/components/:
+ * autosuggest, accessory editor, dropzone, drag handle, image lightbox,
+ * khung ảnh (.image-fit-*).
+ *
+ * Gom một file thay vì mỗi component một stylesheet để thứ tự nạp cố định:
+ * component được import từ nhiều feature khác nhau, nếu để CSS đi kèm module
+ * thì thứ tự phụ thuộc vào feature nào import trước.
+ */
+
+.image-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(8, 16, 28, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.image-lightbox-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(15, 42, 61, 0.28);
+  max-width: min(1100px, 100%);
+  width: 100%;
+  /* Cao cố định: zoom ảnh không được kéo khung modal to/nhỏ theo */
+  height: min(94vh, 960px);
+  /* dvh để không bị thanh địa chỉ của trình duyệt mobile cắt mất đáy modal */
+  height: min(94dvh, 960px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--owin-border);
+}
+.image-lightbox-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--owin-border);
+  font-weight: 700;
+  color: var(--owin-ink);
+}
+.image-lightbox-stage {
+  flex: 1;
+  /* min-height:0 để stage lấy đúng phần cao còn lại của modal và tự cuộn */
+  min-height: 0;
+  display: flex;
+  background: #f6f7f9;
+  padding: 20px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+.image-lightbox-stage.is-pannable {
+  cursor: grab;
+}
+.image-lightbox-stage.is-panning {
+  cursor: grabbing;
+}
+.image-lightbox-img {
+  display: block;
+  /* margin:auto canh giữa mà vẫn cuộn được hết khi ảnh lớn hơn stage */
+  margin: auto;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+  /* Ảnh thanh nhôm gốc nhỏ — scale mượt khi phóng to */
+  image-rendering: auto;
+  /* Đổi cỡ tức thì: có transition thì vị trí cuộn neo theo con trỏ sẽ lệch */
+  transition: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.image-lightbox-zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.image-lightbox-zoom .icon-btn {
+  width: 42px;
+  height: 42px;
+  padding: 9px;
+  border-radius: 8px;
+}
+.image-lightbox-zoom .image-lightbox-zoom-out {
+  color: #667085;
+  background: #f6f7f9;
+}
+.image-lightbox-zoom .image-lightbox-zoom-in {
+  color: var(--ios-blue-ink);
+  background: var(--ios-blue-soft);
+  border-color: color-mix(in srgb, var(--ios-blue) 25%, var(--ios-separator));
+}
+.image-lightbox-zoom .image-lightbox-zoom-fit {
+  color: #6941c6;
+  background: #f4f0ff;
+  border-color: #ddd2ff;
+}
+.image-lightbox-zoom .image-lightbox-close {
+  color: var(--ios-red);
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+.image-lightbox-zoom .icon-btn:hover:not(:disabled) {
+  filter: brightness(0.97);
+  border-color: currentColor;
+}
+.image-lightbox-zoom .icon-btn:disabled {
+  opacity: 0.42;
+}
+.image-lightbox-zoom-level {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--owin-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.image-lightbox-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  color: var(--owin-ink-muted);
+  font-size: 12px;
+  text-align: center;
+  border-top: 1px solid var(--owin-border);
+}
+.image-lightbox-hint-touch {
+  display: none;
+}
+/* Thiết bị cảm ứng: không có chuột/bàn phím nên đổi sang hướng dẫn chụm 2 ngón */
+@media (hover: none) and (pointer: coarse) {
+  .image-lightbox-hint-mouse { display: none; }
+  .image-lightbox-hint-touch { display: inline; }
+}
+
+/* Tablet: thu gọn viền và nút để phần ảnh được rộng nhất có thể */
+@media (max-width: 900px) {
+  .image-lightbox-backdrop { padding: 12px; }
+  .image-lightbox-panel { height: min(96dvh, 960px); }
+  .image-lightbox-toolbar { padding: 8px 10px; gap: 8px; }
+  .image-lightbox-stage { padding: 12px; }
+  .image-lightbox-zoom .icon-btn {
+    width: 38px;
+    height: 38px;
+    padding: 8px;
+  }
+  .image-lightbox-hint { font-size: 11px; padding: 7px 10px; }
+}
+
+/* Điện thoại: modal chiếm trọn màn hình, tiêu đề nhường chỗ cho cụm nút zoom */
+@media (max-width: 560px) {
+  .image-lightbox-backdrop { padding: 0; }
+  .image-lightbox-panel {
+    height: 100dvh;
+    max-width: none;
+    border: none;
+    border-radius: 0;
+  }
+  .image-lightbox-toolbar { padding: 8px; }
+  .image-lightbox-toolbar > span {
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .image-lightbox-stage { padding: 8px; }
+  .image-lightbox-zoom { gap: 2px; }
+  .image-lightbox-zoom .icon-btn {
+    width: 36px;
+    height: 36px;
+    padding: 7px;
+  }
+  .image-lightbox-zoom-level { min-width: 36px; font-size: 11px; }
+  .image-lightbox-hint { padding: 6px 8px; line-height: 1.35; }
+}
+
+/* Màn hình rất hẹp: bỏ tiêu đề, cụm nút zoom trải hết chiều ngang */
+@media (max-width: 360px) {
+  .image-lightbox-toolbar > span { display: none; }
+  .image-lightbox-zoom { width: 100%; justify-content: space-between; }
+}
+.autosuggest-option-full {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 13px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.autosuggest-option-full:hover, .autosuggest-option-full.active {
+  background: var(--owin-bg);
+  color: var(--owin-action);
+  font-weight: 600;
+}
+.accessory-package-hint, .accessory-orphan-hint {
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--ios-blue) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ios-blue) 10%, transparent);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--owin-ink);
+}
+.accessory-orphan-hint {
+  background: rgba(255, 149, 0, 0.06);
+  border-color: rgba(255, 149, 0, 0.18);
+}
+.field-hint-inline {
+  font-weight: 500;
+  font-size: 0.85em;
+  color: var(--owin-muted, #6b7280);
+  white-space: nowrap;
+}
+.autosuggest { position: relative; }
+.autosuggest-control { position: relative; display: flex; align-items: center; }
+.autosuggest-control .input { padding-right: 44px !important; }
+.autosuggest-control.has-value .input { padding-right: 72px !important; }
+.autosuggest .field { margin-bottom: 0; }
+.drag-handle {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: var(--r-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--owin-ink-muted);
+  flex: 0 0 auto;
+}
+.autosuggest-toggle {
+  position: absolute;
+  right: 6px;
+  border: none;
+  background: transparent;
+  color: var(--owin-ink-muted);
+  height: 28px;
+  width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.autosuggest-toggle:hover { background: rgba(15, 42, 61, 0.06); color: var(--owin-primary); }
+.autosuggest-clear {
+  position: absolute;
+  right: 34px;
+  border: none;
+  background: rgba(15, 42, 61, 0.06);
+  color: var(--owin-ink-muted);
+  height: 22px;
+  width: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 2;
+}
+.autosuggest-clear:hover {
+  background: rgba(255, 59, 48, 0.14);
+  color: var(--owin-danger);
+}
+.autosuggest-clear:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 1px;
+}
+.autosuggest-menu {
+  position: fixed;
+  z-index: 2200;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--owin-border);
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(15, 42, 61, 0.16);
+  padding: 5px;
+}
+.autosuggest-option {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+.accessory-editor-panel {
+  min-width: 0;
+}
+.accessory-item-line, .extra-accessory-line, .spec-editor-row {
+  position: relative;
+}
+.dropzone-empty {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+}
+.dropzone-logo-fallback {
+  opacity: 0.55;
+  max-width: 64%;
+  max-height: 48%;
+}
+.image-fit-frame {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+.image-fit-frame .ph, .image-fit-frame .image-fit-contain, .image-fit-contain {
+  display: block;
+  object-fit: contain;
+  border-radius: 10px;
+  margin: auto;
+}
+.image-fit-fill {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  object-fit: contain !important;
+}
+.spec-editor-row .autosuggest, .spec-editor-row .field, .accessory-item-line .autosuggest, .accessory-item-line .field, .extra-accessory-line .autosuggest, .extra-accessory-line .field {
+  min-width: 0;
+}
+.spec-editor-row .field > label, .extra-accessory-line .field > label, .accessory-item-line .field > label {
+  display: none;
+}
+.editor-toolbar { margin: 0 0 10px; align-items: flex-start; }
+.accessory-items { display: grid; gap: 8px; margin-bottom: 12px; }
+.accessory-item-line {
+  display: grid;
+  /* [kéo] [stt] [tên] [SL] [xóa] — SL cố định, không phình */
+  grid-template-columns: 36px 32px minmax(0, 1fr) 76px 40px;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--owin-border);
+  border-radius: var(--r-sm);
+  padding: 6px 8px;
+  background: #fafbfc;
+}
+.accessory-item-line .field, .extra-accessory-line .field { margin-bottom: 0; }
+.accessory-item-line .field, .accessory-item-line .field .input, .accessory-item-line input, .accessory-item-line .autosuggest-control .input {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.accessory-editor-panel .accessory-item-line .input, .accessory-editor-panel > .field .input, .spec-editor-row .input {
+  font-size: var(--fs-md) !important;
+  min-height: var(--control-h-sm) !important;
+  padding: 8px 12px !important;
+  border-radius: var(--r-sm) !important;
+}
+.accessory-item-line .field:has(input[type='number']) {
+  width: 76px;
+  max-width: 76px;
+}
+.accessory-item-line input[type='number'] {
+  width: 100%;
+  text-align: center;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.line-index {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--ios-blue-soft);
+  color: var(--owin-action);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  align-self: center;
+  flex: 0 0 auto;
+}
+.fixed-package-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+.extra-accessory-table {
+  overflow-x: auto;
+  display: grid;
+  gap: 7px;
+  max-width: 100%;
+  min-width: 0;
+}
+.extra-accessory-head, .extra-accessory-line {
+  display: grid;
+  grid-template-columns: 28px minmax(160px, 1.2fr) minmax(420px, 2.2fr) 36px;
+  gap: 8px;
+  align-items: end;
+  min-width: 720px;
+}
+.extra-accessory-head {
+  color: var(--owin-ink-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0 2px;
+  align-items: center;
+}
+.extra-acc-metrics-head {
+  display: grid;
+  grid-template-columns: 64px 56px 64px minmax(100px, 1fr) minmax(110px, 1fr);
+  gap: 6px;
+}
+.extra-accessory-line {
+  padding: 8px;
+  border: 1px solid var(--owin-border);
+  border-radius: 12px;
+  background: #fff;
+}
+.extra-acc-name {
+  min-width: 0;
+}
+.extra-acc-name .field > label, .extra-acc-name .autosuggest .field > label, .extra-acc-name label {
+  /* Desktop có header cột — ẩn label lặp */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+.extra-acc-metrics {
+  display: grid;
+  grid-template-columns: 64px 56px 64px minmax(100px, 1fr) minmax(110px, 1fr);
+  gap: 6px;
+  align-items: end;
+  min-width: 0;
+}
+.extra-acc-metrics .field {
+  margin-bottom: 0 !important;
+  min-width: 0;
+}
+.extra-acc-metrics .field > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+.extra-acc-metrics .input, .extra-acc-metrics .readonly-money {
+  min-height: 38px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.drag-handle {
+  cursor: grab;
+  color: var(--owin-ink-muted);
+  align-self: center;
+  touch-action: none;
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
+.icon-btn.drag-handle:hover {
+  color: var(--owin-action);
+  background: color-mix(in srgb, var(--ios-blue) 8%, transparent);
+}
+.spec-editor-row[data-drag-over], .accessory-item-line[data-drag-over], .extra-accessory-line[data-drag-over] {
+  outline: 2px dashed var(--owin-action);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
+@media (max-width: 760px) {
+  .spec-table-head span:nth-child(3), .spec-editor-row > .autosuggest:nth-of-type(2), .spec-editor-row > .field:nth-of-type(2) {
+    }
+  .accessory-item-line {
+      grid-template-columns: 32px minmax(0, 1fr) 72px 40px;
+      gap: 6px;
+    }
+  .accessory-item-line .line-index { display: none; }
+  .fixed-package-grid {
+      grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+  .segmented button {
+      min-height: 32px;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+  .extra-accessory-head { display: none; }
+  .extra-accessory-line {
+      min-width: 0 !important;
+      grid-template-columns: 28px minmax(0, 1fr) 34px !important;
+      gap: 6px !important;
+      padding: 8px !important;
+    }
+  .extra-acc-name label {
+      font-size: 10px;
+      position: static;
+      width: auto;
+      height: auto;
+      clip: auto;
+      overflow: visible;
+    }
+  .extra-acc-metrics {
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+  .extra-acc-metrics .field > label {
+      position: static;
+      width: auto;
+      height: auto;
+      clip: auto;
+      overflow: visible;
+      font-size: 9px;
+      margin-bottom: 2px;
+    }
+  .extra-acc-metrics .input, .extra-acc-metrics .readonly-money, .extra-acc-metrics select.input {
+      min-height: 34px;
+      font-size: 16px;
+      padding: 4px 6px;
+    }
+  .extra-acc-metrics .readonly-money { font-size: 12px; }
+  .spec-editor-row .autosuggest:last-of-type, .spec-editor-row > .field { grid-column: 2; }
+  .accessory-item-line {
+      grid-template-columns: 28px minmax(0, 1fr) 64px 34px !important;
+      gap: 6px;
+    }
+  .accessory-item-line .line-index { display: none; }
+  .fixed-package-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 960px) {
+  .extra-accessory-head { display: none; }
+  .extra-accessory-line {
+      min-width: 0 !important;
+      grid-template-columns: 24px minmax(140px, 1.2fr) minmax(0, 2.2fr) 28px !important;
+      gap: 6px !important;
+      padding: 6px !important;
+      align-items: end;
+    }
+  .extra-acc-metrics {
+      grid-column: auto;
+      grid-template-columns: 52px 48px 56px minmax(80px, 1fr) minmax(90px, 1fr);
+      gap: 4px;
+    }
+  .extra-acc-metrics .field > label { font-size: 8px; }
+  .extra-acc-metrics .input, .extra-acc-metrics .readonly-money {
+      min-height: 28px;
+      font-size: 12px;
+      padding: 2px 4px;
+    }
+  .extra-acc-name label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+    }
+}
+.editor-toolbar {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--owin-border);
+}
+.segmented {
+  background: var(--owin-soft);
+  border: 1px solid var(--owin-border);
+  border-radius: var(--r-pill) !important;
+  padding: 3px;
+}
+.segmented button {
+  border-radius: var(--r-pill) !important;
+  font-weight: 600 !important;
+}
+.segmented button.active {
+  background: var(--ios-card) !important;
+  color: var(--owin-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+}

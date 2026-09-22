@@ -1,0 +1,67 @@
+.store-admin-backdrop { position:fixed; inset:0; z-index:90; display:grid; place-items:center; padding:max(24px, env(safe-area-inset-top,0px)) 24px max(24px, env(safe-area-inset-bottom,0px)); background:rgba(0,0,0,.42); backdrop-filter:blur(3px); }
+.store-admin:focus { outline:none; }
+.store-admin { width:100%; max-width:660px; max-height:86dvh; overflow-y:auto; padding:24px 26px 26px; border-radius:24px; background:var(--ios-card); color:var(--ios-label); box-shadow:var(--shadow-lg); font:400 15px/1.6 var(--font-sans); }
+.store-admin-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.store-admin-header h2 { margin:0 0 4px; font-size:21px; font-weight:600; letter-spacing:-.02em; }
+.store-admin-header p { margin:0; font-size:13px; color:var(--ios-label3); }
+.store-admin-header button { width:40px; height:40px; flex-shrink:0; display:grid; place-items:center; border:0; border-radius:12px; background:var(--ios-fill); color:var(--ios-label2); cursor:pointer; }
+.store-admin-header button:hover { background:var(--ios-separator); }
+.store-admin code { padding:1px 6px; border-radius:6px; background:var(--ios-fill); font-family:var(--font-mono, ui-monospace, monospace); font-size:.92em; }
+
+.store-admin-section { margin-top:22px; padding-top:20px; border-top:1px solid var(--ios-separator); }
+.store-admin-section:first-of-type { margin-top:0; padding-top:0; border-top:0; }
+.store-admin-section h3 { display:flex; align-items:center; gap:8px; margin:0 0 6px; font-size:16px; font-weight:600; }
+.store-admin-note { margin:0 0 14px; font-size:13px; color:var(--ios-label3); }
+.store-admin-empty { margin:12px 0; font-size:14px; color:var(--ios-label3); }
+.store-admin-error { margin:0 0 14px; padding:11px 13px; border-radius:13px; font-size:13px; color:#c8302a; background:color-mix(in srgb, #ff3b30 8%, var(--ios-card)); border:1px solid color-mix(in srgb, #ff3b30 22%, transparent); }
+
+.store-admin-list { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+.store-admin-list li { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border:1px solid var(--ios-separator); border-radius:16px; background:var(--ios-fill); }
+.store-admin-list li[data-status='pending'] { border-color:color-mix(in srgb, var(--ios-blue-ink) 40%, var(--ios-separator)); }
+.store-admin-list li[data-status='disabled'] { opacity:.62; }
+.store-admin-who { min-width:0; display:grid; gap:2px; }
+.store-admin-who strong { font-size:15px; font-weight:600; }
+.store-admin-who span { font-size:13px; color:var(--ios-label3); word-break:break-word; }
+.store-admin-tag { font-size:12px !important; color:var(--ios-label2) !important; }
+
+.store-admin-buttons { display:flex; flex-wrap:wrap; gap:8px; }
+.store-admin-buttons button { display:inline-flex; align-items:center; gap:6px; min-height:38px; padding:0 14px; border:1px solid var(--ios-separator); border-radius:11px; background:var(--ios-card); color:var(--ios-label2); font-family:inherit; font-size:13px; font-weight:500; cursor:pointer; transition:background-color .2s var(--ease-ios), color .2s var(--ease-ios); }
+.store-admin-buttons button:hover:not(:disabled) { background:var(--ios-separator); color:var(--ios-label); }
+.store-admin-buttons button:disabled { opacity:.5; cursor:not-allowed; }
+.store-admin-approve { border-color:transparent !important; background:var(--ios-blue-ink) !important; color:#fff !important; }
+.store-admin-approve:hover:not(:disabled) { background:var(--ios-blue-hover) !important; }
+.store-admin-reject { color:#c8302a !important; border-color:color-mix(in srgb, #ff3b30 30%, transparent) !important; }
+
+@media (max-width:560px) {
+  .store-admin-backdrop { padding:0; }
+  .store-admin { max-width:none; max-height:100dvh; height:100dvh; border-radius:0; padding:20px 18px 28px; }
+  .store-admin-list li { flex-direction:column; align-items:stretch; }
+  .store-admin-buttons button { flex:1; justify-content:center; }
+}
+
+/* Hàng đợi duyệt cửa hàng: gọn hơn danh sách thành viên vì mỗi dòng chỉ cần
+   tên, mã và chủ sở hữu — không phải một thẻ hồ sơ đầy đủ. */
+.store-admin-list.is-compact li { padding:10px 12px; border-radius:12px; gap:8px; }
+.store-admin-list.is-compact .store-admin-who { gap:1px; }
+.store-admin-list.is-compact .store-admin-who strong { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:14px; }
+.store-admin-list.is-compact .store-admin-who strong code { font-size:12px; font-weight:500; }
+.store-admin-list.is-compact .store-admin-who strong em { font-style:normal; font-size:11px; font-weight:600; letter-spacing:.02em; text-transform:uppercase; color:#c8302a; background:color-mix(in srgb, #ff3b30 10%, transparent); border-radius:6px; padding:1px 7px; }
+.store-admin-list.is-compact .store-admin-tag { font-size:12px !important; }
+.store-admin-list.is-compact .store-admin-buttons button { min-height:32px; padding:0 11px; font-size:12px; border-radius:9px; }
+.store-admin-list.is-compact li[data-status='rejected'] { opacity:.72; border-color:var(--ios-separator); }
+
+/* Màn quản trị hệ thống: trang đầy đủ, không phải hộp thoại — đây là nơi làm
+   việc chính của Quản trị viên hệ thống chứ không phải một thao tác phụ. */
+.platform-admin { min-height:100dvh; background:var(--ios-bg); color:var(--ios-label); font:400 15px/1.6 var(--font-sans); }
+.platform-admin-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; padding:18px clamp(16px,4vw,40px); border-bottom:1px solid var(--ios-separator); background:var(--ios-card); }
+.platform-admin-bar h1 { margin:0; font-size:19px; font-weight:600; letter-spacing:-.02em; }
+.platform-admin-bar p { margin:2px 0 0; font-size:13px; color:var(--ios-label3); word-break:break-all; }
+.platform-admin-bar-actions { display:flex; gap:8px; }
+.platform-admin-bar-actions button { display:inline-flex; align-items:center; gap:7px; min-height:40px; padding:0 14px; border:1px solid var(--ios-separator); border-radius:12px; background:transparent; color:var(--ios-label2); font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; }
+.platform-admin-bar-actions button:hover { background:var(--ios-fill); color:var(--ios-label); }
+.platform-admin-body { max-width:820px; margin:0 auto; padding:clamp(20px,4vw,32px) clamp(16px,4vw,40px) 48px; }
+
+@media (max-width:560px) {
+  .platform-admin-bar { flex-direction:column; align-items:stretch; }
+  .platform-admin-bar-actions button { flex:1; justify-content:center; }
+}

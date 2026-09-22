@@ -1,0 +1,298 @@
+/*
+ * APP SHELL — thanh điều hướng cố định + vùng nội dung cuộn.
+ * Phong cách iOS premium: kính mờ nhiều lớp, hairline sáng và tab nổi.
+ *
+ * Cấu trúc: .tool-shell (khung đúng chiều cao viewport)
+ *           ├── .tool-topnav   — không cuộn
+ *           └── .tool-content  — scroll container duy nhất
+ *               └── .tool-content-inner — rail canh giữa
+ */
+
+.tool-shell {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--ios-bg);
+  color: var(--ios-label);
+}
+
+/* ─── Thanh trên ─── */
+.tool-topnav {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 72px;
+  padding: 11px clamp(16px, 2.2vw, 28px);
+  padding-top: max(11px, env(safe-area-inset-top, 0px));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(249, 250, 253, 0.78));
+  border-bottom: 1px solid rgba(80, 91, 112, 0.14);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.92) inset,
+    0 10px 32px rgba(32, 45, 72, 0.08);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  isolation: isolate;
+}
+.tool-topnav::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 2%, rgba(0, 122, 255, 0.2) 50%, transparent 98%);
+  opacity: 0.68;
+}
+
+.tool-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  flex: 0 0 auto;
+  border: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 4px 7px 4px 4px;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: background 0.25s var(--ease-ios), border-color 0.25s var(--ease-ios),
+    box-shadow 0.25s var(--ease-ios), transform 0.2s var(--ease-ios);
+}
+.tool-brand:hover {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 5px 18px rgba(31, 45, 72, 0.08);
+}
+.tool-brand:active { transform: scale(0.98); }
+.tool-brand-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fff, #f5f8fc);
+  border: 1px solid rgba(76, 91, 120, 0.16);
+  padding: 3px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 7px 18px rgba(22, 39, 72, 0.12);
+}
+.tool-brand-text {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+}
+.tool-brand-text strong {
+  color: var(--ios-label);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: var(--track-tight);
+}
+.tool-brand-text small {
+  color: var(--ios-label3);
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.005em;
+}
+
+/* ─── Tab = segmented control iOS ─── */
+.tool-nav {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-inline: auto;
+  padding: 4px;
+  background:
+    linear-gradient(180deg, rgba(232, 235, 242, 0.82), rgba(221, 225, 234, 0.74));
+  border: 1px solid rgba(76, 88, 112, 0.14);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 8px 24px rgba(34, 47, 74, 0.1);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tool-nav::-webkit-scrollbar { display: none; }
+.tool-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 7px 15px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ios-label2);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  isolation: isolate;
+  transition: background 0.25s var(--ease-ios), color 0.25s var(--ease-ios),
+    box-shadow 0.25s var(--ease-ios), transform 0.2s var(--ease-ios);
+}
+.tool-nav-item:hover {
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--ios-label);
+}
+.tool-nav-item:active { transform: scale(0.975); }
+.tool-nav-item.active {
+  background: linear-gradient(145deg, #1689ff 0%, #006ee6 52%, #005dce 100%);
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(0, 54, 128, 0.24);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.42) inset,
+    0 -1px 0 rgba(0, 44, 110, 0.22) inset,
+    0 6px 15px rgba(0, 101, 224, 0.28);
+}
+.tool-nav-item.active::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 1px 8px auto;
+  height: 42%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent);
+  pointer-events: none;
+}
+.tool-nav-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  color: color-mix(in srgb, currentColor 82%, var(--ios-blue));
+  transition: transform 0.25s var(--ease-ios);
+}
+.tool-nav-item:hover .tool-nav-icon { transform: translateY(-1px); }
+.tool-nav-item.active .tool-nav-icon {
+  color: #fff;
+  filter: drop-shadow(0 1px 1px rgba(0, 45, 110, 0.22));
+}
+.tool-nav-item:focus-visible {
+  outline: 2px solid var(--ios-blue);
+  outline-offset: 1px;
+}
+
+.tool-topnav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* ─── Vùng nội dung: scroll container duy nhất ─── */
+.tool-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px clamp(14px, 2.8vw, 28px) 40px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.tool-content-inner {
+  max-width: 1320px;
+  width: 100%;
+  min-width: 0;
+  margin: 0 auto;
+  animation: shell-fade-in 0.28s var(--ease-ios) both;
+}
+@keyframes shell-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ─── Máy tính nhỏ / tablet ─── */
+@media (max-width: 900px) {
+  .tool-brand-text small { display: none; }
+  .tool-content { padding: 16px 14px 28px; }
+}
+
+/* ─── Điện thoại dọc: brand + account một hàng, tab hàng riêng ─── */
+@media (max-width: 760px) {
+  .tool-topnav {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'brand spacer account'
+      'nav nav nav';
+    gap: 6px 8px;
+    min-height: 0;
+    padding: max(6px, env(safe-area-inset-top, 0px)) 10px 8px;
+    background: rgba(250, 251, 253, 0.9);
+  }
+  .tool-brand { grid-area: brand; padding: 2px; }
+  .tool-brand-logo { width: 32px; height: 32px; border-radius: 10px; }
+  .tool-topnav-actions { grid-area: account; justify-self: end; }
+  .tool-nav {
+    grid-area: nav;
+    width: 100%;
+    margin-inline: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tool-nav-item {
+    min-height: 44px;
+    padding: 6px 12px;
+    font-size: 13px;
+    gap: 5px;
+  }
+  .tool-nav-icon { width: 18px; height: 18px; flex-basis: 18px; }
+  .tool-nav-item svg { width: 16px; height: 16px; }
+  .tool-content {
+    padding: 12px 10px calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ─── Điện thoại ngang: một hàng, thấp, giống laptop thu nhỏ ─── */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 960px) {
+  .tool-topnav {
+    display: flex;
+    flex-wrap: nowrap;
+    grid-template-areas: none;
+    padding: 4px 10px;
+  }
+  .tool-brand { flex: 0 0 auto; }
+  .tool-brand-logo { width: 26px; height: 26px; }
+  .tool-nav { flex: 1 1 auto; margin-inline: 8px; }
+  .tool-nav-item {
+    min-height: 36px;
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  .tool-content { padding: 8px 10px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-content-inner { animation: none; }
+  .tool-nav-item,
+  .tool-brand,
+  .tool-nav-icon { transition: none !important; }
+}
+
+/* In ấn: shell cắt nội dung trên màn hình — bỏ giới hạn khi in. */
+@media print {
+  .tool-shell,
+  .tool-content {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .tool-topnav { display: none; }
+}

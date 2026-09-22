@@ -1,0 +1,106 @@
+import type { ProductRecord } from '@/types/models';
+import { getImage, getQuoteImage } from '@/lib/media/imageStorage';
+import { imageStoreKeyFromPath, normalizeImagePath } from '@/lib/media/imagePaths';
+
+export type ImageItem = {
+  productId?: string | null;
+  sourceProductId?: string | null;
+  productCode?: string | null;
+  itemName?: string | null;
+  slug?: string | null;
+  imagePath?: string | null;
+  image?: string | null;
+  coverImagePath?: string | null;
+  imageReference?: string | null;
+  imageOverridePath?: string | null;
+};
+
+export type ResolvedItemImage = {
+  url: string | null;
+  blob: Blob | null;
+  path: string | null;
+  source: 'override' | 'snapshot' | 'source-product' | 'product' | 'legacy' | 'static' | 'missing';
+  revoke: boolean;
+};
+
+export type ResolveItemImageOptions = {
+  /**
+   * `false` = chỉ cần đường dẫn, đừng tải bytes.
+   *
+   * Trình xuất file luôn dùng `false`: chúng chỉ lấy `path` rồi giao cho
+   * `loadExportImage` (bản 480px, nhẹ hơn cả trăm lần). Tải ảnh master ở đây
+   * chỉ để chọn đường dẫn là nguyên nhân chính khiến bảng giá vài trăm dòng
+   * mất cả chục giây — mỗi sản phẩm tải hai lần, lần đầu là bản nặng nhất.
+   */
+  loadBlob?: boolean;
+};
+
+const EMPTY: ResolvedItemImage = { url: null, blob: null, path: null, source: 'missing', revoke: false };
+
+function candidates(item: ImageItem, products: ProductRecord[]): Array<{ path: string; source: ResolvedItemImage['source'] }> {
+  const sourceId = item.sourceProductId || item.productId || null;
+  const source = sourceId ? products.find((p) => p.id === sourceId) : undefined;
+  const code = String(item.productCode || '').trim().toLowerCase();
+  const name = String(item.itemName || '').trim().toLowerCase();
+  const codeMatch = code ? products.filter((p) => p.code.toLowerCase() === code) : [];
+  const slugMatch = name ? products.filter((p) => p.slug.toLowerCase() === name) : [];
+  const product = source || (codeMatch.length === 1 ? codeMatch[0] : undefined) || (slugMatch.length === 1 ? slugMatch[0] : undefined);
+  const out: Array<{ path: string; source: ResolvedItemImage['source'] }> = [];
+  const add = (path: string | null | undefined, imageSource: ResolvedItemImage['source']) => {
+    const normalized = normalizeImagePath(path);
+    if (normalized && !out.some((entry) => entry.path === normalized)) out.push({ path: normalized, source: imageSource });
+  };
+  add(item.imageOverridePath, 'override');
+  const legacy = item.imagePath || item.image;
+  if (legacy && legacy !== item.imageReference && legacy !== item.imageOverridePath) add(legacy, 'legacy');
+  add(item.imageReference, 'snapshot');
+  add(source?.coverImagePath, 'source-product');
+  add(product?.coverImagePath, product ? (source ? 'source-product' : 'product') : 'legacy');
+  add(item.coverImagePath, 'legacy');
+  add(item.image, 'legacy');
+  return out;
+}
+
+async function blobForPath(path: string): Promise<Blob | null> {
+  const normalized = normalizeImagePath(path);
+  if (!normalized || /^(https?:|data:|blob:)/i.test(normalized)) return null;
+  const key = imageStoreKeyFromPath(normalized);
+  if (!key) return null;
+  return normalized.startsWith('quotes/') || normalized.startsWith('quote-private:')
+    ? getQuoteImage(key)
+    : getImage(key);
+}
+
+/** Single image lookup used by quote/catalogue UI and all binary exporters. */
+export async function resolveItemImage(
+  item: ImageItem,
+  products: ProductRecord[] = [],
+  options: ResolveItemImageOptions = {},
+): Promise<ResolvedItemImage> {
+  for (const candidate of candidates(item, products)) {
+    const normalized = normalizeImagePath(candidate.path);
+    if (!normalized) continue;
+    if (/^data:/i.test(normalized)) {
+      const blob = options.loadBlob ? await getImage(normalized) : null;
+      return { url: normalized, blob, path: normalized, source: candidate.source, revoke: false };
+    }
+    if (/^(https?:|blob:)/i.test(normalized) || normalized.startsWith((import.meta.env.BASE_URL || '/').replace(/\/$/, '/'))) {
+      let blob: Blob | null = null;
+      if (options.loadBlob) {
+        try {
+          const response = await fetch(normalized);
+          if (response.ok) blob = await response.blob();
+        } catch {
+          // Keep the URL fallback for UI/Word even if binary embedding fails.
+        }
+      }
+      return { url: normalized, blob, path: normalized, source: candidate.source, revoke: false };
+    }
+    if (options.loadBlob === false) {
+      return { url: null, blob: null, path: normalized, source: candidate.source, revoke: false };
+    }
+    const blob = await blobForPath(normalized);
+    if (blob) return { url: URL.createObjectURL(blob), blob, path: normalized, source: candidate.source, revoke: true };
+  }
+  return EMPTY;
+}

@@ -1,0 +1,661 @@
+/*
+ * TÍNH NĂNG: BẢNG GIÁ — stylesheet riêng của tab "Bảng giá".
+ * Import bởi features/catalogue/CatalogueView.tsx, nạp SAU styles/patterns.css.
+ * (nên thắng cascade mà không cần !important).
+ *
+ * Chỉ chứa selector `.catalogue-*` / `.bang-gia-*`, và các class ô của bảng A4
+ * (.logo-cell, .title-cell, .category-row, .image-cell, .num…) LUÔN viết có phạm vi
+ * `.bang-gia-table ...` để không rò sang tab Báo giá — hai tab dùng chung tên ô.
+ *
+ * Pattern dùng chung vẫn ở lớp chung, KHÔNG khai lại ở đây: .preview-doc (và các
+ * con của nó), .admin-page*, .toolbar, .app-title, .app-subtitle, .card, .field,
+ * .input, .btn*, .icon-btn, .ph, .image-fit-*, .no-print, .data-error.
+ *
+ * File chia 4 phần:
+ *   1) Chrome (thanh công cụ, bộ lọc, nút xuất) — chuyển hẳn sang iOS.
+ *   2) Tài liệu A4 — CHỈ đổi màu/hairline sang token; mọi con số về cột, padding
+ *      và font-size giữ nguyên vì bảng trên màn hình là bản xem trước WYSIWYG của
+ *      file PDF/Word/Excel (cataloguePdfExport dùng đúng tỉ lệ cột của <colgroup>).
+ *   3) Responsive: 720px TRƯỚC, điện thoại ngang SAU (thứ tự quyết định kết quả).
+ *   4) @media print — tab này cố ý bị ẩn khi in, chỉ xuất qua nút tải file.
+ */
+
+/* ═══════════════ 1. Chrome — khung trang ═══════════════ */
+
+/* .catalogue-page KHÔNG có rule top-level: khung trang do .admin-page lo (lớp chung
+   đã đặt sẵn `min-width: 0` cho nó, nên bảng A4 vẫn cuộn ngang được). Class này chỉ
+   còn là hook cho @media print ở cuối file. */
+
+/* ═══════════════ Sticky offset — giống product-list / quote-list ═══════════════ */
+
+.tool-content:has(.catalogue-page) {
+  --catalogue-sticky-offset: 24px;
+  --catalogue-bg: #f8f9fb;
+  background: var(--catalogue-bg);
+}
+
+.tool-content:has(.catalogue-page)::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  z-index: 14;
+  display: block;
+  height: var(--catalogue-sticky-offset);
+  margin-bottom: calc(-1 * var(--catalogue-sticky-offset));
+  transform: translateY(calc(-1 * var(--catalogue-sticky-offset)));
+  background: var(--catalogue-bg);
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .tool-content:has(.catalogue-page) { --catalogue-sticky-offset: 16px; }
+}
+@media (max-width: 760px) {
+  .tool-content:has(.catalogue-page) { --catalogue-sticky-offset: 12px; }
+}
+
+/* ═══════════════ Heading — giống product-list-heading / quote-list-heading ═══════════════ */
+
+.catalogue-header-row {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+  padding: 10px 0;
+  background: var(--catalogue-bg, #f8f9fb);
+}
+.catalogue-header-row::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: var(--catalogue-bg, #f8f9fb);
+}
+.catalogue-list-heading {
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+  padding-top: 2px;
+}
+.catalogue-list-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+.catalogue-list-title-row .app-title { margin-bottom: 0 !important; }
+.catalogue-list-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ═══════════════ Sticky toolbar — giống product-list-toolbar / quote-list-toolbar ═══════════════ */
+
+.catalogue-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.catalogue-list-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ios-separator);
+  border-top: 0;
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background: var(--ios-card);
+  color: var(--ios-label2);
+  font-size: var(--fs-sm);
+}
+.catalogue-pagination-summary,
+.catalogue-pagination-controls,
+.catalogue-pagination-summary label {
+  display: flex;
+  align-items: center;
+}
+.catalogue-pagination-summary {
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.catalogue-pagination-summary label {
+  gap: 8px;
+  color: var(--ios-label2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.catalogue-pagination-summary .catalogue-page-size-select {
+  width: 96px;
+  min-width: 96px;
+  min-height: 36px !important;
+  padding: 6px 30px 6px 10px !important;
+  border-radius: 10px !important;
+  font-size: var(--fs-sm) !important;
+  font-variant-numeric: tabular-nums;
+}
+.catalogue-pagination-controls {
+  flex: 0 0 auto;
+  gap: 10px;
+  color: var(--ios-label);
+  white-space: nowrap;
+}
+.catalogue-pagination-controls strong { font-weight: 600; }
+.catalogue-pagination-controls .icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--ios-card);
+}
+.catalogue-pagination-controls .icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .catalogue-header-row {
+    align-items: flex-start;
+    gap: 16px;
+  }
+}
+
+/* ═══════════════ Custom dropdown — giống product-category / quote-status ═══════════════ */
+
+.catalogue-toolbar-control {
+  position: relative;
+  min-width: 0;
+}
+.catalogue-toolbar-control > svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  z-index: 1;
+  transform: translateY(-50%);
+  color: var(--ios-label3);
+  pointer-events: none;
+}
+.catalogue-toolbar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.catalogue-category-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 180px;
+  min-height: var(--control-h, 44px);
+  padding: 10px 12px 10px 42px;
+  border: 1px solid rgba(60, 60, 67, 0.16);
+  border-radius: var(--r-md, 9px);
+  background: var(--ios-card);
+  color: var(--ios-label);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease-ios), box-shadow 0.16s var(--ease-ios), background 0.16s var(--ease-ios);
+}
+.catalogue-category-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalogue-category-trigger:hover,
+.catalogue-category-trigger[aria-expanded='true'] {
+  border-color: rgba(0, 122, 255, 0.28);
+  background: #fbfdff;
+}
+.catalogue-category-trigger[aria-expanded='true'] {
+  border-color: var(--ios-blue);
+  background: var(--ios-card);
+  box-shadow: var(--shadow-glow);
+}
+.catalogue-category-trigger > svg { flex: 0 0 auto; color: var(--ios-label3); }
+.catalogue-category-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: grid;
+  gap: 3px;
+  max-height: min(320px, 46vh);
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid rgba(60, 60, 67, 0.14);
+  border-radius: var(--r-lg, 10px);
+  background: var(--ios-card);
+  box-shadow: 0 8px 18px rgba(28, 28, 40, 0.1), 0 20px 44px rgba(28, 28, 40, 0.12);
+  animation: catalogue-menu-in 0.16s var(--ease-ios) both;
+}
+@keyframes catalogue-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.catalogue-category-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r-sm, 7px);
+  background: transparent;
+  color: var(--ios-label);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.catalogue-category-option > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalogue-category-option:hover { background: var(--ios-blue-soft); }
+.catalogue-category-option.is-selected {
+  background: var(--ios-blue-soft);
+  color: var(--ios-blue-ink);
+  font-weight: 600;
+}
+.catalogue-category-option.is-selected > svg { color: var(--ios-blue); }
+
+/* ═══════════════ Nhóm nút xuất ═══════════════ */
+
+.catalogue-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.catalogue-toolbar-actions > .btn {
+  min-height: var(--control-h, 44px);
+  padding-inline: 14px !important;
+  border-radius: var(--r-md, 9px) !important;
+  font-size: var(--fs-sm) !important;
+  white-space: nowrap;
+}
+
+/* ═══════════════ 2. Tài liệu A4 — khung ngoài ═══════════════ */
+
+/* Khung ngoài là chrome màn hình (không phải giấy) nên chuyển hẳn sang iOS:
+   thẻ trắng bo lớn, hairline, shadow gần phẳng. */
+.bang-gia-doc {
+  overflow-x: auto;
+  padding: 10px;
+  border: 1px solid var(--ios-separator-opaque);
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  background: var(--ios-card);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ═══════════════ Bảng A4 — chỉ đổi màu, giữ nguyên kích thước ═══════════════ */
+
+/* CẦN QUYẾT ĐỊNH TẬP TRUNG: bảng này là bản xem trước của file Word/Excel/PDF, mà
+   features/export/catalogueExcelExport.ts ghi cứng đúng bảng màu CŨ (FF0E2F44 đầu
+   bảng, FF4B6078 băng tiêu đề, FFD9E2F3 hàng danh mục, FF283846 đường kẻ). Chuyển
+   sang token iOS ở đây làm màn hình và file tải về khác màu. Hai hướng: đổi màu
+   trong module export cho khớp, hoặc coi 4 màu trên là "màu bắt buộc của bản in" và
+   giữ nguyên trong CSS. Không tự quyết ở đây vì module export nằm ngoài feature. */
+.bang-gia-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+/* Lưới kẻ kiểu chứng từ. Dùng --ios-label3 chứ KHÔNG dùng --ios-separator: hairline
+   #e5e5ea sẽ làm bảng gần như mất lưới và lệch hẳn với lưới đậm mà bản PDF/Word vẽ ra.
+   --ios-separator để dành cho hairline phần chrome. */
+.bang-gia-table th,
+.bang-gia-table td {
+  border: 1px solid var(--ios-label3);
+  padding: 5px 6px;
+  vertical-align: middle;
+}
+
+/* Đầu bảng phải khai tường minh: .bang-gia-doc mang cả class .preview-doc, mà lớp
+   chung có `.preview-doc th { background: var(--owin-primary); color: #fff }` —
+   bỏ bớt ở đây là <th> rơi về màu đầu bảng của tab Báo giá. */
+.bang-gia-table thead th {
+  background: var(--ios-label);
+  color: var(--ios-card);
+  text-align: center;
+}
+
+.bang-gia-table .logo-cell,
+.bang-gia-table .company-cell {
+  background: var(--ios-card);
+  color: var(--ios-label);
+}
+.bang-gia-table .logo-cell {
+  height: 72px;
+  padding: 4px;
+}
+.bang-gia-table .logo-cell img {
+  display: block;
+  height: 95%;
+  margin: 0 auto;
+  max-height: 64px;
+  max-width: 95%;
+  object-fit: contain;
+  width: 95%;
+}
+.bang-gia-table .company-cell {
+  font-size: 20px;
+}
+/* Băng tiêu đề nhạt hơn băng đầu bảng — giữ đúng 2 tầng của bản in. */
+.bang-gia-table .title-cell {
+  background: var(--ios-label2);
+  color: var(--ios-card);
+  font-size: 15px;
+}
+
+/* ─── Ô dữ liệu ─── */
+
+.bang-gia-table .description-cell,
+.bang-gia-table .category-row td {
+  white-space: pre-line;
+}
+.bang-gia-table .description-cell {
+  text-align: left;
+  line-height: 1.35;
+}
+.bang-gia-table .category-row td {
+  background: var(--ios-fill-strong);
+  font-weight: 700;
+  text-align: left;
+}
+
+.bang-gia-table .unit-cell,
+.bang-gia-table .dim-cell,
+.bang-gia-table .kl-cell {
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* min-width giữ cột KL không vỡ khi số có 4 chữ số. */
+.bang-gia-table .kl-cell {
+  min-width: 4.2em;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.bang-gia-table .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.bang-gia-table .total-cell {
+  font-weight: 700;
+}
+
+/* ═══════════════ Ô ảnh (thủ thuật rowspan — KHÔNG "làm gọn" các con số) ═══════════════ */
+
+/* height:1px là mẹo để ô ảnh giãn theo rowSpan của cả block (SP + phụ kiện);
+   khung ảnh bên trong định vị absolute 2.5%/95% cho khớp tỉ lệ ảnh của bản xuất. */
+.bang-gia-table .image-cell {
+  position: relative;
+  height: 1px;
+  min-width: 120px;
+  width: 18%;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  background: var(--ios-bg);
+}
+
+.bang-gia-image-frame {
+  position: absolute;
+  top: 2.5%;
+  left: 2.5%;
+  width: 95%;
+  height: 95%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--ios-separator);
+  border-radius: var(--r-xs);
+  background: var(--ios-card);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* !important BẮT BUỘC GIỮ: ProductThumb đặt width/height/maxWidth/maxHeight bằng
+   inline style (chế độ fill), mà inline style thắng mọi khai báo thường. Bỏ
+   !important là ảnh trong bảng giá bung/xẹp ở cả 3 breakpoint. */
+.bang-gia-table .image-cell .ph,
+.bang-gia-image-frame img,
+.bang-gia-image-frame .ph,
+.bang-gia-image-frame .image-fit-fill {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  object-fit: contain !important;
+  object-position: center;
+  /* Bo trong = bo ngoài trừ padding 4px của khung. */
+  border-radius: calc(var(--r-xs) - 2px);
+  border: none;
+  background: transparent;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ═══════════════ Nhịp dòng theo loại hàng + block không cắt trang ═══════════════ */
+
+.bang-gia-table tr.product td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.bang-gia-table tr.accessory td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.bang-gia-table tr.extraAccessory td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.catalogue-item-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ═══════════════ 3. Responsive (kế thừa breakpoint của bản cũ) ═══════════════ */
+
+/* ─── Điện thoại dọc: thanh công cụ xếp dọc, 3 nút xuất thành lưới 3 cột ─── */
+@media (max-width: 720px) {
+  .catalogue-list-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .catalogue-pagination-summary,
+  .catalogue-pagination-controls {
+    justify-content: space-between;
+  }
+
+  /* LƯU Ý sai khác có chủ đích so với bản đang chạy: trong lớp chung rule
+     `.catalogue-toolbar { align-items: flex-end; gap: 12px }` nằm ở CUỐI file (sau
+     block 720px) nên nó đè ngược lại `stretch`/`8px` của chính block này — hệ quả là
+     trên điện thoại khối tiêu đề bị co lại và dạt sang phải. Ở đây rule top-level
+     đứng TRƯỚC media query nên block này thắng đúng như khai báo. Cần người xác nhận
+     ảnh chụp trước khi dọn lớp chung. */
+  .catalogue-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  /* Đổi sang cột thì flex-basis tính theo CHIỀU CAO: để nguyên `flex: 1 1 200px`
+     của bản desktop là khối tiêu đề cao đúng 200px, chừa một mảng trống giữa
+     tiêu đề và nút xuất (lỗi có sẵn từ bản cũ, không phải do tách file). */
+  .catalogue-toolbar-text {
+    flex: 0 0 auto;
+  }
+  .catalogue-toolbar-actions {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .catalogue-filter-label {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+  }
+  .catalogue-filter-label .input {
+    width: 100%;
+    min-width: 0;
+  }
+  .catalogue-export-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+  }
+  /* font-size/padding ở đây bị lớp chung .btn (!important) vô hiệu — giữ nguyên
+     hiện trạng, không thêm !important. Phần thực sự chạy là width + min-height. */
+  .catalogue-export-actions .btn {
+    width: 100%;
+    min-height: 36px;
+    justify-content: center;
+    font-size: var(--fs-xs);
+    padding: 6px 4px;
+  }
+
+  .bang-gia-doc {
+    padding: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .bang-gia-table {
+    font-size: 11px;
+    min-width: 680px;
+  }
+  .bang-gia-table th,
+  .bang-gia-table td {
+    padding: 5px 4px;
+  }
+  .bang-gia-table .image-cell {
+    min-width: 96px;
+    width: 18%;
+    padding: 0;
+  }
+  .bang-gia-image-frame {
+    top: 2.5%;
+    left: 2.5%;
+    width: 95%;
+    height: 95%;
+    padding: 3px;
+  }
+  .bang-gia-image-frame img,
+  .bang-gia-image-frame .ph,
+  .bang-gia-image-frame .image-fit-fill {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    object-fit: contain !important;
+  }
+}
+
+/* ─── Điện thoại ngang: thanh công cụ trở lại 1 hàng, nút co về chiều rộng nội dung.
+       PHẢI đứng SAU block 720px — cùng specificity, rule sau thắng, nên không cần
+       !important như bản cũ (bản cũ dùng !important chỉ để phòng thứ tự). ─── */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 960px) {
+  .catalogue-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .catalogue-toolbar-actions {
+    flex-direction: row;
+    width: auto;
+    margin-left: auto;
+  }
+  .catalogue-export-actions {
+    display: inline-flex;
+    width: auto;
+    grid-template-columns: none;
+  }
+  .catalogue-export-actions .btn {
+    width: auto;
+    min-height: 30px;
+  }
+
+  /* Màn thấp: tài liệu tự cuộn trong khung thay vì đẩy cả trang. */
+  .bang-gia-doc {
+    max-height: calc(100dvh - 80px);
+    overflow: auto;
+  }
+  .bang-gia-image-frame {
+    top: 2.5%;
+    left: 2.5%;
+    width: 95%;
+    height: 95%;
+  }
+  .bang-gia-image-frame img,
+  .bang-gia-image-frame .image-fit-fill {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+  }
+}
+
+/* ═══════════════ 4. In ═══════════════ */
+
+/* Bảng giá CỐ Ý không in được bằng Ctrl+P: bản chính thức chỉ đến từ nút tải
+   Word/Excel/PDF (sinh bằng code, không chụp DOM). Giữ !important vì đây là rào
+   chặn cuối — không được để bất kỳ rule display nào ở lớp chung mở lại. */
+@media print {
+  .catalogue-page,
+  .bang-gia-doc {
+    display: none;
+  }
+}

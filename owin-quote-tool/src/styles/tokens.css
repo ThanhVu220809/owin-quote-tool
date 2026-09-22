@@ -1,0 +1,133 @@
+/*
+ * DESIGN TOKENS — iOS (nguồn duy nhất cho màu / bo / chữ / shadow).
+ * Import ĐẦU TIÊN trong main.tsx, trước mọi stylesheet khác.
+ *
+ * Bảng màu lấy đúng theo màn đăng nhập (features/auth/login.css) để cả app
+ * là một hệ: nền xám iOS, thẻ trắng, accent xanh hệ thống, hairline mảnh.
+ *
+ * Các biến `--owin-*` giữ nguyên TÊN nhưng trỏ sang giá trị iOS: nhờ vậy phần
+ * CSS chưa kịp chuyển (báo giá / bảng giá / tính nhôm) đổi màu theo mà không
+ * phải sửa từng dòng. Khi cả 4 tab đã có stylesheet riêng thì bỏ nhóm alias.
+ */
+:root {
+  /* ─── iOS system palette ─── */
+  --ios-bg: #f2f2f7; /* secondarySystemBackground — nền app */
+  --ios-card: #ffffff; /* systemBackground — mặt thẻ */
+  --ios-fill: #ededf2; /* nền control: tách rõ khỏi thẻ trắng */
+  --ios-fill-strong: #dedee5; /* track segmented / control được nhấn */
+  --ios-surface-muted: #f7f7fa; /* đầu bảng và nhóm nội dung cấp hai */
+  --ios-row-hover: #f2f7ff; /* phản hồi hover nhẹ theo systemBlue */
+  --ios-separator: rgba(60, 60, 67, 0.24); /* hairline rõ trên màn hình sáng */
+  --ios-separator-opaque: #c7c7cc; /* systemGray4 — viền cần độ rõ ổn định */
+  --ios-control-border: #8e8e93; /* systemGray — viền control */
+  --ios-label: #1c1c1e; /* label */
+  --ios-label2: #55555e; /* secondaryLabel */
+  --ios-label3: #6e6e73; /* tertiaryLabel đã tăng tương phản cho chữ nhỏ */
+  --ios-blue: #007aff; /* systemBlue */
+  --ios-blue-ink: #006edc; /* systemBlue đậm hơn cho chữ trên nền sáng */
+  --ios-blue-hover: #0055aa; /* hover/pressed của nút nền xanh */
+  --ios-blue-soft: rgba(0, 122, 255, 0.12);
+  --ios-blue-soft-strong: rgba(0, 122, 255, 0.18);
+  --ios-green: #248a3d; /* systemGreen cho chữ */
+  --ios-green-fill: #34c759; /* systemGreen cho control */
+  --ios-green-soft: rgba(52, 199, 89, 0.12);
+  --ios-red: #d70015; /* systemRed cho chữ */
+  --ios-red-fill: #ff3b30; /* systemRed cho control */
+  --ios-red-soft: rgba(255, 59, 48, 0.1);
+  --ios-orange: #c93400; /* systemOrange cho chữ */
+  --ios-orange-fill: #ff9500; /* systemOrange cho control */
+
+  /* ─── Radius — thang bo góc iOS ─── */
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+  --ios-radius: var(--r-lg);
+  --ios-radius-sm: var(--r-md);
+
+  /* ─── Type scale (IOS_STYLE_GUIDE §4.2) ───
+   * Đơn vị rem, gốc là font-size mặc định của trình duyệt (100% ≈ 16px) — nhờ
+   * vậy người dùng chỉnh cỡ chữ trong trình duyệt thì cả app giãn theo. Số px
+   * ghi kèm là giá trị khi gốc = 16px.
+   */
+  --fs-xs: 0.75rem; /* 12px — metadata, badge */
+  --fs-sm: 0.875rem; /* 14px — nhãn field, dữ liệu bảng desktop */
+  --fs-md: 1rem; /* 16px — nội dung, input, nút chính */
+  --fs-lg: 1.0625rem; /* 17px — tiêu đề card */
+  --fs-xl: 1.25rem; /* 20px — tiêu đề nhóm lớn / dialog */
+  --fs-2xl: 1.5rem; /* 24px — tổng tiền nổi bật */
+  --fs-title: clamp(1.5rem, 1.25rem + 0.6vw, 1.75rem); /* 24–28px — tiêu đề màn */
+  --fs-display: 2rem; /* 32px — chỉ dùng ở màn đăng nhập */
+  /* Một family duy nhất cho toàn bộ UI, đủ glyph tiếng Việt.
+   * Roboto tải từ Google Fonts nên có thể bị chặn (Firefox/Zen bật chống theo
+   * dõi hoặc chặn quảng cáo). Khi đó `sans-serif` mặc định trên Linux là DejaVu
+   * Sans — rộng hơn Roboto nhiều, làm vỡ các control cao cố định. Liệt kê sẵn
+   * font hệ thống có đủ dấu tiếng Việt và metric gần Roboto trước khi rơi về
+   * `sans-serif`. */
+  --font-sans: 'Roboto', 'Noto Sans', 'Segoe UI', system-ui, 'Liberation Sans',
+    Arial, sans-serif;
+  --track-tight: -0.02em;
+
+  /* ─── Spacing / chiều cao control ─── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --control-h: 44px;
+  --control-h-sm: 40px;
+  --icon-btn: 44px;
+  --touch: 44px;
+
+  /* ─── Shadow — phân tầng rõ, vẫn giữ cạnh mềm kiểu iOS ─── */
+  --shadow-sm: 0 1px 2px rgba(28, 28, 40, 0.08), 0 4px 12px rgba(28, 28, 40, 0.04);
+  --shadow-md: 0 2px 4px rgba(28, 28, 40, 0.07), 0 12px 30px rgba(28, 28, 40, 0.09);
+  --shadow-lg: 0 4px 10px rgba(28, 28, 40, 0.08), 0 24px 64px rgba(28, 28, 40, 0.16);
+  --shadow-nav: 0 1px 0 rgba(28, 28, 40, 0.08), 0 5px 18px rgba(28, 28, 40, 0.07);
+  --shadow-glow: 0 0 0 4px var(--ios-blue-soft);
+  --ios-shadow: var(--shadow-md);
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ─── Alias cho phần CSS chưa chuyển sang token iOS ─── */
+  --owin-primary: var(--ios-label);
+  --owin-primary-soft: var(--ios-label2);
+  --owin-action: var(--ios-blue);
+  --owin-action-hover: var(--ios-blue-hover);
+  --owin-action-soft: var(--ios-blue-soft);
+  --owin-ink: var(--ios-label);
+  --owin-ink-muted: var(--ios-label2);
+  --owin-muted: var(--ios-label3);
+  --owin-bg: var(--ios-bg);
+  --owin-bg-accent: var(--ios-bg);
+  --owin-border: var(--ios-separator);
+  --owin-border-strong: var(--ios-separator-opaque);
+  --owin-surface: var(--ios-card);
+  --owin-soft: var(--ios-fill);
+  --owin-success: var(--ios-green);
+  --owin-success-soft: var(--ios-green-soft);
+  --owin-danger: var(--ios-red);
+  --owin-danger-soft: var(--ios-red-soft);
+  --owin-warning: var(--ios-orange);
+  --owin-shadow: var(--shadow-md);
+  /* Vàng đồng của theme cũ đã bỏ; alias trỏ về accent iOS cho chỗ nào còn sót. */
+  --owin-gold: var(--ios-blue);
+  --owin-gold-soft: var(--ios-blue-soft);
+
+  /* Tên rút gọn từng bị dùng mà chưa khai báo (border/surface của modal giá hàng loạt). */
+  --border: var(--ios-separator);
+  --surface: var(--ios-card);
+  --surface-subtle: var(--ios-bg);
+  --text-muted: var(--ios-label2);
+
+  font-family: var(--font-sans);
+  /* 100% = cỡ chữ người dùng đặt trong trình duyệt; KHÔNG đặt lại theo breakpoint. */
+  font-size: 100%;
+  line-height: 1.45;
+  color: var(--ios-label);
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
