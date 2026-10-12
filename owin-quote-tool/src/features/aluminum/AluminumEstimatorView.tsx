@@ -72,6 +72,10 @@ export function AluminumEstimatorView() {
   }, []);
 
   const applyHostedState = useCallback((snapshot: AluminumEstimatorStorageSnapshot) => {
+    // Revision chỉ tăng. Đọc ra revision thấp hơn bản đã biết (vd. phiên đăng nhập
+    // rớt → RLS trả 0 dòng, hoặc một lần đọc cũ về muộn) là đọc hỏng, không phải
+    // server đã xoá giá — merge nó vào sẽ xoá sạch đơn giá trên máy này.
+    if (snapshot.revision < serverSnapshot.current.revision) return;
     const remote = snapshot.state ?? createDefaultAluminumEstimatorState();
     const previousBase = serverBase.current;
     serverSnapshot.current = snapshot;
@@ -126,6 +130,10 @@ export function AluminumEstimatorView() {
           const savedState = saved.state ?? snapshot;
           serverSnapshot.current = saved;
           serverBase.current = savedState;
+          // Bản server có thể đã ghép thêm giá từ máy khác (CAS merge). Đưa phần đó
+          // vào trang, giữ các ô vừa sửa sau khi gửi; nếu không, lần lưu sau sẽ coi
+          // những dòng trang chưa có là "đã xoá" và ghi đè mất.
+          updatePageState((current) => mergeAluminumEstimatorStates(snapshot, current, savedState));
           serverObservation.current += 1;
           setServerBaseVersion((value) => value + 1);
           setLastSavedAt(savedState.updatedAt);
@@ -141,7 +149,7 @@ export function AluminumEstimatorView() {
         });
     }, 850);
     return () => window.clearTimeout(timer);
-  }, [autosaveRetry, hydrated, pageState, serverBaseVersion]);
+  }, [autosaveRetry, hydrated, pageState, serverBaseVersion, updatePageState]);
 
   useEffect(() => {
     let active = true;

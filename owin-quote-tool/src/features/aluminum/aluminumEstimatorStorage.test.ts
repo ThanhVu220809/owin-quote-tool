@@ -268,4 +268,20 @@ describe('mergeAluminumEstimatorStates', () => {
       remote,
     )).toBe(true);
   });
+
+  it('restores the server prices when the confirmed save is merged back into an emptied page', () => {
+    // Trang bị rỗng giá do một lần đọc hỏng, rồi lần lưu kế tiếp được server trả về đủ giá.
+    // Ghép bản server vào trang (sent → current → saved) phải lấy lại giá, không giữ trang rỗng.
+    const full = state({ 'Ghi - Cafe': { 'system-a': { r1: price('147000'), r2: price('200000') } } }, REMOTE_TIME);
+    const emptied = state({}, LOCAL_TIME);
+    const editedAfterSend = state({ 'Ghi - Cafe': { 'system-a': { r3: price('99000') } } }, LOCAL_TIME);
+
+    const merged = mergeAluminumEstimatorStates(emptied, editedAfterSend, full);
+
+    expect(merged.unitPricesByColor['Ghi - Cafe']?.['system-a']).toEqual({
+      r1: price('147000'),
+      r2: price('200000'),
+      r3: price('99000'),
+    });
+  });
 });
